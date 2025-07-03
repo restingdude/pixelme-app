@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import CartIcon from "../../components/CartIcon";
 
-export default function Upload() {
+function UploadContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedClothing = searchParams.get('clothing');
@@ -588,5 +588,13 @@ export default function Upload() {
         <CartIcon />
       </div>
     </main>
+  );
+}
+
+export default function Upload() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <UploadContent />
+    </Suspense>
   );
 } 

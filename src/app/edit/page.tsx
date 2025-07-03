@@ -1265,13 +1265,15 @@ export default function Edit() {
                   className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
                   title="Go back to edit step"
                 >
-                  <img
-                    src={editedImage}
-                    alt="Edited image preview"
-                    width={60}
-                    height={60}
-                    className="object-contain rounded-lg w-16 h-16"
-                  />
+                  {editedImage && (
+                    <img
+                      src={editedImage}
+                      alt="Edited image preview"
+                      width={60}
+                      height={60}
+                      className="object-contain rounded-lg w-16 h-16"
+                    />
+                  )}
                 </button>
               ) : (
                 <button
@@ -2678,11 +2680,13 @@ export default function Edit() {
                     <div className="text-center">
                       <h4 className="text-lg font-semibold text-gray-700 mb-3">Before (Original)</h4>
                       <div className="relative inline-block">
-                        <img 
-                          src={editedImage} 
-                          alt="Original edited image"
-                          className="max-w-full h-auto rounded-lg shadow-lg"
-                        />
+                        {editedImage && (
+                          <img 
+                            src={editedImage} 
+                            alt="Original edited image"
+                            className="max-w-full h-auto rounded-lg shadow-lg"
+                          />
+                        )}
                       </div>
                     </div>
                     

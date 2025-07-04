@@ -1169,55 +1169,57 @@ export default function Edit() {
     const finalImage = localStorage.getItem('pixelme-final-image') || currentImage;
     
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
         <Image
           src="/logo.png"
           alt="PixelMe Logo"
           width={200}
           height={80}
-          className="mb-8"
+          className="mb-8 w-40 h-auto sm:w-48 md:w-52"
           priority
         />
         
-        <div className="w-[1000px] bg-white rounded-lg shadow p-8 flex flex-col items-center relative">
-          <div className="w-full flex items-center gap-4 mb-6">
-            {/* Step indicators */}
-            {selectedClothing && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleGoHome}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                  title="Change clothing style"
-                >
-                  <Image
-                    src={`/clothes/${selectedClothing}.png`}
-                    alt={selectedClothing}
-                    width={60}
-                    height={60}
-                    className="object-contain"
-                    priority
-                  />
-                </button>
-              </div>
-            )}
-            
-            {uploadedImage && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleStepChange('upload')}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                  title="Change uploaded photo"
-                >
-                  <img
-                    src={uploadedImage}
-                    alt="Uploaded preview"
-                    width={60}
-                    height={60}
-                    className="object-contain rounded-lg w-16 h-16"
-                  />
-                </button>
-              </div>
-            )}
+        <div className="w-full max-w-6xl bg-white rounded-lg shadow p-4 sm:p-6 lg:p-8 flex flex-col items-center relative">
+          <div className="w-full flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 min-w-0 flex-shrink-0">
+              <div className="flex items-center gap-2 min-w-max">
+                {/* Step indicators */}
+                {selectedClothing && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleGoHome}
+                      className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                      title="Change clothing style"
+                    >
+                      <Image
+                        src={`/clothes/${selectedClothing}.png`}
+                        alt={selectedClothing}
+                        width={60}
+                        height={60}
+                        className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                        priority
+                      />
+                    </button>
+                  </div>
+                )}
+                
+                {uploadedImage && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleStepChange('upload')}
+                      className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                      title="Change uploaded photo"
+                    >
+                      <img
+                        src={uploadedImage}
+                        alt="Uploaded preview"
+                        width={60}
+                        height={60}
+                        className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                      />
+                    </button>
+                  </div>
+                )}
             
             {selectedStyle && (
               <div className="flex items-center gap-2">
@@ -1227,7 +1229,7 @@ export default function Edit() {
                   title="Change style selection"
                 >
                   <Image
-                    src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Anime' ? 'anime' : 'simpsons'}.png`}
+                    src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Anime' ? 'anime' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
                     alt={`${selectedStyle} Style`}
                     width={60}
                     height={60}
@@ -1357,10 +1359,13 @@ export default function Edit() {
               </div>
             </div>
             
+              </div>
+            </div>
+            
             {/* Product Info Display */}
-            <div className="flex items-center gap-4 ml-auto mr-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 lg:ml-auto">
               {(selectedClothing || selectedColor || selectedSize) && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm w-full sm:w-auto">
                   <div className="font-semibold text-blue-800 mb-1">Current Selection:</div>
                   <div className="text-blue-700">
                     <div><span className="font-medium">Product:</span> {selectedClothing ? (selectedClothing.charAt(0).toUpperCase() + selectedClothing.slice(1)) : 'Not Selected'}</div>
@@ -1369,13 +1374,11 @@ export default function Edit() {
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Clear Button */}
-            <div className="flex items-center gap-2">
+              
+              {/* Clear Button */}
               <button
                 onClick={handleClear}
-                className="w-20 h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
+                className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center flex-shrink-0"
                 title="Clear all and start over"
               >
                 <Image
@@ -1383,7 +1386,7 @@ export default function Edit() {
                   alt="Clear"
                   width={32}
                   height={32}
-                  className="object-contain"
+                  className="object-contain w-6 h-6 sm:w-8 sm:h-8"
                 />
               </button>
             </div>
@@ -1956,769 +1959,231 @@ export default function Edit() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
       <Image
         src="/logo.png"
         alt="PixelMe Logo"
         width={200}
         height={80}
-        className="mb-8"
+        className="mb-8 w-40 h-auto sm:w-48 md:w-52"
         priority
       />
       
-      <div className="w-[1000px] bg-white rounded-lg shadow p-8 flex flex-col items-center relative">
-        <div className="w-full flex items-center gap-4 mb-6">
-          {/* Step 1 - Clothing */}
-          <div className="flex items-center gap-2">
-            {selectedClothing ? (
-              <button
-                onClick={handleGoHome}
-                className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                title="Change clothing style"
-              >
-                <Image
-                  src={`/clothes/${selectedClothing}.png`}
-                  alt={selectedClothing}
-                  width={60}
-                  height={60}
-                  className="object-contain"
-                  priority
-                />
-              </button>
-            ) : (
-              <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">1</span>
-            )}
-          </div>
-          
-          {/* Step 2 - Upload Image */}
-          <div className="flex items-center gap-2">
-            {uploadedImage ? (
-              <button
-                onClick={() => handleStepChange('upload')}
-                className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                title="Change uploaded photo"
-              >
-                <img
-                  src={uploadedImage}
-                  alt="Uploaded preview"
-                  width={60}
-                  height={60}
-                  className="object-contain rounded-lg w-16 h-16"
-                />
-              </button>
-            ) : (
-              <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">2</span>
-            )}
-          </div>
-          
-          {/* Step 3 - Style Selection */}
-          <div className="flex items-center gap-2">
-            {selectedStyle ? (
-              <button
-                onClick={() => handleStepChange('style')}
-                className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                title="Change style selection"
-              >
-                <Image
-                  src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Anime' ? 'anime' : 'simpsons'}.png`}
-                  alt={`${selectedStyle} Style`}
-                  width={60}
-                  height={60}
-                  className="object-contain rounded-lg"
-                />
-              </button>
-            ) : (
-              <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">3</span>
-            )}
-          </div>
-          
-          {/* Step 4 - After Style Conversion */}
-          <div className="flex items-center gap-2">
-            {conversionResult ? (
-              <button
-                onClick={() => handleStepChange('before')}
-                className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20 ${
-                  step === 'before' ? 'border-blue-600' : 'border-transparent'
-                }`}
-                title="View styled image before editing"
-              >
-                <img
-                  src={conversionResult}
-                  alt="Styled image preview"
-                  width={60}
-                  height={60}
-                  className="object-contain rounded-lg w-16 h-16"
-                />
-              </button>
-            ) : (
-              <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">4</span>
-            )}
-          </div>
+      {/* Main Container */}
+      <div className="w-full max-w-6xl bg-white rounded-lg shadow p-4 sm:p-6 lg:p-8 flex flex-col items-center relative">
+        {/* Step Indicators */}
+        <div className="w-full flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 min-w-0 flex-shrink-0">
+            <div className="flex items-center gap-2 min-w-max">
+              {/* Step 1 - Clothing Selection */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleGoHome}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go back to product selection"
+                >
+                  {selectedClothing ? (
+                    <Image
+                      src={`/clothes/${selectedClothing}.png`}
+                      alt={selectedClothing}
+                      width={60}
+                      height={60}
+                      className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                      priority
+                    />
+                  ) : (
+                    <span className="text-xs sm:text-sm font-semibold text-gray-400">1</span>
+                  )}
+                </button>
+              </div>
+              
+              {/* Step 2 - Upload Image */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBack}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go back to upload step"
+                >
+                  {uploadedImage ? (
+                    <img
+                      src={uploadedImage}
+                      alt="Uploaded preview"
+                      className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                    />
+                  ) : (
+                    <span className="text-xs sm:text-sm font-semibold text-gray-400">2</span>
+                  )}
+                </button>
+              </div>
+              
+              {/* Step 3 - Style Selection */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBack}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go back to style selection"
+                >
+                  {selectedStyle ? (
+                    <Image
+                      src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Anime' ? 'anime' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                      alt={`${selectedStyle} Style`}
+                      width={60}
+                      height={60}
+                      className="object-contain rounded-lg w-12 h-12 sm:w-14 sm:h-14"
+                    />
+                  ) : (
+                    <span className="text-xs sm:text-sm font-semibold text-gray-400">3</span>
+                  )}
+                </button>
+              </div>
+              
+              {/* Step 4 - Convert */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleStepChange('convert')}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go back to convert step"
+                >
+                  {conversionResult ? (
+                    <img
+                      src={conversionResult}
+                      alt="Converted preview"
+                      className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                    />
+                  ) : (
+                    <span className="text-xs sm:text-sm font-semibold text-gray-400">4</span>
+                  )}
+                </button>
+              </div>
+              
+              {/* Step 5 - Edit */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleStepChange('edit')}
+                  className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 ${step === 'edit' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20`}
+                  title="Edit step"
+                >
+                  {editedImage ? (
+                    <img
+                      src={editedImage}
+                      alt="Edited preview"
+                      className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                    />
+                  ) : (
+                    <span className={`text-xs sm:text-sm font-semibold ${step === 'edit' ? 'text-gray-600' : 'text-gray-400'}`}>5</span>
+                  )}
+                </button>
+              </div>
 
-          {/* Step 5 - After Editing */}
-          <div className="flex items-center gap-2">
-            {editedImage ? (
-              <button
-                onClick={() => handleStepChange('edit')}
-                className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20 ${
-                  step === 'edit' ? 'border-dashed border-amber-600' : 'border-transparent'
-                }`}
-                title="Go back to edit step"
-              >
-                <img
-                  src={editedImage}
-                  alt="Edited image preview"
-                  width={60}
-                  height={60}
-                  className="object-contain rounded-lg w-16 h-16"
-                />
-              </button>
-            ) : (
-              <span className={`text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 ${
-                step === 'edit' ? 'border-dashed border-amber-600' : 'border-transparent'
-              }`}>5</span>
-            )}
-          </div>
-
-          {/* Step 6 - Color Reduction */}
-          <div className="flex items-center gap-2">
-            {colorReducedImage ? (
-              <button
-                onClick={() => handleStepChange('color-reduce')}
-                className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20 ${
-                  step === 'color-reduce' ? 'border-dashed border-orange-600' : 'border-transparent'
-                }`}
-                title="Go to color reduction step"
-              >
-                <img
-                  src={colorReducedImage}
-                  alt="Color reduced image preview"
-                  width={60}
-                  height={60}
-                  className="object-contain rounded-lg w-16 h-16"
-                />
-              </button>
-            ) : editedImage ? (
-              <button
-                onClick={() => handleStepChange('color-reduce')}
-                className={`text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 hover:shadow-lg transition-all duration-200 cursor-pointer ${
-                  step === 'color-reduce' ? 'border-dashed border-orange-600' : 'border-transparent'
-                }`}
-                title="Go to color reduction step"
-              >
-                6
-              </button>
-            ) : (
-              <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">6</span>
-            )}
-          </div>
-
-          {/* Step 7 - Preview */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (hasReachedPreview) {
-                  setStep('preview');
-                  localStorage.setItem('pixelme-current-step', 'preview');
-                }
-              }}
-              disabled={!hasReachedPreview}
-              className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 transition-all duration-200 w-20 h-20 ${
-                hasReachedPreview 
-                  ? 'hover:shadow-lg cursor-pointer border-transparent' 
-                  : 'cursor-not-allowed border-gray-300 opacity-60'
-              }`}
-              title={hasReachedPreview ? "Go to final preview" : "Complete color reduction to unlock preview"}
-            >
-              {finalImagePreview && selectedClothing ? (
-                <div className="relative w-16 h-16">
-                  <Image
-                    src={`/clothes/${selectedClothing}.png`}
-                    alt={selectedClothing}
-                    width={64}
-                    height={64}
-                    className="object-contain w-full h-full"
-                    priority
-                  />
-                  <div 
-                    className="absolute"
-                    style={{
-                      ...getPositionStyles(selectedClothing, selectedPosition),
-                      width: '12px',
-                      height: '12px',
-                      transform: 'translate(-50%, -50%) scale(0.24)'
-                    }}
-                  >
+              {/* Step 6 - Color Reduction */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleStepChange('color-reduce')}
+                  className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 ${step === 'color-reduce' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20`}
+                  title="Color reduction step"
+                >
+                  {colorReducedImage ? (
+                    <img
+                      src={colorReducedImage}
+                      alt="Color reduced preview"
+                      className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                    />
+                  ) : (
+                    <span className={`text-xs sm:text-sm font-semibold ${step === 'color-reduce' ? 'text-gray-600' : 'text-gray-400'}`}>6</span>
+                  )}
+                </button>
+              </div>
+              
+              {/* Step 7 - Preview */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => hasReachedPreview && handleStepChange('preview')}
+                  className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 ${step === 'preview' ? 'border-dashed border-amber-600' : 'border-transparent'} ${hasReachedPreview ? 'hover:shadow-lg cursor-pointer' : 'cursor-not-allowed'} transition-all duration-200 w-16 h-16 sm:w-20 sm:h-20`}
+                  title={hasReachedPreview ? "Preview step" : "Complete color reduction first"}
+                >
+                  {finalImagePreview ? (
                     <img
                       src={finalImagePreview}
-                      alt="Design preview"
-                      className="w-full h-full object-contain"
+                      alt="Final preview"
+                      className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
                     />
-                  </div>
-                </div>
-              ) : (
-                <span className={`text-sm font-semibold ${
-                  hasReachedPreview ? 'text-green-600' : 'text-gray-400'
-                }`}>7</span>
-              )}
-            </button>
+                  ) : (
+                    <span className={`text-xs sm:text-sm font-semibold ${step === 'preview' ? 'text-gray-600' : 'text-gray-400'}`}>7</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
           
-          {/* Product Info Display */}
-          <div className="flex items-center gap-4 ml-auto mr-4">
-            {(selectedClothing || selectedColor || selectedSize) && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
-                <div className="font-semibold text-blue-800 mb-1">Current Selection:</div>
-                <div className="text-blue-700">
-                  <div><span className="font-medium">Product:</span> {selectedClothing ? (selectedClothing.charAt(0).toUpperCase() + selectedClothing.slice(1)) : 'Not Selected'}</div>
-                  <div><span className="font-medium">Color:</span> {selectedColor || 'Not Selected'}</div>
-                  <div><span className="font-medium">Size:</span> {selectedSize || 'Not Selected'}</div>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Clear Button */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 lg:ml-auto">
             <button
               onClick={handleClear}
-              className="w-20 h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
-              title="Clear all and start over"
+              className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
+              title="Clear all cached data and start over"
             >
               <Image
                 src="/redo.png"
                 alt="Clear"
                 width={32}
                 height={32}
-                className="object-contain"
+                className="object-contain w-6 h-6 sm:w-8 sm:h-8"
               />
             </button>
           </div>
         </div>
 
-        {/* Step 4 - After Style Conversion Content */}
-        {step === 'before' && conversionResult && (
-          <div className="flex flex-col items-center w-full">
-            <div className="text-center mb-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Styled Image</h3>
-              <p className="text-gray-600">This is your image converted to <span className="font-semibold text-blue-600">{selectedStyle}</span> style, ready for editing</p>
-            </div>
+        {/* Step Selector */}
+        <div className="flex flex-wrap gap-2 sm:gap-4 mb-6 w-full justify-center">
+          <button 
+            onClick={() => handleStepChange('before')}
+            className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
+              step === 'before' 
+                ? 'border-amber-600 bg-amber-50 text-amber-700' 
+                : 'border-gray-300 text-gray-700 hover:border-amber-600'
+            }`}
+          >
+            Before
+          </button>
+          <button 
+            onClick={() => handleStepChange('edit')}
+            className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
+              step === 'edit' 
+                ? 'border-amber-600 bg-amber-50 text-amber-700' 
+                : 'border-gray-300 text-gray-700 hover:border-amber-600'
+            }`}
+          >
+            Edit Image
+          </button>
+          <button 
+            onClick={() => handleStepChange('color-reduce')}
+            className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
+              step === 'color-reduce' 
+                ? 'border-amber-600 bg-amber-50 text-amber-700' 
+                : 'border-gray-300 text-gray-700 hover:border-amber-600'
+            }`}
+          >
+            Color Reduction
+          </button>
+          {hasReachedPreview && (
+            <button 
+              onClick={() => handleStepChange('preview')}
+              className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
+                step === 'preview' 
+                  ? 'border-amber-600 bg-amber-50 text-amber-700' 
+                  : 'border-gray-300 text-gray-700 hover:border-amber-600'
+              }`}
+            >
+              Preview
+            </button>
+          )}
+        </div>
 
-            <div className="mb-6 relative inline-block">
-              <img 
-                src={conversionResult} 
-                alt="Styled converted image"
-                className="max-w-md h-auto rounded-lg shadow-lg"
-              />
-            </div>
-
-            <div className="flex justify-center">
-              <button
-                onClick={() => handleStepChange('edit')}
-                className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
-              >
-                Continue to Editing →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5 - Edit Content */}
-        {step === 'edit' && (
-          <div className="flex flex-col items-center w-full">
-            <div className="text-center mb-8">
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Edit Your Image</h3>
-              <p className="text-gray-600">Edit your <span className="font-semibold text-amber-600">{selectedStyle}</span> image with powerful AI tools</p>
-            </div>
-
-            {/* Main Layout: Image + Sidebar */}
-            <div className="flex gap-8 w-full max-w-6xl items-start">
-              
-              {/* Left Side - Image Display */}
-              <div className="flex-1 flex flex-col items-center">
-                {currentImage && (
-                  <div className="relative inline-block">
-                    <img 
-                      ref={imageRef}
-                      src={currentImage} 
-                      alt={`${selectedStyle} converted image`}
-                      className="max-w-lg h-auto rounded-lg shadow-lg"
-                      onLoad={initializeCanvas}
-                    />
-                    <canvas
-                      ref={canvasRef}
-                      className={`absolute top-0 left-0 rounded-lg ${
-                        activeMode === 'remove' ? 'cursor-none' : 
-                        activeMode === 'fill' ? 'cursor-none' :
-                        activeMode === 'crop' ? 'cursor-crosshair' : 
-                        'cursor-default'
-                      }`}
-                      onMouseDown={activeMode === 'background' ? undefined : startDrawing}
-                      onMouseMove={activeMode === 'background' ? undefined : (e) => {
-                        handleMouseMove(e);
-                        draw(e);
-                      }}
-                      onMouseUp={activeMode === 'background' ? undefined : stopDrawing}
-                      onMouseLeave={activeMode === 'background' ? undefined : handleMouseLeave}
-                      onMouseEnter={activeMode === 'background' ? undefined : handleMouseEnter}
-                      style={{
-                        width: canvasSize.width,
-                        height: canvasSize.height,
-                      }}
-                    />
-                    
-                    {/* Brush Size Cursor */}
-                    {showBrushCursor && (activeMode === 'remove' || activeMode === 'fill') && (
-                      <div
-                        className={`absolute pointer-events-none rounded-full border-2 ${
-                          activeMode === 'fill' ? 'border-purple-500' : 'border-red-500'
-                        } bg-transparent`}
-                        style={{
-                          left: mousePosition.x - brushSize / 2,
-                          top: mousePosition.y - brushSize / 2,
-                          width: brushSize,
-                          height: brushSize,
-                          transform: 'translate(0, 0)',
-                        }}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Right Side - Control Sidebar */}
-              <div className="w-80 min-w-80 flex-shrink-0 bg-white rounded-2xl shadow-lg border border-gray-200 p-6 h-fit min-h-[600px]">
-                
-                {/* Tools Section */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-4">Tools</h4>
-                  
-                  {/* Tool Selection Grid */}
-                  <div className="grid grid-cols-1 gap-3 mb-4">
-                    <button
-                      onClick={() => {
-                        setActiveMode('background');
-                        clearMask();
-                        setShowBrushCursor(false);
-                      }}
-                      className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${
-                        activeMode === 'background'
-                          ? 'border-emerald-500 bg-emerald-50 shadow-md'
-                          : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-sm'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        activeMode === 'background' ? 'bg-emerald-500' : 'bg-gray-400'
-                      }`}>
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div className="text-left">
-                        <div className={`font-semibold ${
-                          activeMode === 'background' ? 'text-emerald-700' : 'text-gray-700'
-                        }`}>
-                          Remove Background
-                        </div>
-                        <div className="text-sm text-gray-500">AI-powered background removal</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setActiveMode(activeMode === 'remove' || activeMode === 'fill' ? activeMode : 'remove');
-                        clearMask();
-                        setShowBrushCursor(false);
-                      }}
-                      className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${
-                        activeMode === 'remove' || activeMode === 'fill'
-                          ? 'border-purple-500 bg-purple-50 shadow-md'
-                          : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        activeMode === 'remove' || activeMode === 'fill' ? 'bg-purple-500' : 'bg-gray-400'
-                      }`}>
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </div>
-                      <div className="text-left">
-                        <div className={`font-semibold ${
-                          activeMode === 'remove' || activeMode === 'fill' ? 'text-purple-700' : 'text-gray-700'
-                        }`}>
-                          Erase / Fill
-                        </div>
-                        <div className="text-sm text-gray-500">Remove objects or fill with AI</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setActiveMode('crop');
-                        clearMask();
-                        setShowBrushCursor(false);
-                      }}
-                      className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${
-                        activeMode === 'crop'
-                          ? 'border-blue-500 bg-blue-50 shadow-md'
-                          : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        activeMode === 'crop' ? 'bg-blue-500' : 'bg-gray-400'
-                      }`}>
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div className="text-left">
-                        <div className={`font-semibold ${
-                          activeMode === 'crop' ? 'text-blue-700' : 'text-gray-700'
-                        }`}>
-                          Crop Image
-                        </div>
-                        <div className="text-sm text-gray-500">Crop to specific dimensions</div>
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Erase/Fill Sub-mode Toggle */}
-                  {(activeMode === 'remove' || activeMode === 'fill') && (
-                    <div className="mb-4">
-                      <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
-                        <button
-                          onClick={() => {
-                            setActiveMode('remove');
-                            clearMask();
-                          }}
-                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
-                            activeMode === 'remove'
-                              ? 'bg-white text-red-600 shadow-sm'
-                              : 'text-gray-600 hover:text-red-600'
-                          }`}
-                        >
-                          Erase
-                        </button>
-                        <button
-                          onClick={() => {
-                            setActiveMode('fill');
-                            clearMask();
-                          }}
-                          className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
-                            activeMode === 'fill'
-                              ? 'bg-white text-purple-600 shadow-sm'
-                              : 'text-gray-600 hover:text-purple-600'
-                          }`}
-                        >
-                          Fill
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Tool-specific Controls */}
-                <div className="mb-6 w-full">
-                  {/* Background Removal Tool */}
-                  {activeMode === 'background' && (
-                    <div>
-                      <h5 className="font-semibold text-gray-800 mb-3">Background Removal</h5>
-                      <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 mb-4">
-                        <p className="text-sm text-emerald-700">AI will automatically remove the background and make it transparent.</p>
-                      </div>
-                      <button 
-                        onClick={handleBackgroundRemoval}
-                        disabled={isFilling || !conversionResult}
-                        className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                          isFilling || !conversionResult
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg hover:shadow-xl'
-                        }`}
-                      >
-                        {isFilling ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Removing Background...
-                          </div>
-                        ) : (
-                          'Remove Background'
-                        )}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Erase Tool */}
-                  {activeMode === 'remove' && (
-                    <div>
-                      <h5 className="font-semibold text-gray-800 mb-3">Erase Tool</h5>
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                          <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
-                          <input
-                            type="range"
-                            min="5"
-                            max="50"
-                            value={brushSize}
-                            onChange={(e) => setBrushSize(Number(e.target.value))}
-                            className="flex-1"
-                          />
-                          <span className="text-sm text-gray-600 w-8">{brushSize}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={clearMask}
-                            className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
-                          >
-                            Clear Selection
-                          </button>
-                        </div>
-                        <button 
-                          onClick={handleGenerativeFill}
-                          disabled={isFilling || !conversionResult || !hasSelection}
-                          className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                            isFilling || !conversionResult || !hasSelection
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                              : 'bg-red-600 text-white hover:bg-red-700 shadow-lg hover:shadow-xl'
-                          }`}
-                        >
-                          {isFilling ? (
-                            <div className="flex items-center justify-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Removing Objects...
-                            </div>
-                          ) : hasSelection ? (
-                            'Remove Selected Areas'
-                          ) : (
-                            'Select Areas to Remove'
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Fill Tool */}
-                  {activeMode === 'fill' && (
-                    <div>
-                      <h5 className="font-semibold text-gray-800 mb-3">AI Fill Tool</h5>
-                      <div className="space-y-4">
-                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                          <p className="text-sm text-purple-700 mb-3">Paint over areas to remove and fill with AI</p>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">AI Fill Prompt:</label>
-                          <textarea
-                            value={aiFillPrompt}
-                            onChange={(e) => setAiFillPrompt(e.target.value)}
-                            placeholder="Remove all objects and content within the masked areas..."
-                            className="w-full h-24 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm text-black placeholder-gray-400"
-                          />
-                          <div className="flex gap-2 mt-2">
-                            <button
-                              onClick={() => setAiFillPrompt('')}
-                              className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
-                            >
-                              Clear
-                            </button>
-                            <button
-                              onClick={() => setAiFillPrompt('Add beautiful flowers and plants to fill the selected areas')}
-                              className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
-                            >
-                              Add Flowers
-                            </button>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                          <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
-                          <input
-                            type="range"
-                            min="5"
-                            max="50"
-                            value={brushSize}
-                            onChange={(e) => setBrushSize(Number(e.target.value))}
-                            className="flex-1"
-                          />
-                          <span className="text-sm text-gray-600 w-8">{brushSize}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={clearMask}
-                            className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
-                          >
-                            Clear Selection
-                          </button>
-                        </div>
-                        <button 
-                          onClick={handleAIFill}
-                          disabled={isFilling || !conversionResult || !hasSelection}
-                          className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                            isFilling || !conversionResult || !hasSelection
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                              : 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg hover:shadow-xl'
-                          }`}
-                        >
-                          {isFilling ? (
-                            <div className="flex items-center justify-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Removing & Filling...
-                            </div>
-                          ) : hasSelection ? (
-                            'Remove & Fill Selected Areas'
-                          ) : (
-                            'Select Areas to Fill'
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Crop Tool */}
-                  {activeMode === 'crop' && (
-                    <div>
-                      <h5 className="font-semibold text-gray-800 mb-3">Crop Tool</h5>
-                      <div className="space-y-4">
-                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-sm text-blue-700">Click and drag on the image to select the area you want to keep.</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={clearMask}
-                            className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
-                          >
-                            Clear Selection
-                          </button>
-                        </div>
-                        <button 
-                          onClick={handleCropImage}
-                          disabled={isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 10 || Math.abs(cropArea.height) < 10}
-                          className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                            isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 10 || Math.abs(cropArea.height) < 10
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
-                          }`}
-                        >
-                          {isFilling ? (
-                            <div className="flex items-center justify-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Cropping...
-                            </div>
-                          ) : (
-                            'Crop Image'
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleUndo}
-                      disabled={!previousImage}
-                      className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                        previousImage
-                          ? 'bg-amber-500 text-white shadow-md hover:bg-amber-600 hover:shadow-lg'
-                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      }`}
-                    >
-                      ↶ Undo
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (!currentImage) return;
-                        
-                        // Save current edited image and move to color reduction step
-                        setEditedImage(currentImage);
-                        localStorage.setItem('pixelme-edited-image', currentImage);
-                        setStep('color-reduce');
-                        localStorage.setItem('pixelme-current-step', 'color-reduce');
-                      }}
-                      disabled={!currentImage || isFilling}
-                      className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                        currentImage && !isFilling
-                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md hover:from-purple-700 hover:to-blue-700 hover:shadow-lg'
-                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      }`}
-                    >
-                      {isFilling ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Processing...
-                        </div>
-                      ) : (
-                        '✓ Save & Continue'
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 6 - Color Reduction Content */}
-        {step === 'color-reduce' && (
-          <div className="flex flex-col items-center w-full">
-            <div className="text-center mb-8">
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                {colorReducedImage ? 'Embroidery Conversion Complete' : 'Convert to Embroidery Style'}
-              </h3>
-              <p className="text-gray-600">
-                {colorReducedImage ? (
-                  <>Your image has been converted to <span className="font-semibold text-green-600">embroidery-ready style</span> with bold colors and clean edges perfect for digitization</>
-                ) : (
-                  <>Convert your image to <span className="font-semibold text-orange-600">embroidery-ready style</span> with under 10 colors, bold outlines, and flat fills</>
-                )}
-              </p>
-            </div>
-
-            {/* Before and After Comparison */}
-            {colorReducedImage ? (
-              <div className="mb-8 w-full max-w-4xl">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Original Edited Image */}
-                    <div className="text-center">
-                      <h4 className="text-lg font-semibold text-gray-700 mb-3">Before (Original)</h4>
-                      <div className="relative inline-block">
-                        {editedImage && (
-                          <img 
-                            src={editedImage} 
-                            alt="Original edited image"
-                            className="max-w-full h-auto rounded-lg shadow-lg"
-                          />
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Embroidery Style Image */}
-                    <div className="text-center">
-                      <h4 className="text-lg font-semibold text-gray-700 mb-3">After (Embroidery Ready)</h4>
-                      <div className="relative inline-block">
-                        <img 
-                          src={colorReducedImage} 
-                          alt="Embroidery style image"
-                          className="max-w-full h-auto rounded-lg shadow-lg"
-                        />
-                        <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                          🧵 Embroidery Ready
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-              </div>
-            ) : (
-              <div className="mb-6 relative inline-block">
-                {editedImage && (
-                  <img 
-                    src={editedImage} 
-                    alt="Edited image"
-                    className="max-w-md h-auto rounded-lg shadow-lg"
-                  />
-                )}
-              </div>
-            )}
-
-            {!colorReducedImage && (
+        {/* Main Content Area */}
+        <div className="w-full flex flex-col lg:flex-row gap-6">
+          {/* Step 4 - After Style Conversion Content */}
+          {step === 'before' && conversionResult && (
+            <div className="flex flex-col items-center w-full">
               <div className="text-center mb-6">
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 max-w-2xl mx-auto">
                   <h4 className="text-lg font-semibold text-purple-800 mb-2">🧵 Embroidery Style Conversion</h4>

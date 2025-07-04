@@ -176,169 +176,167 @@ function UploadContent() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
       <Image
         src="/logo.png"
         alt="PixelMe Logo"
         width={200}
         height={80}
-        className="mb-8"
+        className="mb-8 w-40 h-auto sm:w-48 md:w-52"
         priority
       />
       
-      <div className="w-[1000px] bg-white rounded-lg shadow p-8 flex flex-col items-center relative">
-        <div className="w-full flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            {/* Step 1 - Clothing Selection */}
-            <div className="flex items-center gap-2">
-              {selectedClothing ? (
-                <button
-                  onClick={handleBack}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                  title="Change clothing style"
-                >
-                  <Image
-                    src={`/clothes/${selectedClothing}.png`}
-                    alt={selectedClothing}
-                    width={60}
-                    height={60}
-                    className="object-contain"
-                    priority
-                  />
-                </button>
-              ) : (
-                <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">1</span>
-              )}
-            </div>
-            
-            {/* Step 2 - Upload Image */}
-            <div className="flex items-center gap-2">
-              {uploadedImage ? (
-                <button
-                  onClick={() => handleStepChange('upload')}
-                  className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 ${step === 'upload' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20`}
-                  title="Change uploaded photo"
-                >
-                  <img
-                    src={uploadedImage}
-                    alt="Uploaded preview"
-                    width={60}
-                    height={60}
-                    className="object-contain rounded-lg w-16 h-16"
-                  />
-                </button>
-              ) : (
-                <span className={`text-sm font-semibold ${step === 'upload' ? 'text-gray-600 border-dashed border-amber-600' : 'text-gray-400 border-transparent'} bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2`}>2</span>
-              )}
-            </div>
-            
-            {/* Step 3 - Style Selection */}
-            <div className="flex items-center gap-2">
-              {selectedStyle ? (
-                <button
-                  onClick={() => handleStepChange('style')}
-                  className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 ${step === 'style' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20`}
-                  title="Go to style selection"
-                >
-                  <Image
-                    src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Anime' ? 'anime' : 'simpsons'}.png`}
-                    alt={`${selectedStyle} Style`}
-                    width={60}
-                    height={60}
-                    className="object-contain rounded-lg"
-                  />
-                </button>
-              ) : (
-                <span className={`text-sm font-semibold ${step === 'style' ? 'text-gray-600 border-dashed border-amber-600' : 'text-gray-400 border-transparent'} bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2`}>3</span>
-              )}
-            </div>
-            
-            {/* Step 4 - Convert */}
-            <div className="flex items-center gap-2">
-              {conversionResult ? (
-                <button
-                  onClick={() => {
-                    // Don't clear edited data when just navigating to convert step
-                    handleStepChange('convert');
-                  }}
-                  className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 ${step === 'convert' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20`}
-                  title="Go to convert step"
-                >
-                  <img
-                    src={conversionResult}
-                    alt="Converted preview"
-                    width={60}
-                    height={60}
-                    className="object-contain rounded-lg w-16 h-16"
-                  />
-                </button>
-              ) : selectedClothing && uploadedImage && selectedStyle ? (
-                <button
-                  onClick={() => {
-                    // Don't clear edited data when just navigating to convert step
-                    handleStepChange('convert');
-                  }}
-                  className={`text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 ${step === 'convert' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer`}
-                  title="Go to convert step"
-                >
-                  4
-                </button>
-              ) : (
-                <span className={`text-sm font-semibold ${step === 'convert' ? 'text-gray-600 border-dashed border-amber-600' : 'text-gray-400 border-transparent'} bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2`}>4</span>
-              )}
-            </div>
-            
-            {/* Step 5 - Edit */}
-            <div className="flex items-center gap-2">
-              {cachedEditedImage ? (
-                <button
-                  onClick={() => {
-                    // Don't clear edited data when navigating to edit step - preserve user's work
-                    localStorage.setItem('pixelme-current-step', 'edit');
-                    router.push('/edit');
-                  }}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                  title="Go to edit step"
-                >
-                  <img
-                    src={cachedEditedImage}
-                    alt="Edited image preview"
-                    className="object-contain rounded-lg w-16 h-16"
-                  />
-                </button>
-              ) : conversionResult ? (
-                <button
-                  onClick={() => {
-                    // Don't clear edited data when navigating to edit step - preserve user's work
-                    localStorage.setItem('pixelme-current-step', 'edit');
-                    router.push('/edit');
-                  }}
-                  className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
-                  title="Go to edit step"
-                >
-                  5
-                </button>
-              ) : (
-                <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">5</span>
-              )}
-            </div>
+      <div className="w-full max-w-6xl bg-white rounded-lg shadow p-4 sm:p-6 lg:p-8 flex flex-col items-center relative">
+        <div className="w-full flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 min-w-0">
+            <div className="flex items-center gap-2 min-w-max">
+              {/* Step 1 - Clothing Selection */}
+              <div className="flex items-center gap-2">
+                {selectedClothing ? (
+                  <button
+                    onClick={handleBack}
+                    className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                    title="Change clothing style"
+                  >
+                    <Image
+                      src={`/clothes/${selectedClothing}.png`}
+                      alt={selectedClothing}
+                      width={60}
+                      height={60}
+                      className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                      priority
+                    />
+                  </button>
+                ) : (
+                  <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">1</span>
+                )}
+              </div>
+              
+              {/* Step 2 - Upload Image */}
+              <div className="flex items-center gap-2">
+                {uploadedImage ? (
+                  <button
+                    onClick={() => handleStepChange('upload')}
+                    className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 ${step === 'upload' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20`}
+                    title="Change uploaded photo"
+                  >
+                    <img
+                      src={uploadedImage}
+                      alt="Uploaded preview"
+                      width={60}
+                      height={60}
+                      className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                    />
+                  </button>
+                ) : (
+                  <span className={`text-xs sm:text-sm font-semibold ${step === 'upload' ? 'text-gray-600 border-dashed border-amber-600' : 'text-gray-400 border-transparent'} bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2`}>2</span>
+                )}
+              </div>
+              
+              {/* Step 3 - Style Selection */}
+              <div className="flex items-center gap-2">
+                {selectedStyle ? (
+                  <button
+                    onClick={() => handleStepChange('style')}
+                    className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 ${step === 'style' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20`}
+                    title="Go to style selection"
+                  >
+                    <Image
+                      src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Anime' ? 'anime' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                      alt={`${selectedStyle} Style`}
+                      width={60}
+                      height={60}
+                      className="object-contain rounded-lg w-12 h-12 sm:w-14 sm:h-14"
+                    />
+                  </button>
+                ) : (
+                  <span className={`text-xs sm:text-sm font-semibold ${step === 'style' ? 'text-gray-600 border-dashed border-amber-600' : 'text-gray-400 border-transparent'} bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2`}>3</span>
+                )}
+              </div>
+              
+              {/* Step 4 - Convert */}
+              <div className="flex items-center gap-2">
+                {conversionResult ? (
+                  <button
+                    onClick={() => {
+                      handleStepChange('convert');
+                    }}
+                    className={`flex items-center justify-center p-1 bg-white rounded-lg border-2 ${step === 'convert' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20`}
+                    title="Go to convert step"
+                  >
+                    <img
+                      src={conversionResult}
+                      alt="Converted preview"
+                      width={60}
+                      height={60}
+                      className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                    />
+                  </button>
+                ) : selectedClothing && uploadedImage && selectedStyle ? (
+                  <button
+                    onClick={() => {
+                      handleStepChange('convert');
+                    }}
+                    className={`text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 ${step === 'convert' ? 'border-dashed border-amber-600' : 'border-transparent'} hover:shadow-lg transition-all duration-200 cursor-pointer`}
+                    title="Go to convert step"
+                  >
+                    4
+                  </button>
+                ) : (
+                  <span className={`text-xs sm:text-sm font-semibold ${step === 'convert' ? 'text-gray-600 border-dashed border-amber-600' : 'text-gray-400 border-transparent'} bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2`}>4</span>
+                )}
+              </div>
+              
+              {/* Step 5 - Edit */}
+              <div className="flex items-center gap-2">
+                {cachedEditedImage ? (
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('pixelme-current-step', 'edit');
+                      router.push('/edit');
+                    }}
+                    className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                    title="Go to edit step"
+                  >
+                    <img
+                      src={cachedEditedImage}
+                      alt="Edited image preview"
+                      className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                    />
+                  </button>
+                ) : conversionResult ? (
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('pixelme-current-step', 'edit');
+                      router.push('/edit');
+                    }}
+                    className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
+                    title="Go to edit step"
+                  >
+                    5
+                  </button>
+                ) : (
+                  <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">5</span>
+                )}
+              </div>
 
-            {/* Step 6 - Color Reduction */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">6</span>
-            </div>
-            
-            {/* Step 7 - Preview */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">7</span>
+              {/* Step 6 - Color Reduction */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">6</span>
+              </div>
+              
+              {/* Step 7 - Preview */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">7</span>
+              </div>
             </div>
           </div>
           
           {/* Selection Info and Clear Button */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             {/* Selection Info */}
             {(selectedClothing || selectedColor || selectedSize) && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm w-full sm:w-auto">
                 <div className="font-semibold text-blue-800 mb-1">Current Selection:</div>
                 <div className="text-blue-700">
                   <div><span className="font-medium">Product:</span> {selectedClothing ? (selectedClothing.charAt(0).toUpperCase() + selectedClothing.slice(1)) : 'Not Selected'}</div>
@@ -351,7 +349,7 @@ function UploadContent() {
             {/* Clear Button */}
             <button
               onClick={handleClear}
-              className="w-20 h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
+              className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center flex-shrink-0"
               title="Clear all and start over"
             >
               <Image
@@ -359,17 +357,17 @@ function UploadContent() {
                 alt="Clear"
                 width={32}
                 height={32}
-                className="object-contain"
+                className="object-contain w-6 h-6 sm:w-8 sm:h-8"
               />
             </button>
           </div>
         </div>
 
-        <div className="flex flex-row items-start gap-8 w-full">
+        <div className="flex flex-col lg:flex-row items-start gap-8 w-full">
           <div className="flex-1 flex flex-col items-center w-full">
             <div className="w-full max-w-md">
               {!uploadedImage ? (
-                <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                     <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
                       <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
@@ -387,7 +385,7 @@ function UploadContent() {
                   />
                 </label>
               ) : step === 'upload' ? (
-                <div className="relative flex items-center justify-center w-full h-64 bg-gray-100 rounded-lg">
+                <div className="relative flex items-center justify-center w-full h-48 sm:h-64 bg-gray-100 rounded-lg">
                   <img
                     src={uploadedImage}
                     alt="Uploaded photo"
@@ -408,7 +406,7 @@ function UploadContent() {
             
             {step === 'style' && uploadedImage && (
               <div className="flex flex-col items-center w-full">
-                <div className="flex flex-row gap-4 mt-6 mb-4 flex-wrap justify-center">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 mb-4 w-full max-w-4xl px-4">
                   <button
                     className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Simpsons' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
                     onClick={() => handleStyleSelect('Simpsons')}
@@ -418,7 +416,7 @@ function UploadContent() {
                       alt="Simpsons Style"
                       width={120}
                       height={120}
-                      className="object-contain rounded-lg"
+                      className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
                   <button
@@ -430,7 +428,7 @@ function UploadContent() {
                       alt="Family Guy Style"
                       width={120}
                       height={120}
-                      className="object-contain rounded-lg"
+                      className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
                   <button
@@ -442,7 +440,7 @@ function UploadContent() {
                       alt="Studio Ghibli Style"
                       width={120}
                       height={120}
-                      className="object-contain rounded-lg"
+                      className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
                   <button
@@ -454,7 +452,7 @@ function UploadContent() {
                       alt="South Park Style"
                       width={120}
                       height={120}
-                      className="object-contain rounded-lg"
+                      className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
                   <button
@@ -466,7 +464,7 @@ function UploadContent() {
                       alt="Dragon Ball Style"
                       width={120}
                       height={120}
-                      className="object-contain rounded-lg"
+                      className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
                   <button
@@ -478,7 +476,19 @@ function UploadContent() {
                       alt="Anime Style"
                       width={120}
                       height={120}
-                      className="object-contain rounded-lg"
+                      className="object-contain rounded-lg w-full h-auto"
+                    />
+                  </button>
+                  <button
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Rick and Morty' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    onClick={() => handleStyleSelect('Rick and Morty')}
+                  >
+                    <Image
+                      src="/styles/rickandmorty.png"
+                      alt="Rick and Morty Style"
+                      width={120}
+                      height={120}
+                      className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
                 </div>

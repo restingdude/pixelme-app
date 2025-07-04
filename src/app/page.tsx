@@ -310,158 +310,158 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-100">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-100 p-4">
       <Image
         src="/logo.png"
         alt="PixelMe Logo"
         width={200}
         height={80}
-        className="mb-8"
+        className="mb-8 w-40 h-auto sm:w-48 md:w-52"
         priority
       />
-      <div className="w-[1000px] bg-white rounded-lg shadow p-8 flex flex-col items-center relative">
-        <div className="w-full flex items-center gap-4 mb-6">
-          <div className="flex items-center gap-2">
-            {cachedClothing ? (
-              <div className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-dashed border-amber-600 w-20 h-20">
-                <Image
-                  src={`/clothes/${cachedClothing}.png`}
-                  alt={cachedClothing}
-                  width={60}
-                  height={60}
-                  className="object-contain"
-                  priority
-                />
-              </div>
-            ) : (
-              <span className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-dashed border-amber-600">1</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {cachedImage ? (
-              <button
-                onClick={() => {
-                  localStorage.setItem('pixelme-current-step', 'upload');
-                  router.push(`/upload?clothing=${cachedClothing}&color=${cachedColor}&size=${cachedSize}&variantId=${encodeURIComponent(cachedVariantId || '')}`);
-                }}
-                className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                title="Go to image upload step"
-              >
-                <img
-                  src={cachedImage}
-                  alt="Uploaded preview"
-                  className="object-contain rounded-lg w-16 h-16"
-                />
-              </button>
-            ) : (
-              <span className={`text-sm font-semibold ${cachedImage ? 'text-gray-600' : 'text-gray-400'} bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent`}>2</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {cachedStyle ? (
-              <button
-                onClick={() => {
-                  localStorage.setItem('pixelme-current-step', 'style');
-                  router.push(`/upload?clothing=${cachedClothing}&color=${cachedColor}&size=${cachedSize}&variantId=${encodeURIComponent(cachedVariantId || '')}`);
-                }}
-                className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                title="Go to style selection step"
-              >
-                <Image
-                                      src={`/styles/${cachedStyle === 'Studio Ghibli' ? 'ghibli' : cachedStyle === 'South Park' ? 'southpark' : cachedStyle === 'Family Guy' ? 'familyguy' : cachedStyle === 'Dragon Ball' ? 'dragonball' : cachedStyle === 'Anime' ? 'anime' : 'simpsons'}.png`}
-                  alt={`${cachedStyle} Style`}
-                  width={60}
-                  height={60}
-                  className="object-contain rounded-lg"
-                />
-              </button>
-            ) : (
-              <span className={`text-sm font-semibold ${cachedStyle ? 'text-gray-600' : 'text-gray-400'} bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent`}>3</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {cachedConversionResult ? (
-              <button
-                onClick={() => {
-                  localStorage.setItem('pixelme-current-step', 'convert');
-                  // Don't clear edited image data when just navigating to convert step
-                  router.push(`/upload?clothing=${cachedClothing}&color=${cachedColor}&size=${cachedSize}&variantId=${encodeURIComponent(cachedVariantId || '')}`);
-                }}
-                className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                title="Go to convert step"
-              >
-                <img
-                  src={cachedConversionResult}
-                  alt="Converted preview"
-                  width={60}
-                  height={60}
-                  className="object-contain rounded-lg w-16 h-16"
-                />
-              </button>
-            ) : cachedClothing && cachedImage && cachedStyle ? (
-              <button
-                onClick={() => {
-                  localStorage.setItem('pixelme-current-step', 'convert');
-                  // Don't clear edited image data when just navigating to convert step
-                  router.push(`/upload?clothing=${cachedClothing}&color=${cachedColor}&size=${cachedSize}&variantId=${encodeURIComponent(cachedVariantId || '')}`);
-                }}
-                className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
-                title="Go to convert step"
-              >
-                4
-              </button>
-            ) : (
-              <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">4</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {cachedEditedImage ? (
-              <button
-                onClick={() => {
-                  localStorage.setItem('pixelme-current-step', 'edit');
-                  router.push('/edit');
-                }}
-                className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
-                title="Go to edit step"
-              >
-                <img
-                  src={cachedEditedImage}
-                  alt="Edited image preview"
-                  className="object-contain rounded-lg w-16 h-16"
-                />
-              </button>
-            ) : cachedConversionResult ? (
-              <button
-                onClick={() => {
-                  localStorage.setItem('pixelme-current-step', 'edit');
-                  router.push('/edit');
-                }}
-                className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
-                title="Go to edit step"
-              >
-                5
-              </button>
-            ) : (
-              <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">5</span>
-            )}
-          </div>
+      <div className="w-full max-w-6xl bg-white rounded-lg shadow p-4 sm:p-6 lg:p-8 flex flex-col items-center relative">
+        <div className="w-full flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
+          {/* Step indicators - responsive layout */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 min-w-0 flex-shrink-0">
+            <div className="flex items-center gap-2 min-w-max">
+              {cachedClothing ? (
+                <div className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-dashed border-amber-600 w-16 h-16 sm:w-20 sm:h-20">
+                  <Image
+                    src={`/clothes/${cachedClothing}.png`}
+                    alt={cachedClothing}
+                    width={60}
+                    height={60}
+                    className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                    priority
+                  />
+                </div>
+              ) : (
+                <span className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-dashed border-amber-600">1</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {cachedImage ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'upload');
+                    router.push(`/upload?clothing=${cachedClothing}&color=${cachedColor}&size=${cachedSize}&variantId=${encodeURIComponent(cachedVariantId || '')}`);
+                  }}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go to image upload step"
+                >
+                  <img
+                    src={cachedImage}
+                    alt="Uploaded preview"
+                    className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                  />
+                </button>
+              ) : (
+                <span className={`text-xs sm:text-sm font-semibold ${cachedImage ? 'text-gray-600' : 'text-gray-400'} bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent`}>2</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {cachedStyle ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'style');
+                    router.push(`/upload?clothing=${cachedClothing}&color=${cachedColor}&size=${cachedSize}&variantId=${encodeURIComponent(cachedVariantId || '')}`);
+                  }}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go to style selection step"
+                >
+                  <Image
+                    src={`/styles/${cachedStyle === 'Studio Ghibli' ? 'ghibli' : cachedStyle === 'South Park' ? 'southpark' : cachedStyle === 'Family Guy' ? 'familyguy' : cachedStyle === 'Dragon Ball' ? 'dragonball' : cachedStyle === 'Anime' ? 'anime' : cachedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                    alt={`${cachedStyle} Style`}
+                    width={60}
+                    height={60}
+                    className="object-contain rounded-lg w-12 h-12 sm:w-14 sm:h-14"
+                  />
+                </button>
+              ) : (
+                <span className={`text-xs sm:text-sm font-semibold ${cachedStyle ? 'text-gray-600' : 'text-gray-400'} bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent`}>3</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {cachedConversionResult ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'convert');
+                    router.push(`/upload?clothing=${cachedClothing}&color=${cachedColor}&size=${cachedSize}&variantId=${encodeURIComponent(cachedVariantId || '')}`);
+                  }}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go to convert step"
+                >
+                  <img
+                    src={cachedConversionResult}
+                    alt="Converted preview"
+                    width={60}
+                    height={60}
+                    className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                  />
+                </button>
+              ) : cachedClothing && cachedImage && cachedStyle ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'convert');
+                    router.push(`/upload?clothing=${cachedClothing}&color=${cachedColor}&size=${cachedSize}&variantId=${encodeURIComponent(cachedVariantId || '')}`);
+                  }}
+                  className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  title="Go to convert step"
+                >
+                  4
+                </button>
+              ) : (
+                <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">4</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {cachedEditedImage ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'edit');
+                    router.push('/edit');
+                  }}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go to edit step"
+                >
+                  <img
+                    src={cachedEditedImage}
+                    alt="Edited image preview"
+                    className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                  />
+                </button>
+              ) : cachedConversionResult ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'edit');
+                    router.push('/edit');
+                  }}
+                  className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  title="Go to edit step"
+                >
+                  5
+                </button>
+              ) : (
+                <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">5</span>
+              )}
+            </div>
 
-          {/* Step 6 - Color Reduction */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">6</span>
-          </div>
-          
-          {/* Step 7 - Preview */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-transparent">7</span>
+            {/* Step 6 - Color Reduction */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">6</span>
+            </div>
+            
+            {/* Step 7 - Preview */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">7</span>
+            </div>
           </div>
           
           {/* Cart and Clear Buttons */}
-          <div className="flex items-center gap-3 ml-auto">
-            {/* <CartIcon /> */}
+          <div className="flex items-center gap-3 lg:ml-auto">
             <button
               onClick={handleClear}
-              className="w-20 h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
+              className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
               title="Clear all cached data"
             >
               <Image
@@ -469,7 +469,7 @@ export default function Home() {
                 alt="Clear"
                 width={32}
                 height={32}
-                className="object-contain"
+                className="object-contain w-6 h-6 sm:w-8 sm:h-8"
               />
             </button>
           </div>
@@ -478,9 +478,9 @@ export default function Home() {
         <div className="flex flex-col items-center justify-center gap-8 w-full">
           {loading ? (
             // Loading state
-            <div className="flex gap-8">
+            <div className="flex flex-col sm:flex-row gap-8">
               {[1, 2].map((index) => (
-                <div key={index} className="w-80 h-80 bg-gray-200 rounded-lg animate-pulse flex items-center justify-center">
+                <div key={index} className="w-full sm:w-80 h-80 bg-gray-200 rounded-lg animate-pulse flex items-center justify-center">
                   <span className="text-gray-400">Loading...</span>
                 </div>
               ))}
@@ -488,7 +488,7 @@ export default function Home() {
           ) : (
             <>
               {/* Product Selection */}
-              <div className="flex flex-row items-center justify-center gap-8 w-full">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-8 w-full">
                 {['hoodie', 'trackies'].map((clothingType) => {
                   // Find the first product for this clothing type
                   const product = products.find(p => 
@@ -510,13 +510,13 @@ export default function Home() {
                           : cachedClothing === clothingType 
                           ? 'border-dashed border-green-600' 
                           : 'border-transparent'
-                      } hover:border-dashed hover:border-amber-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-80 h-80`}
+                      } hover:border-dashed hover:border-amber-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-full max-w-sm h-64 sm:w-80 sm:h-80`}
                     >
                       {productImage ? (
                         <img
                           src={productImage}
                           alt={product?.title || clothingType}
-                          className="object-contain max-w-full max-h-60 mb-4"
+                          className="object-contain max-w-full h-32 sm:max-h-60 mb-4"
                         />
                       ) : (
                         <Image
@@ -524,12 +524,12 @@ export default function Home() {
                           alt={clothingType.charAt(0).toUpperCase() + clothingType.slice(1)}
                           width={240}
                           height={240}
-                          className="object-contain max-w-full max-h-60 mb-4"
+                          className="object-contain max-w-full h-32 sm:max-h-60 mb-4"
                           priority
                         />
                       )}
                       <div className="text-center">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">
                           {clothingType.charAt(0).toUpperCase() + clothingType.slice(1)}
                         </h3>
                         <p className="text-sm text-gray-500">${firstVariantPrice}</p>
@@ -541,9 +541,9 @@ export default function Home() {
 
               {/* Color Selection - Show when a product is selected */}
               {selectedProduct && (
-                <div className="w-full max-w-md mt-6">
+                <div className="w-full max-w-lg mt-6 px-4">
                   <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Select Color</h4>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {getAvailableColors().map((color) => {
                       const totalInventory = getTotalInventoryForColor(color);
                       const isLowStock = totalInventory > 0 && totalInventory <= 10;
@@ -552,7 +552,7 @@ export default function Home() {
                         <button
                           key={color}
                           onClick={() => handleColorSelect(color)}
-                          className={`py-3 px-4 rounded-lg font-semibold border-2 transition-all duration-200 relative ${
+                          className={`py-3 px-2 sm:px-4 rounded-lg font-semibold border-2 transition-all duration-200 relative text-sm sm:text-base ${
                             selectedColor === color
                               ? 'border-amber-600 bg-amber-50 text-amber-700'
                               : cachedColor === color
@@ -561,7 +561,7 @@ export default function Home() {
                           }`}
                         >
                           <div className="flex flex-col items-center">
-                            <span>{color}</span>
+                            <span className="text-center">{color}</span>
                             {isLowStock && (
                               <span className="text-xs text-orange-600 mt-1">
                                 Low stock
@@ -584,9 +584,9 @@ export default function Home() {
 
               {/* Size Selection - Show when both product and color are selected */}
               {selectedProduct && selectedColor && (
-                <div className="w-full max-w-md mt-6">
+                <div className="w-full max-w-lg mt-6 px-4">
                   <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Select Size</h4>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {getAvailableSizes().map((size) => {
                       const inventory = getInventoryQuantity(selectedColor, size);
                       const isLowStock = inventory > 0 && inventory <= 5;
@@ -595,7 +595,7 @@ export default function Home() {
                         <button
                           key={size}
                           onClick={() => handleSizeSelect(size)}
-                          className={`py-3 px-4 rounded-lg font-semibold border-2 transition-all duration-200 relative ${
+                          className={`py-3 px-2 sm:px-4 rounded-lg font-semibold border-2 transition-all duration-200 relative text-sm sm:text-base ${
                             cachedSize === size
                               ? 'border-green-600 bg-green-50 text-green-700'
                               : 'border-gray-300 bg-white text-gray-700 hover:border-amber-600 hover:bg-amber-50'
@@ -628,7 +628,7 @@ export default function Home() {
       </div>
 
       {/* Floating Cart Button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
         <CartIcon />
       </div>
     </main>

@@ -125,6 +125,18 @@ export async function GET(request: NextRequest) {
       variables: { cartId }
     });
 
+    console.log('🔍 Shopify cart API response:', JSON.stringify(response, null, 2));
+
+    if (!response.data) {
+      console.error('❌ Invalid response structure from Shopify Storefront API');
+      console.error('Response:', response);
+      console.error('Response errors:', response.errors);
+      return NextResponse.json(
+        { error: 'Invalid response from Shopify Storefront API', details: response.errors || 'No data received' },
+        { status: 500 }
+      );
+    }
+
     console.log('Cart API Response:', {
       cartId,
       totalQuantity: response.data.cart?.totalQuantity,

@@ -29,6 +29,7 @@ export const STYLE_TYPES = {
   SOUTH_PARK: 'South Park',
   DRAGON_BALL: 'Dragon Ball',
   ANIME: 'Anime',
+  RICK_AND_MORTY: 'Rick and Morty',
 } as const;
 
 // Colors available for clothing

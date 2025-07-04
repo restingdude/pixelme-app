@@ -136,6 +136,18 @@ export async function GET(request: NextRequest) {
         variables: { first: parseInt(limit) }
       });
 
+      console.log('🔍 Shopify products API response:', JSON.stringify(response, null, 2));
+
+      if (!response.data || !response.data.products) {
+        console.error('❌ Invalid response structure from Shopify API');
+        console.error('Response:', response);
+        console.error('Response errors:', response.errors);
+        return NextResponse.json(
+          { error: 'Invalid response from Shopify API', details: response.errors || 'No data received' },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json({ 
         success: true, 
         products: response.data.products.edges.map((edge: any) => edge.node) 

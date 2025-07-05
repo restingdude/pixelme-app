@@ -384,12 +384,12 @@ export default function Edit() {
     }
   }, [activeMode, cropArea]);
 
-  // Global mouse event listeners for panning
+  // Global mouse and touch event listeners for panning
   useEffect(() => {
     if (isPanning && zoomLevel > 100) {
-      const handleGlobalMouseMove = (e: MouseEvent) => {
-        const deltaX = e.clientX - dragStart.x;
-        const deltaY = e.clientY - dragStart.y;
+      const handleGlobalMove = (clientX: number, clientY: number) => {
+        const deltaX = clientX - dragStart.x;
+        const deltaY = clientY - dragStart.y;
         
         // Slow down panning by applying a sensitivity factor
         const panSensitivity = 0.3; // Reduce to make panning slower
@@ -406,16 +406,32 @@ export default function Edit() {
         });
       };
 
-      const handleGlobalMouseUp = () => {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        handleGlobalMove(e.clientX, e.clientY);
+      };
+
+      const handleGlobalTouchMove = (e: TouchEvent) => {
+        e.preventDefault(); // Prevent scrolling while panning
+        if (e.touches.length === 1) {
+          const touch = e.touches[0];
+          handleGlobalMove(touch.clientX, touch.clientY);
+        }
+      };
+
+      const handleGlobalEnd = () => {
         setIsPanning(false);
       };
 
       document.addEventListener('mousemove', handleGlobalMouseMove);
-      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.addEventListener('mouseup', handleGlobalEnd);
+      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+      document.addEventListener('touchend', handleGlobalEnd);
 
       return () => {
         document.removeEventListener('mousemove', handleGlobalMouseMove);
-        document.removeEventListener('mouseup', handleGlobalMouseUp);
+        document.removeEventListener('mouseup', handleGlobalEnd);
+        document.removeEventListener('touchmove', handleGlobalTouchMove);
+        document.removeEventListener('touchend', handleGlobalEnd);
       };
     }
   }, [isPanning, dragStart, zoomLevel]);
@@ -1048,6 +1064,16 @@ export default function Edit() {
     if (zoomLevel > 100) {
       setIsPanning(true);
       setDragStart({ x: e.clientX, y: e.clientY });
+      e.preventDefault();
+    }
+  };
+
+  // Touch equivalent of handlePanStart for mobile panning
+  const handleTouchPanStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (zoomLevel > 100 && e.touches.length === 1) {
+      const touch = e.touches[0];
+      setIsPanning(true);
+      setDragStart({ x: touch.clientX, y: touch.clientY });
       e.preventDefault();
     }
   };
@@ -1964,8 +1990,10 @@ export default function Edit() {
                     style={{ 
                       width: '500px',
                       height: '500px',
+                      touchAction: 'none', // Prevent default touch behaviors like scrolling when panning
                     }}
                     onMouseDown={handlePanStart}
+                    onTouchStart={handleTouchPanStart}
                   >
                     <div 
                       className="absolute inset-0 transition-transform duration-200 flex items-center justify-center" 

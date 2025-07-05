@@ -1855,8 +1855,109 @@ export default function Edit() {
 
             {/* Preview of image on clothing with zoom control */}
             {selectedClothing && (
-              <div className="flex items-start justify-center gap-4 w-full mb-6">
-                {/* Clothing Preview - Fixed width container */}
+              <div className="flex flex-col items-center w-full mb-6">
+                {/* Horizontal Zoom Control - Above image */}
+                <div className="flex items-center justify-center gap-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-4 w-full max-w-lg">
+                  {/* Left section with instruction */}
+                  <div className="flex items-center">
+                    {zoomLevel > 100 ? (
+                      <div className="text-xs text-gray-500 text-center whitespace-nowrap leading-tight">
+                        Drag to pan
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-400 text-center whitespace-nowrap leading-tight">
+                        Zoom to explore
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Middle section with horizontal zoom slider */}
+                  <div className="flex-1 flex items-center justify-center px-4">
+                    <input
+                      type="range"
+                      min="100"
+                      max="500"
+                      value={zoomLevel}
+                      onChange={(e) => {
+                        const newZoom = parseInt(e.target.value);
+                        setZoomLevel(newZoom);
+                        localStorage.setItem('pixelme-zoom-level', newZoom.toString());
+                      }}
+                      className="zoom-slider-horizontal w-full"
+                      style={{
+                        height: '8px',
+                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((zoomLevel - 100) / 400) * 100}%, #e5e7eb ${((zoomLevel - 100) / 400) * 100}%, #e5e7eb 100%)`
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Right section with zoom level indicator */}
+                  <div className="flex items-center">
+                    <div className="text-xs text-gray-600 font-medium min-w-12 text-center">
+                      {zoomLevel}%
+                    </div>
+                  </div>
+                  
+                  <style jsx>{`
+                    .zoom-slider-horizontal {
+                      appearance: none;
+                      outline: none;
+                      border-radius: 10px;
+                      cursor: pointer;
+                    }
+                    
+                    .zoom-slider-horizontal::-webkit-slider-thumb {
+                      appearance: none;
+                      width: 20px;
+                      height: 20px;
+                      border-radius: 50%;
+                      background: #3b82f6;
+                      cursor: pointer;
+                      border: 3px solid white;
+                      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+                      transition: all 0.2s ease;
+                    }
+                    
+                    .zoom-slider-horizontal::-webkit-slider-thumb:hover {
+                      background: #2563eb;
+                      transform: scale(1.2);
+                      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                    }
+                    
+                    .zoom-slider-horizontal::-moz-range-thumb {
+                      width: 20px;
+                      height: 20px;
+                      border-radius: 50%;
+                      background: #3b82f6;
+                      cursor: pointer;
+                      border: 3px solid white;
+                      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+                      transition: all 0.2s ease;
+                    }
+                    
+                    .zoom-slider-horizontal::-moz-range-thumb:hover {
+                      background: #2563eb;
+                      transform: scale(1.2);
+                      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                    }
+                    
+                    .zoom-slider-horizontal::-moz-range-track {
+                      background: transparent;
+                      border: none;
+                      height: 8px;
+                      border-radius: 10px;
+                    }
+                    
+                    .zoom-slider-horizontal::-webkit-slider-track {
+                      background: transparent;
+                      border: none;
+                      height: 8px;
+                      border-radius: 10px;
+                    }
+                  `}</style>
+                </div>
+
+                {/* Clothing Preview - Centered below zoom control */}
                 <div className="relative">
                   <div 
                     className={`relative overflow-hidden rounded-lg bg-white shadow-sm border border-gray-200 ${zoomLevel > 100 ? 'cursor-grab' : 'cursor-default'} ${isPanning ? 'cursor-grabbing' : ''}`}
@@ -1902,110 +2003,6 @@ export default function Edit() {
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Zoom Control - Fixed position, same height */}
-                <div className="flex flex-col items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-200" style={{ height: '500px', width: '80px', flexShrink: 0 }}>
-                  {/* Top section with pan instruction */}
-                  <div className="flex flex-col items-center justify-center" style={{ height: '80px' }}>
-                    {zoomLevel > 100 ? (
-                      <div className="text-xs text-gray-500 text-center whitespace-nowrap leading-tight" style={{ fontSize: '10px' }}>
-                        Drag to<br />pan
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-400 text-center whitespace-nowrap leading-tight" style={{ fontSize: '10px' }}>
-                        Zoom to<br />explore
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Middle section with zoom slider */}
-                  <div className="flex items-center justify-center" style={{ height: '320px' }}>
-                    <input
-                      type="range"
-                      min="100"
-                      max="500"
-                      value={zoomLevel}
-                      onChange={(e) => {
-                        const newZoom = parseInt(e.target.value);
-                        setZoomLevel(newZoom);
-                        localStorage.setItem('pixelme-zoom-level', newZoom.toString());
-                      }}
-                      className="zoom-slider-vertical"
-                      style={{
-                        width: '320px',
-                        height: '20px',
-                        transform: 'rotate(-90deg)',
-                        transformOrigin: 'center',
-                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((zoomLevel - 100) / 400) * 100}%, #e5e7eb ${((zoomLevel - 100) / 400) * 100}%, #e5e7eb 100%)`
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Bottom section with zoom level indicator */}
-                  <div className="flex flex-col items-center justify-center" style={{ height: '80px' }}>
-                    <div className="text-xs text-gray-600 font-medium">
-                      {zoomLevel}%
-                    </div>
-                  </div>
-                  
-                  <style jsx>{`
-                    .zoom-slider-vertical {
-                      appearance: none;
-                      outline: none;
-                      border-radius: 10px;
-                      cursor: pointer;
-                    }
-                    
-                    .zoom-slider-vertical::-webkit-slider-thumb {
-                      appearance: none;
-                      width: 20px;
-                      height: 20px;
-                      border-radius: 50%;
-                      background: #3b82f6;
-                      cursor: pointer;
-                      border: 3px solid white;
-                      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-                      transition: all 0.2s ease;
-                    }
-                    
-                    .zoom-slider-vertical::-webkit-slider-thumb:hover {
-                      background: #2563eb;
-                      transform: scale(1.2);
-                      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                    }
-                    
-                    .zoom-slider-vertical::-moz-range-thumb {
-                      width: 20px;
-                      height: 20px;
-                      border-radius: 50%;
-                      background: #3b82f6;
-                      cursor: pointer;
-                      border: 3px solid white;
-                      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-                      transition: all 0.2s ease;
-                    }
-                    
-                    .zoom-slider-vertical::-moz-range-thumb:hover {
-                      background: #2563eb;
-                      transform: scale(1.2);
-                      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                    }
-                    
-                    .zoom-slider-vertical::-moz-range-track {
-                      background: transparent;
-                      border: none;
-                      height: 20px;
-                      border-radius: 10px;
-                    }
-                    
-                    .zoom-slider-vertical::-webkit-slider-track {
-                      background: transparent;
-                      border: none;
-                      height: 20px;
-                      border-radius: 10px;
-                    }
-                  `}</style>
                 </div>
               </div>
             )}

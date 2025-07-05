@@ -21,6 +21,10 @@ export default function Edit() {
   const [isCropping, setIsCropping] = useState(false);
   const [cropArea, setCropArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [cropStartPos, setCropStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const [isResizingCrop, setIsResizingCrop] = useState(false);
+  const [cropResizeHandle, setCropResizeHandle] = useState<string | null>(null);
+  const [cropDragStart, setCropDragStart] = useState<{ x: number; y: number } | null>(null);
   const [step, setStep] = useState<'edit' | 'color-reduce' | 'preview' | 'before'>('edit');
   const [selectedPosition, setSelectedPosition] = useState<string>('middle-chest');
   const [zoomLevel, setZoomLevel] = useState<number>(100);
@@ -216,56 +220,169 @@ export default function Edit() {
     }
   }, [zoomLevel]);
 
-  // Global mouse event listeners for crop mode
+  // Global mouse and touch event listeners for crop mode
   useEffect(() => {
-    if (activeMode === 'crop' && isCropping) {
-      const handleGlobalMouseMove = (e: MouseEvent) => {
-        if (!canvasRef.current || !cropStartPos) return;
+    if (activeMode === 'crop' && (isCropping || isDraggingCrop || isResizingCrop)) {
+      const handleGlobalMove = (clientX: number, clientY: number) => {
+        if (!canvasRef.current) return;
         
         const canvas = canvasRef.current;
         const rect = canvas.getBoundingClientRect();
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
         
         // Clamp coordinates to canvas boundaries
-        const rawX = e.clientX - rect.left;
-        const rawY = e.clientY - rect.top;
+        const rawX = clientX - rect.left;
+        const rawY = clientY - rect.top;
         const currentX = Math.max(0, Math.min(canvas.width, rawX));
         const currentY = Math.max(0, Math.min(canvas.height, rawY));
         
-        const width = currentX - cropStartPos.x;
-        const height = currentY - cropStartPos.y;
-        
-        setCropArea({
-          x: cropStartPos.x,
-          y: cropStartPos.y,
-          width,
-          height
-        });
-        
-        // Draw crop selection rectangle
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
+        if (isCropping && cropStartPos) {
+          // Creating new crop area
+          const width = currentX - cropStartPos.x;
+          const height = currentY - cropStartPos.y;
+          
+          const newCropArea = {
+            x: cropStartPos.x,
+            y: cropStartPos.y,
+            width,
+            height
+          };
+          
+          setCropArea(newCropArea);
+          
+          // Draw crop selection rectangle
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
-          ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
-          ctx.lineWidth = 2;
-          ctx.fillRect(cropStartPos.x, cropStartPos.y, width, height);
-          ctx.strokeRect(cropStartPos.x, cropStartPos.y, width, height);
+          if (Math.abs(width) > 5 && Math.abs(height) > 5) {
+            drawCropBox(ctx, newCropArea);
+          }
+        } else if (isDraggingCrop && cropArea && cropDragStart) {
+          // Moving existing crop area
+          const deltaX = currentX - cropDragStart.x;
+          const deltaY = currentY - cropDragStart.y;
+          
+          const newCropArea = {
+            x: Math.max(0, Math.min(canvas.width - cropArea.width, cropArea.x + deltaX)),
+            y: Math.max(0, Math.min(canvas.height - cropArea.height, cropArea.y + deltaY)),
+            width: cropArea.width,
+            height: cropArea.height
+          };
+          
+          setCropArea(newCropArea);
+          setCropDragStart({ x: currentX, y: currentY });
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          drawCropBox(ctx, newCropArea);
+        } else if (isResizingCrop && cropArea && cropDragStart && cropResizeHandle) {
+          // Resizing existing crop area
+          const deltaX = currentX - cropDragStart.x;
+          const deltaY = currentY - cropDragStart.y;
+          
+          let newCropArea = { ...cropArea };
+          
+          switch (cropResizeHandle) {
+            case 'top-left':
+              newCropArea.x = Math.max(0, cropArea.x + deltaX);
+              newCropArea.y = Math.max(0, cropArea.y + deltaY);
+              newCropArea.width = cropArea.width - deltaX;
+              newCropArea.height = cropArea.height - deltaY;
+              break;
+            case 'top-right':
+              newCropArea.y = Math.max(0, cropArea.y + deltaY);
+              newCropArea.width = Math.min(canvas.width - cropArea.x, cropArea.width + deltaX);
+              newCropArea.height = cropArea.height - deltaY;
+              break;
+            case 'bottom-left':
+              newCropArea.x = Math.max(0, cropArea.x + deltaX);
+              newCropArea.width = cropArea.width - deltaX;
+              newCropArea.height = Math.min(canvas.height - cropArea.y, cropArea.height + deltaY);
+              break;
+            case 'bottom-right':
+              newCropArea.width = Math.min(canvas.width - cropArea.x, cropArea.width + deltaX);
+              newCropArea.height = Math.min(canvas.height - cropArea.y, cropArea.height + deltaY);
+              break;
+            case 'top':
+              newCropArea.y = Math.max(0, cropArea.y + deltaY);
+              newCropArea.height = cropArea.height - deltaY;
+              break;
+            case 'bottom':
+              newCropArea.height = Math.min(canvas.height - cropArea.y, cropArea.height + deltaY);
+              break;
+            case 'left':
+              newCropArea.x = Math.max(0, cropArea.x + deltaX);
+              newCropArea.width = cropArea.width - deltaX;
+              break;
+            case 'right':
+              newCropArea.width = Math.min(canvas.width - cropArea.x, cropArea.width + deltaX);
+              break;
+          }
+          
+          // Ensure minimum size
+          if (Math.abs(newCropArea.width) >= 10 && Math.abs(newCropArea.height) >= 10) {
+            setCropArea(newCropArea);
+            setCropDragStart({ x: currentX, y: currentY });
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawCropBox(ctx, newCropArea);
+          }
         }
       };
 
-      const handleGlobalMouseUp = () => {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        handleGlobalMove(e.clientX, e.clientY);
+      };
+
+      const handleGlobalTouchMove = (e: TouchEvent) => {
+        e.preventDefault(); // Prevent scrolling while cropping
+        if (e.touches.length > 0) {
+          const touch = e.touches[0];
+          handleGlobalMove(touch.clientX, touch.clientY);
+        }
+      };
+
+      const handleGlobalEnd = () => {
         setIsCropping(false);
+        setIsDraggingCrop(false);
+        setIsResizingCrop(false);
+        setCropResizeHandle(null);
+        setCropDragStart(null);
       };
 
       document.addEventListener('mousemove', handleGlobalMouseMove);
-      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.addEventListener('mouseup', handleGlobalEnd);
+      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+      document.addEventListener('touchend', handleGlobalEnd);
 
       return () => {
         document.removeEventListener('mousemove', handleGlobalMouseMove);
-        document.removeEventListener('mouseup', handleGlobalMouseUp);
+        document.removeEventListener('mouseup', handleGlobalEnd);
+        document.removeEventListener('touchmove', handleGlobalTouchMove);
+        document.removeEventListener('touchend', handleGlobalEnd);
       };
     }
-  }, [activeMode, isCropping, cropStartPos]);
+  }, [activeMode, isCropping, isDraggingCrop, isResizingCrop, cropStartPos, cropArea, cropDragStart, cropResizeHandle]);
+
+  // Redraw crop box when switching to crop mode or when crop area changes
+  useEffect(() => {
+    if (activeMode === 'crop' && cropArea && canvasRef.current && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+      // Small delay to ensure canvas is ready
+      setTimeout(() => {
+        if (canvasRef.current) {
+          const ctx = canvasRef.current.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+            drawCropBox(ctx, cropArea);
+          }
+        }
+      }, 10);
+    } else if (activeMode !== 'crop' && canvasRef.current) {
+      // Clear canvas when not in crop mode
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+    }
+  }, [activeMode, cropArea]);
 
   // Global mouse event listeners for panning
   useEffect(() => {
@@ -528,8 +645,8 @@ export default function Edit() {
       const y = e.clientY - rect.top;
       
       ctx.globalCompositeOperation = 'source-over';
-      // Use different colors for different modes
-      ctx.fillStyle = activeMode === 'fill' ? 'rgba(147, 51, 234, 0.8)' : 'rgba(255, 255, 255, 0.8)'; // Purple for fill, white for remove
+      // Use different colors for different modes with more transparency
+      ctx.fillStyle = activeMode === 'fill' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(255, 255, 255, 0.4)'; // Purple for fill, white for remove
       ctx.beginPath();
       ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
       ctx.fill();
@@ -565,13 +682,252 @@ export default function Edit() {
     }
   };
 
+  const handleTouchStart = () => {
+    if (activeMode === 'remove' || activeMode === 'fill') {
+      setShowBrushCursor(true);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (activeMode === 'remove' || activeMode === 'fill') {
+      setShowBrushCursor(false);
+    }
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (activeMode === 'remove' || activeMode === 'fill') {
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       setMousePosition({ x, y });
+    } else if (activeMode === 'crop' && cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Update cursor based on hover position
+      const handle = getCropHandleAtPoint(x, y, cropArea);
+      const canvas = e.currentTarget;
+      
+      if (handle) {
+        // Set cursor for resizing
+        const cursors: Record<string, string> = {
+          'top-left': 'nw-resize',
+          'top-right': 'ne-resize',
+          'bottom-left': 'sw-resize',
+          'bottom-right': 'se-resize',
+          'top': 'n-resize',
+          'bottom': 's-resize',
+          'left': 'w-resize',
+          'right': 'e-resize'
+        };
+        canvas.style.cursor = cursors[handle] || 'crosshair';
+      } else if (isPointInCropArea(x, y, cropArea)) {
+        // Set cursor for moving
+        canvas.style.cursor = 'move';
+      } else {
+        // Set cursor for creating new crop
+        canvas.style.cursor = 'crosshair';
+      }
     }
+  };
+
+  // Touch event handlers for mobile support
+  const startTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent scrolling/zooming
+    if (activeMode === 'remove' || activeMode === 'fill') {
+      setIsDrawing(true);
+      drawTouch(e);
+    } else if (activeMode === 'crop') {
+      startTouchCrop(e);
+    }
+  };
+
+  const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent scrolling/zooming
+    
+    if (!e.touches.length) return;
+    const touch = e.touches[0];
+    
+    // Update touch position for brush cursor
+    if (activeMode === 'remove' || activeMode === 'fill') {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      setMousePosition({ x, y });
+    }
+    
+    if ((activeMode === 'remove' || activeMode === 'fill') && isDrawing && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      
+      ctx.globalCompositeOperation = 'source-over';
+      // Use different colors for different modes with more transparency
+      ctx.fillStyle = activeMode === 'fill' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(255, 255, 255, 0.4)'; // Purple for fill, white for remove
+      ctx.beginPath();
+      ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Mark that we have a selection
+      if (!hasSelection) {
+        setHasSelection(true);
+      }
+    } else if (activeMode === 'crop' && isCropping) {
+      updateTouchCrop(e);
+    }
+  };
+
+  const stopTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent scrolling/zooming
+    if (activeMode === 'remove' || activeMode === 'fill') {
+      setIsDrawing(false);
+    } else if (activeMode === 'crop') {
+      stopCrop();
+    }
+  };
+
+  const startTouchCrop = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent scrolling/zooming
+    if (!canvasRef.current || !e.touches.length) return;
+    
+    const touch = e.touches[0];
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    
+    // Check if touching existing crop area
+    if (cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+      const handle = getCropHandleAtPoint(x, y, cropArea);
+      
+      if (handle) {
+        // Start resizing
+        setIsResizingCrop(true);
+        setCropResizeHandle(handle);
+        setCropDragStart({ x, y });
+        return;
+      } else if (isPointInCropArea(x, y, cropArea)) {
+        // Start dragging
+        setIsDraggingCrop(true);
+        setCropDragStart({ x, y });
+        return;
+      }
+    }
+    
+    // Start new crop area
+    setIsCropping(true);
+    setCropStartPos({ x, y });
+    setCropArea({ x, y, width: 0, height: 0 });
+    
+    // Clear canvas for crop selection
+    const ctx = canvasRef.current.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
+
+  const updateTouchCrop = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent scrolling/zooming
+    // For crop mode, the global event listeners handle the movement
+    // This function is kept for consistency but the actual logic is in useEffect
+    if (activeMode === 'crop' && isCropping) {
+      // The global mouse move handler will take care of this
+      return;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent scrolling/zooming
+    
+    if (!e.touches.length) return;
+    const touch = e.touches[0];
+    
+    if (activeMode === 'remove' || activeMode === 'fill') {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      setMousePosition({ x, y });
+    }
+  };
+
+  // Helper functions for crop box interaction
+  const getCropHandleAtPoint = (x: number, y: number, cropArea: { x: number; y: number; width: number; height: number }) => {
+    const handleSize = 8;
+    const tolerance = 4;
+    
+    const left = cropArea.x;
+    const right = cropArea.x + cropArea.width;
+    const top = cropArea.y;
+    const bottom = cropArea.y + cropArea.height;
+    const centerX = left + cropArea.width / 2;
+    const centerY = top + cropArea.height / 2;
+    
+    // Check corner handles
+    if (Math.abs(x - left) <= tolerance && Math.abs(y - top) <= tolerance) return 'top-left';
+    if (Math.abs(x - right) <= tolerance && Math.abs(y - top) <= tolerance) return 'top-right';
+    if (Math.abs(x - left) <= tolerance && Math.abs(y - bottom) <= tolerance) return 'bottom-left';
+    if (Math.abs(x - right) <= tolerance && Math.abs(y - bottom) <= tolerance) return 'bottom-right';
+    
+    // Check edge handles
+    if (Math.abs(x - centerX) <= tolerance && Math.abs(y - top) <= tolerance) return 'top';
+    if (Math.abs(x - centerX) <= tolerance && Math.abs(y - bottom) <= tolerance) return 'bottom';
+    if (Math.abs(x - left) <= tolerance && Math.abs(y - centerY) <= tolerance) return 'left';
+    if (Math.abs(x - right) <= tolerance && Math.abs(y - centerY) <= tolerance) return 'right';
+    
+    return null;
+  };
+  
+  const isPointInCropArea = (x: number, y: number, cropArea: { x: number; y: number; width: number; height: number }) => {
+    return x >= cropArea.x && x <= cropArea.x + cropArea.width && 
+           y >= cropArea.y && y <= cropArea.y + cropArea.height;
+  };
+  
+  const drawCropBox = (ctx: CanvasRenderingContext2D, cropArea: { x: number; y: number; width: number; height: number }) => {
+    const handleSize = 8;
+    
+    // Draw crop area overlay
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+    ctx.lineWidth = 2;
+    ctx.fillRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
+    ctx.strokeRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
+    
+    // Draw resize handles
+    ctx.fillStyle = 'rgba(59, 130, 246, 1)';
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+    
+    const left = cropArea.x;
+    const right = cropArea.x + cropArea.width;
+    const top = cropArea.y;
+    const bottom = cropArea.y + cropArea.height;
+    const centerX = left + cropArea.width / 2;
+    const centerY = top + cropArea.height / 2;
+    
+    // Corner handles
+    const corners = [
+      { x: left - handleSize/2, y: top - handleSize/2 },
+      { x: right - handleSize/2, y: top - handleSize/2 },
+      { x: left - handleSize/2, y: bottom - handleSize/2 },
+      { x: right - handleSize/2, y: bottom - handleSize/2 }
+    ];
+    
+    // Edge handles
+    const edges = [
+      { x: centerX - handleSize/2, y: top - handleSize/2 },
+      { x: centerX - handleSize/2, y: bottom - handleSize/2 },
+      { x: left - handleSize/2, y: centerY - handleSize/2 },
+      { x: right - handleSize/2, y: centerY - handleSize/2 }
+    ];
+    
+    [...corners, ...edges].forEach(handle => {
+      ctx.fillRect(handle.x, handle.y, handleSize, handleSize);
+      ctx.strokeRect(handle.x, handle.y, handleSize, handleSize);
+    });
   };
 
   const startCrop = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -581,6 +937,25 @@ export default function Edit() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
+    // Check if clicking on existing crop area
+    if (cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+      const handle = getCropHandleAtPoint(x, y, cropArea);
+      
+      if (handle) {
+        // Start resizing
+        setIsResizingCrop(true);
+        setCropResizeHandle(handle);
+        setCropDragStart({ x, y });
+        return;
+      } else if (isPointInCropArea(x, y, cropArea)) {
+        // Start dragging
+        setIsDraggingCrop(true);
+        setCropDragStart({ x, y });
+        return;
+      }
+    }
+    
+    // Start new crop area
     setIsCropping(true);
     setCropStartPos({ x, y });
     setCropArea({ x, y, width: 0, height: 0 });
@@ -603,6 +978,10 @@ export default function Edit() {
 
   const stopCrop = () => {
     setIsCropping(false);
+    setIsDraggingCrop(false);
+    setIsResizingCrop(false);
+    setCropResizeHandle(null);
+    setCropDragStart(null);
   };
 
   const clearMask = () => {
@@ -612,7 +991,49 @@ export default function Edit() {
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     setCropArea(null);
     setCropStartPos(null);
+    setIsCropping(false);
+    setIsDraggingCrop(false);
+    setIsResizingCrop(false);
+    setCropResizeHandle(null);
+    setCropDragStart(null);
     setHasSelection(false);
+  };
+
+  const resetCropArea = () => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Create new default crop area
+    const defaultWidth = Math.min(300, canvas.width * 0.6);
+    const defaultHeight = Math.min(300, canvas.height * 0.6);
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    
+    const defaultCropArea = {
+      x: centerX - defaultWidth / 2,
+      y: centerY - defaultHeight / 2,
+      width: defaultWidth,
+      height: defaultHeight
+    };
+    
+    // Reset states
+    setIsCropping(false);
+    setIsDraggingCrop(false);
+    setIsResizingCrop(false);
+    setCropResizeHandle(null);
+    setCropDragStart(null);
+    setCropStartPos(null);
+    setHasSelection(false);
+    
+    // Set new crop area
+    setCropArea(defaultCropArea);
+    
+    // Draw the new default crop box
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawCropBox(ctx, defaultCropArea);
   };
 
   const handleUndo = () => {
@@ -2205,9 +2626,22 @@ export default function Edit() {
                         onMouseUp={activeMode === 'background' ? undefined : stopDrawing}
                         onMouseLeave={activeMode === 'background' ? undefined : handleMouseLeave}
                         onMouseEnter={activeMode === 'background' ? undefined : handleMouseEnter}
+                        onTouchStart={activeMode === 'background' ? undefined : (e) => {
+                          handleTouchStart();
+                          startTouchDrawing(e);
+                        }}
+                        onTouchMove={activeMode === 'background' ? undefined : (e) => {
+                          handleTouchMove(e);
+                          drawTouch(e);
+                        }}
+                        onTouchEnd={activeMode === 'background' ? undefined : (e) => {
+                          handleTouchEnd();
+                          stopTouchDrawing(e);
+                        }}
                         style={{
                           width: canvasSize.width,
                           height: canvasSize.height,
+                          touchAction: 'none', // Prevent default touch gestures like scrolling/zooming
                         }}
                       />
                       
@@ -2242,7 +2676,18 @@ export default function Edit() {
                       <button
                         onClick={() => {
                           setActiveMode('background');
-                          clearMask();
+                          // Only clear crop area if switching from crop mode
+                          if (activeMode === 'crop') {
+                            clearMask();
+                          } else {
+                            // Clear canvas but preserve crop area
+                            if (canvasRef.current) {
+                              const ctx = canvasRef.current.getContext('2d');
+                              if (ctx) {
+                                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                              }
+                            }
+                          }
                           setShowBrushCursor(false);
                         }}
                         className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
@@ -2271,7 +2716,18 @@ export default function Edit() {
                       <button
                         onClick={() => {
                           setActiveMode(activeMode === 'remove' || activeMode === 'fill' ? activeMode : 'remove');
-                          clearMask();
+                          // Only clear crop area if switching from crop mode
+                          if (activeMode === 'crop') {
+                            clearMask();
+                          } else {
+                            // Clear canvas but preserve crop area
+                            if (canvasRef.current) {
+                              const ctx = canvasRef.current.getContext('2d');
+                              if (ctx) {
+                                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                              }
+                            }
+                          }
                           setShowBrushCursor(false);
                         }}
                         className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
@@ -2300,8 +2756,41 @@ export default function Edit() {
                       <button
                         onClick={() => {
                           setActiveMode('crop');
-                          clearMask();
                           setShowBrushCursor(false);
+                          
+                          // Create default crop area if none exists
+                          setTimeout(() => {
+                            if (!cropArea && canvasRef.current) {
+                              const canvas = canvasRef.current;
+                              const defaultWidth = Math.min(300, canvas.width * 0.6);
+                              const defaultHeight = Math.min(300, canvas.height * 0.6);
+                              const centerX = canvas.width / 2;
+                              const centerY = canvas.height / 2;
+                              
+                              const defaultCropArea = {
+                                x: centerX - defaultWidth / 2,
+                                y: centerY - defaultHeight / 2,
+                                width: defaultWidth,
+                                height: defaultHeight
+                              };
+                              
+                              setCropArea(defaultCropArea);
+                              
+                              // Draw the default crop box
+                              const ctx = canvas.getContext('2d');
+                              if (ctx) {
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                drawCropBox(ctx, defaultCropArea);
+                              }
+                            } else if (cropArea && canvasRef.current) {
+                              // Redraw existing crop area
+                              const ctx = canvasRef.current.getContext('2d');
+                              if (ctx) {
+                                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                                drawCropBox(ctx, cropArea);
+                              }
+                            }
+                          }, 50);
                         }}
                         className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
                           activeMode === 'crop'
@@ -2520,14 +3009,14 @@ export default function Edit() {
                         <h5 className="font-semibold text-gray-800 mb-3">Crop Tool</h5>
                         <div className="space-y-4">
                           <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <p className="text-sm text-blue-700">Click and drag on the image to select the area you want to keep.</p>
+                            <p className="text-sm text-blue-700">Use the crop box to select the area you want to keep. Drag handles to resize or drag inside to move.</p>
                           </div>
                           <div className="flex gap-2">
                             <button 
-                              onClick={clearMask}
+                              onClick={resetCropArea}
                               className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
                             >
-                              Clear Selection
+                              Reset Crop Area
                             </button>
                           </div>
                           <button 

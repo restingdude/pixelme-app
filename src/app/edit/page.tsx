@@ -2211,7 +2211,430 @@ export default function Edit() {
             <div className="flex flex-col items-center w-full">
               <div className="text-center mb-8">
                 <h3 className="text-xl font-semibold text-gray-800 mb-2">Edit Your Image</h3>
-                <p className="text-gray-600">Coming soon - editing tools will be available here</p>
+                <p className="text-gray-600">Edit your <span className="font-semibold text-amber-600">{selectedStyle}</span> image with powerful AI tools</p>
+              </div>
+
+              {/* Main Layout: Image + Sidebar */}
+              <div className="flex flex-col lg:flex-row gap-8 w-full max-w-6xl items-start">
+                
+                {/* Left Side - Image Display */}
+                <div className="flex-1 flex flex-col items-center">
+                  {currentImage && (
+                    <div className="relative inline-block">
+                      <img 
+                        ref={imageRef}
+                        src={currentImage} 
+                        alt={`${selectedStyle} converted image`}
+                        className="max-w-full lg:max-w-lg h-auto rounded-lg shadow-lg"
+                        onLoad={initializeCanvas}
+                      />
+                      <canvas
+                        ref={canvasRef}
+                        className={`absolute top-0 left-0 rounded-lg ${
+                          activeMode === 'remove' ? 'cursor-none' : 
+                          activeMode === 'fill' ? 'cursor-none' :
+                          activeMode === 'crop' ? 'cursor-crosshair' : 
+                          'cursor-default'
+                        }`}
+                        onMouseDown={activeMode === 'background' ? undefined : startDrawing}
+                        onMouseMove={activeMode === 'background' ? undefined : (e) => {
+                          handleMouseMove(e);
+                          draw(e);
+                        }}
+                        onMouseUp={activeMode === 'background' ? undefined : stopDrawing}
+                        onMouseLeave={activeMode === 'background' ? undefined : handleMouseLeave}
+                        onMouseEnter={activeMode === 'background' ? undefined : handleMouseEnter}
+                        style={{
+                          width: canvasSize.width,
+                          height: canvasSize.height,
+                        }}
+                      />
+                      
+                      {/* Brush Size Cursor */}
+                      {showBrushCursor && (activeMode === 'remove' || activeMode === 'fill') && (
+                        <div
+                          className={`absolute pointer-events-none rounded-full border-2 ${
+                            activeMode === 'fill' ? 'border-purple-500' : 'border-red-500'
+                          } bg-transparent`}
+                          style={{
+                            left: mousePosition.x - brushSize / 2,
+                            top: mousePosition.y - brushSize / 2,
+                            width: brushSize,
+                            height: brushSize,
+                            transform: 'translate(0, 0)',
+                          }}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Side - Control Sidebar */}
+                <div className="w-full lg:w-80 lg:min-w-80 flex-shrink-0 bg-white rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-6 h-fit min-h-[600px]">
+                  
+                  {/* Tools Section */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Tools</h4>
+                    
+                    {/* Tool Selection Grid */}
+                    <div className="grid grid-cols-1 gap-3 mb-4">
+                      <button
+                        onClick={() => {
+                          setActiveMode('background');
+                          clearMask();
+                          setShowBrushCursor(false);
+                        }}
+                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                          activeMode === 'background'
+                            ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                          activeMode === 'background' ? 'bg-emerald-500' : 'bg-gray-400'
+                        }`}>
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <div className={`font-semibold text-sm sm:text-base ${
+                            activeMode === 'background' ? 'text-emerald-700' : 'text-gray-700'
+                          }`}>
+                            Remove Background
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-500">AI-powered background removal</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveMode(activeMode === 'remove' || activeMode === 'fill' ? activeMode : 'remove');
+                          clearMask();
+                          setShowBrushCursor(false);
+                        }}
+                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                          activeMode === 'remove' || activeMode === 'fill'
+                            ? 'border-purple-500 bg-purple-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                          activeMode === 'remove' || activeMode === 'fill' ? 'bg-purple-500' : 'bg-gray-400'
+                        }`}>
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <div className={`font-semibold text-sm sm:text-base ${
+                            activeMode === 'remove' || activeMode === 'fill' ? 'text-purple-700' : 'text-gray-700'
+                          }`}>
+                            Erase / Fill
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-500">Remove objects or fill with AI</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveMode('crop');
+                          clearMask();
+                          setShowBrushCursor(false);
+                        }}
+                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                          activeMode === 'crop'
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                          activeMode === 'crop' ? 'bg-blue-500' : 'bg-gray-400'
+                        }`}>
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <div className={`font-semibold text-sm sm:text-base ${
+                            activeMode === 'crop' ? 'text-blue-700' : 'text-gray-700'
+                          }`}>
+                            Crop Image
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-500">Crop to specific dimensions</div>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Erase/Fill Sub-mode Toggle */}
+                    {(activeMode === 'remove' || activeMode === 'fill') && (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
+                          <button 
+                            onClick={() => {
+                              setActiveMode('remove');
+                              clearMask();
+                            }}
+                            className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
+                              activeMode === 'remove'
+                                ? 'bg-white text-red-600 shadow-sm'
+                                : 'text-gray-600 hover:text-red-600'
+                            }`}
+                          >
+                            Erase
+                          </button>
+                          <button
+                            onClick={() => {
+                              setActiveMode('fill');
+                              clearMask();
+                            }}
+                            className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
+                              activeMode === 'fill'
+                                ? 'bg-white text-purple-600 shadow-sm'
+                                : 'text-gray-600 hover:text-purple-600'
+                            }`}
+                          >
+                            Fill
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tool-specific Controls */}
+                  <div className="mb-6 w-full">
+                    {/* Background Removal Tool */}
+                    {activeMode === 'background' && (
+                      <div>
+                        <h5 className="font-semibold text-gray-800 mb-3">Background Removal</h5>
+                        <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 mb-4">
+                          <p className="text-sm text-emerald-700">AI will automatically remove the background and make it transparent.</p>
+                        </div>
+                        <button 
+                          onClick={handleBackgroundRemoval}
+                          disabled={isFilling || !conversionResult}
+                          className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                            isFilling || !conversionResult
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                              : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg hover:shadow-xl'
+                          }`}
+                        >
+                          {isFilling ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Removing Background...
+                            </div>
+                          ) : (
+                            'Remove Background'
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Erase Tool */}
+                    {activeMode === 'remove' && (
+                      <div>
+                        <h5 className="font-semibold text-gray-800 mb-3">Erase Tool</h5>
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                            <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
+                            <input
+                              type="range"
+                              min="5"
+                              max="50"
+                              value={brushSize}
+                              onChange={(e) => setBrushSize(Number(e.target.value))}
+                              className="flex-1"
+                            />
+                            <span className="text-sm text-gray-600 w-8">{brushSize}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={clearMask}
+                              className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
+                            >
+                              Clear Selection
+                            </button>
+                          </div>
+                          <button 
+                            onClick={handleGenerativeFill}
+                            disabled={isFilling || !conversionResult || !hasSelection}
+                            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                              isFilling || !conversionResult || !hasSelection
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                : 'bg-red-600 text-white hover:bg-red-700 shadow-lg hover:shadow-xl'
+                            }`}
+                          >
+                            {isFilling ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Removing Objects...
+                              </div>
+                            ) : hasSelection ? (
+                              'Remove Selected Areas'
+                            ) : (
+                              'Select Areas to Remove'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fill Tool */}
+                    {activeMode === 'fill' && (
+                      <div>
+                        <h5 className="font-semibold text-gray-800 mb-3">AI Fill Tool</h5>
+                        <div className="space-y-4">
+                          <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                            <p className="text-sm text-purple-700 mb-3">Paint over areas to remove and fill with AI</p>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">AI Fill Prompt:</label>
+                            <textarea
+                              value={aiFillPrompt}
+                              onChange={(e) => setAiFillPrompt(e.target.value)}
+                              placeholder="Remove all objects and content within the masked areas..."
+                              className="w-full h-24 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm text-black placeholder-gray-400"
+                            />
+                            <div className="flex gap-2 mt-2 flex-wrap">
+                              <button
+                                onClick={() => setAiFillPrompt('')}
+                                className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
+                              >
+                                Clear
+                              </button>
+                              <button
+                                onClick={() => setAiFillPrompt('Add beautiful flowers and plants to fill the selected areas')}
+                                className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
+                              >
+                                Add Flowers
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                            <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
+                            <input
+                              type="range"
+                              min="5"
+                              max="50"
+                              value={brushSize}
+                              onChange={(e) => setBrushSize(Number(e.target.value))}
+                              className="flex-1"
+                            />
+                            <span className="text-sm text-gray-600 w-8">{brushSize}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={clearMask}
+                              className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
+                            >
+                              Clear Selection
+                            </button>
+                          </div>
+                          <button 
+                            onClick={handleAIFill}
+                            disabled={isFilling || !conversionResult || !hasSelection}
+                            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                              isFilling || !conversionResult || !hasSelection
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                : 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg hover:shadow-xl'
+                            }`}
+                          >
+                            {isFilling ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Removing & Filling...
+                              </div>
+                            ) : hasSelection ? (
+                              'Remove & Fill Selected Areas'
+                            ) : (
+                              'Select Areas to Fill'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Crop Tool */}
+                    {activeMode === 'crop' && (
+                      <div>
+                        <h5 className="font-semibold text-gray-800 mb-3">Crop Tool</h5>
+                        <div className="space-y-4">
+                          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-sm text-blue-700">Click and drag on the image to select the area you want to keep.</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={clearMask}
+                              className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
+                            >
+                              Clear Selection
+                            </button>
+                          </div>
+                          <button 
+                            onClick={handleCropImage}
+                            disabled={isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 10 || Math.abs(cropArea.height) < 10}
+                            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                              isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 10 || Math.abs(cropArea.height) < 10
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
+                            }`}
+                          >
+                            {isFilling ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Cropping...
+                              </div>
+                            ) : (
+                              'Crop Image'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="space-y-3">
+                      <button
+                        onClick={handleUndo}
+                        disabled={!previousImage}
+                        className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                          previousImage
+                            ? 'bg-amber-500 text-white shadow-md hover:bg-amber-600 hover:shadow-lg'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        ↶ Undo
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!currentImage) return;
+                          
+                          // Save current edited image and move to color reduction step
+                          setEditedImage(currentImage);
+                          localStorage.setItem('pixelme-edited-image', currentImage);
+                          setStep('color-reduce');
+                          localStorage.setItem('pixelme-current-step', 'color-reduce');
+                        }}
+                        disabled={!currentImage || isFilling}
+                        className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                          currentImage && !isFilling
+                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md hover:from-purple-700 hover:to-blue-700 hover:shadow-lg'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {isFilling ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Processing...
+                          </div>
+                        ) : (
+                          '✓ Save & Continue'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2219,8 +2642,130 @@ export default function Edit() {
           {step === 'color-reduce' && (
             <div className="flex flex-col items-center w-full">
               <div className="text-center mb-8">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Color Reduction</h3>
-                <p className="text-gray-600">Convert your image to embroidery-ready style</p>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  {colorReducedImage ? 'Embroidery Conversion Complete' : 'Convert to Embroidery Style'}
+                </h3>
+                <p className="text-gray-600">
+                  {colorReducedImage ? (
+                    <>Your image has been converted to <span className="font-semibold text-green-600">embroidery-ready style</span> with bold colors and clean edges perfect for digitization</>
+                  ) : (
+                    <>Convert your image to <span className="font-semibold text-orange-600">embroidery-ready style</span> with under 10 colors, bold outlines, and flat fills</>
+                  )}
+                </p>
+              </div>
+
+              {/* Before and After Comparison */}
+              {colorReducedImage ? (
+                <div className="mb-8 w-full max-w-4xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Original Edited Image */}
+                    <div className="text-center">
+                      <h4 className="text-lg font-semibold text-gray-700 mb-3">Before (Original)</h4>
+                      <div className="relative inline-block">
+                        {editedImage && (
+                          <img 
+                            src={editedImage} 
+                            alt="Original edited image"
+                            className="max-w-full h-auto rounded-lg shadow-lg"
+                          />
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Embroidery Style Image */}
+                    <div className="text-center">
+                      <h4 className="text-lg font-semibold text-gray-700 mb-3">After (Embroidery Ready)</h4>
+                      <div className="relative inline-block">
+                        <img 
+                          src={colorReducedImage} 
+                          alt="Embroidery style image"
+                          className="max-w-full h-auto rounded-lg shadow-lg"
+                        />
+                        <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                          🧵 Embroidery Ready
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-6 relative inline-block">
+                  {editedImage && (
+                    <img 
+                      src={editedImage} 
+                      alt="Edited image"
+                      className="max-w-md h-auto rounded-lg shadow-lg"
+                    />
+                  )}
+                </div>
+              )}
+
+              {!colorReducedImage && (
+                <div className="text-center mb-6">
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 max-w-2xl mx-auto">
+                    <h4 className="text-lg font-semibold text-purple-800 mb-2">🧵 Embroidery Style Conversion</h4>
+                    <p className="text-gray-700">
+                      This step will convert your image to <strong>embroidery-ready style</strong> with under 10 colors, bold outlines, flat color fills, and clear boundaries. Perfect for embroidery digitization - eliminates fine details that can't be stitched and creates the clean, simplified style that digitizers need.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
+                <button
+                  onClick={() => {
+                    setStep('edit');
+                    localStorage.setItem('pixelme-current-step', 'edit');
+                  }}
+                  className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200 font-semibold"
+                >
+                  ← Back to Editing
+                </button>
+                
+                {/* Always show the Convert button */}
+                <button
+                  onClick={colorReducedImage ? handleResetColorReduction : handleColorReduction}
+                  disabled={!editedImage || isColorReducing}
+                  className={`px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-bold text-base sm:text-lg transition-colors duration-200 ${
+                    editedImage && !isColorReducing
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:scale-105'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  {isColorReducing ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Converting to Embroidery Style...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl sm:text-2xl">🧵</span>
+                      {colorReducedImage ? 'Try Different Embroidery Style' : 'Convert to Embroidery Style'}
+                    </div>
+                  )}
+                </button>
+                
+                {/* Show Continue button only when color reduction is complete */}
+                {colorReducedImage && (
+                  <button
+                    onClick={handleColorReductionContinue}
+                    disabled={isFilling}
+                    className={`px-6 py-3 rounded-lg font-semibold transition-colors duration-200 ${
+                      !isFilling
+                        ? 'bg-gradient-to-r from-green-600 to-blue-600 text-white hover:from-green-700 hover:to-blue-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {isFilling ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Processing...
+                      </div>
+                    ) : (
+                      'Continue to Preview →'
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           )}

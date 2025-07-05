@@ -3178,7 +3178,7 @@ export default function Edit() {
                       Converting...
                     </div>
                   ) : (
-                    'Convert'
+                    colorReducedImage ? 'Convert Again' : 'Convert'
                   )}
                 </button>
                 

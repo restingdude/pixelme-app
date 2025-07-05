@@ -32,8 +32,18 @@ export async function POST(request: NextRequest) {
     console.log('Processing color reduction for image data length:', imageData.length);
     console.log('Image data format:', imageData.substring(0, 50) + '...');
 
-    // Embroidery-style conversion prompt optimized for digitization
-    const prompt = `Convert ALL characters and subjects in this image to an ULTRA FLAT, ULTRA BLOCKY embroidery-ready style using maximum 15 colors. DO NOT convert the background - especially any light gray and dark gray checkered patterns or neutral backgrounds. Keep all background areas completely unchanged and untouched. ABSOLUTE ZERO SHADING - ELIMINATE ALL forms of shading, gradients, highlights, shadows, soft transitions, color variations, tonal differences, and artistic depth. Every single area must be ONE SINGLE FLAT COLOR with no variation whatsoever. BLACK LINES ARE THE ONLY SHADING - use ULTRA THICK, BOLD BLACK OUTLINES around every shape, character, and feature. EXTERIOR OUTLINES must be EXTREMELY THICK (8-10 pixels wide) creating a strong bold border around the entire character/subject. Add HEAVY black lines inside characters (4-6 pixels wide) for ALL definition - facial features, clothing details, hair strands, body separation. BLACK LINES replace ALL shading and depth - no color-based shading allowed AT ALL. Make it EXTREMELY blocky and geometric like the simplest possible coloring book with the THICKEST black outlines and FLATTEST colors imaginable. Think bold cartoon sticker style with massive black borders everywhere, especially around the exterior edges. ZERO artistic subtlety - only bold geometric shapes with massive black line separation. Ultra-simplified embroidery style with no complex color work whatsoever, while leaving the background completely untouched.`;
+    // Embroidery-style conversion prompt optimized for color preservation and digitization
+    const prompt = `Convert this image to embroidery-ready style with these EXACT requirements:
+
+1. PRESERVE ALL ORIGINAL COLORS - Keep red, blue, green, yellow, purple, orange, pink, brown, skin tones, hair colors, and ALL other existing colors in the image
+2. REDUCE to maximum 15 colors total - simplify similar shades but KEEP the original color families
+3. FLAT COLOR AREAS - Remove gradients and shading, fill each area with solid flat colors
+4. THICK BLACK OUTLINES - Add bold black outlines (8-10 pixels wide) around the exterior edges and important interior features
+5. DO NOT convert to black and white - This must remain a COLORFUL image with all original color types preserved
+
+Transform the style to look like embroidery stitching while maintaining vibrant colors. Keep background unchanged if it's transparent or checkered. Focus on making the main subject bold and colorful with thick outlines suitable for embroidery digitization.
+
+CRITICAL: This must be a COLORFUL result, not black and white. Preserve the color palette while simplifying it to 15 colors maximum.`;
 
     // Use FLUX Kontext Pro for high-quality color reduction
     const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions', {

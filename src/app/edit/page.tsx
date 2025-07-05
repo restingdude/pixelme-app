@@ -2135,47 +2135,8 @@ export default function Edit() {
           </div>
         </div>
 
-        {/* Step Selector */}
-        <div className="flex flex-wrap gap-2 sm:gap-4 mb-6 w-full justify-center">
-          <button 
-            onClick={() => handleStepChange('before')}
-            className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
-              step === 'before' 
-                ? 'border-amber-600 bg-amber-50 text-amber-700' 
-                : 'border-gray-300 text-gray-700 hover:border-amber-600'
-            }`}
-          >
-            Before
-          </button>
-          <button 
-            onClick={() => handleStepChange('edit')}
-            className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
-              step === 'edit' 
-                ? 'border-amber-600 bg-amber-50 text-amber-700' 
-                : 'border-gray-300 text-gray-700 hover:border-amber-600'
-            }`}
-          >
-            Edit Image
-          </button>
-          <button 
-            onClick={() => handleStepChange('color-reduce')}
-            className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base ${
-              step === 'color-reduce' 
-                ? 'border-amber-600 bg-amber-50 text-amber-700' 
-                : 'border-gray-300 text-gray-700 hover:border-amber-600'
-            }`}
-          >
-            Color Reduction
-          </button>
-          {hasReachedPreview && (
-            <button 
-              onClick={() => handleStepChange('preview')}
-                          className="px-4 py-2 rounded-lg border-2 transition-all duration-200 text-sm sm:text-base border-gray-300 text-gray-700 hover:border-amber-600"
-            >
-              Preview
-            </button>
-          )}
-        </div>
+                {/* Step Selector */}
+        {/* Preview button removed */}
 
         {/* Main Content Area */}
         <div className="w-full flex flex-col lg:flex-row gap-6">
@@ -2649,7 +2610,7 @@ export default function Edit() {
                   {colorReducedImage ? (
                     <>Your image has been converted to <span className="font-semibold text-green-600">embroidery-ready style</span> with bold colors and clean edges perfect for digitization</>
                   ) : (
-                    <>Convert your image to <span className="font-semibold text-orange-600">embroidery-ready style</span> with under 10 colors, bold outlines, and flat fills</>
+                    <>Convert your image to <span className="font-semibold text-orange-600">embroidery-ready style</span> with 15 colors max and thick outlines</>
                   )}
                 </p>
               </div>
@@ -2705,64 +2666,51 @@ export default function Edit() {
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 max-w-2xl mx-auto">
                     <h4 className="text-lg font-semibold text-purple-800 mb-2">🧵 Embroidery Style Conversion</h4>
                     <p className="text-gray-700">
-                      This step will convert your image to <strong>embroidery-ready style</strong> with under 10 colors, bold outlines, flat color fills, and clear boundaries. Perfect for embroidery digitization - eliminates fine details that can't be stitched and creates the clean, simplified style that digitizers need.
+                      Converts your image to <strong>embroidery-ready style</strong> with maximum 15 colors and ultra-thick outlines. Perfect for embroidery digitization.
                     </p>
                   </div>
                 </div>
               )}
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
-                <button
-                  onClick={() => {
-                    setStep('edit');
-                    localStorage.setItem('pixelme-current-step', 'edit');
-                  }}
-                  className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200 font-semibold"
-                >
-                  ← Back to Editing
-                </button>
-                
                 {/* Always show the Convert button */}
                 <button
                   onClick={colorReducedImage ? handleResetColorReduction : handleColorReduction}
                   disabled={!editedImage || isColorReducing}
-                  className={`px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-bold text-base sm:text-lg transition-colors duration-200 ${
+                  className={`px-8 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
                     editedImage && !isColorReducing
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:scale-105'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      ? 'bg-black text-white hover:bg-gray-800 border border-black'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
                   }`}
                 >
                   {isColorReducing ? (
-                    <div className="flex items-center gap-3">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Converting to Embroidery Style...
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Converting...
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl sm:text-2xl">🧵</span>
-                      {colorReducedImage ? 'Try Different Embroidery Style' : 'Convert to Embroidery Style'}
-                    </div>
+                    'Convert'
                   )}
                 </button>
                 
-                {/* Show Continue button only when color reduction is complete */}
+                {/* Show Proceed button only when color reduction is complete */}
                 {colorReducedImage && (
                   <button
                     onClick={handleColorReductionContinue}
                     disabled={isFilling}
-                    className={`px-6 py-3 rounded-lg font-semibold transition-colors duration-200 ${
+                    className={`px-8 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
                       !isFilling
-                        ? 'bg-gradient-to-r from-green-600 to-blue-600 text-white hover:from-green-700 hover:to-blue-700'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        ? 'bg-white text-black hover:bg-gray-50 border border-gray-300'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
                     }`}
                   >
                     {isFilling ? (
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                         Processing...
                       </div>
                     ) : (
-                      'Continue to Preview →'
+                      'Proceed'
                     )}
                   </button>
                 )}

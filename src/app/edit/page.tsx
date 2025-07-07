@@ -444,16 +444,50 @@ export default function Edit() {
     router.push('/');
   };
 
-  const handleClear = () => {
-    // Clear all cached data - this is intentional for "clear all and start over"
+  const handleClear = async () => {
+    // Check if cart has items before clearing it
+    const cartId = localStorage.getItem('pixelme-cart-id');
+    let shouldPreserveCart = false;
+    
+    if (cartId) {
+      try {
+        const response = await fetch(`/api/shopify/cart?cartId=${encodeURIComponent(cartId)}`);
+        const data = await response.json();
+        
+        if (data.success && data.cart && data.cart.lines.edges.length > 0) {
+          shouldPreserveCart = true;
+          console.log('🛒 Preserving cart with', data.cart.lines.edges.length, 'item(s) while clearing steps');
+        }
+      } catch (error) {
+        console.error('Error checking cart status:', error);
+        // If we can't check cart status, preserve it to be safe
+        shouldPreserveCart = true;
+      }
+    }
+    
+    // Clear all editing session data
     localStorage.removeItem('pixelme-uploaded-image');
     localStorage.removeItem('pixelme-selected-style');
     localStorage.removeItem('pixelme-current-step');
     localStorage.removeItem('pixelme-selected-clothing');
+    localStorage.removeItem('pixelme-selected-color');
+    localStorage.removeItem('pixelme-selected-size');
+    localStorage.removeItem('pixelme-selected-variant-id');
     localStorage.removeItem('pixelme-conversion-result');
     localStorage.removeItem('pixelme-edited-image');
     localStorage.removeItem('pixelme-color-reduced-image');
     localStorage.removeItem('pixelme-final-image');
+    localStorage.removeItem('pixelme-selected-position'); // Image positioning presets
+    localStorage.removeItem('pixelme-zoom-level'); // Zoom level settings
+    
+    // Only clear cart if it's empty
+    if (!shouldPreserveCart) {
+      localStorage.removeItem('pixelme-cart-id');
+      console.log('🗑️ Cleared empty cart');
+    } else {
+      console.log('🛒 Cart preserved - contains items for multiple orders');
+    }
+    
     setPreviousImage(null); // Clear undo state
     
     // Go back to homepage
@@ -2146,11 +2180,13 @@ export default function Edit() {
                         console.log('Selected variant:', variant);
                         const variantId = variant.node.id;
                         console.log('Variant ID for cart:', variantId);
-                        // Simplified custom attributes to avoid Shopify validation issues
+                        // Custom attributes including the artwork/design image and position
                         const customAttributes = [
                           { key: 'clothing_type', value: selectedClothing || 'hoodie' },
                           { key: 'style', value: selectedStyle || 'Dragon Ball' },
-                          { key: 'size', value: selectedSize || 'M' }
+                          { key: 'size', value: selectedSize || 'M' },
+                          { key: 'position', value: selectedPosition || 'chest' },
+                          { key: 'custom_design_url', value: finalImage || '' }
                         ];
                         console.log('Custom attributes for cart:', customAttributes);
                         
@@ -2354,7 +2390,8 @@ export default function Edit() {
                             clothing: selectedClothing,
                             style: selectedStyle,
                             size: selectedSize,
-                            color: selectedColor || 'Black'
+                            color: selectedColor || 'Black',
+                            position: selectedPosition || 'chest'
                           })
                         });
                         

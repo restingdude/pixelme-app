@@ -522,20 +522,29 @@ export default function CartPage() {
                 {cart.lines.edges.map(({ node: item }) => {
                   const image = item.merchandise.product.images.edges[0]?.node;
                   const customImageUrl = getCustomAttribute(item.attributes, 'custom_design_url');
+                  const customStyle = getCustomAttribute(item.attributes, 'style');
+                  const clothingType = getCustomAttribute(item.attributes, 'clothing_type');
+                  const position = getCustomAttribute(item.attributes, 'position');
                   const color = item.merchandise.selectedOptions.find(opt => opt.name === 'Color')?.value;
                   const size = item.merchandise.selectedOptions.find(opt => opt.name === 'Size')?.value;
                   
                   return (
                     <div key={item.id} className="p-6">
                       <div className="flex gap-4">
-                        {/* Product Image */}
-                        <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                        {/* Product Image - Enhanced for artwork display */}
+                        <div className="w-28 h-28 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
                           {customImageUrl ? (
-                            <img
-                              src={customImageUrl}
-                              alt={item.merchandise.product.title}
-                              className="w-full h-full object-cover"
-                            />
+                            <>
+                              <img
+                                src={customImageUrl}
+                                alt={`Custom ${item.merchandise.product.title}`}
+                                className="w-full h-full object-cover"
+                              />
+                              {/* Custom design indicator */}
+                              <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1.5 py-1 rounded text-[10px] font-bold shadow-md">
+                                CUSTOM
+                              </div>
+                            </>
                           ) : image ? (
                             <img
                               src={image.url}
@@ -554,8 +563,18 @@ export default function CartPage() {
                         {/* Product Details */}
                         <div className="flex-1">
                           <h3 className="font-semibold text-gray-900 mb-1">
-                            {item.merchandise.product.title}
+                            {customImageUrl ? `Custom ${item.merchandise.product.title}` : item.merchandise.product.title}
                           </h3>
+                          {customStyle && (
+                            <p className="text-sm text-blue-600 font-medium mb-1">
+                              {customStyle} Style
+                            </p>
+                          )}
+                          {position && (
+                            <p className="text-sm text-green-600 font-medium mb-1">
+                              Position: {position.charAt(0).toUpperCase() + position.slice(1)}
+                            </p>
+                          )}
                           <p className="text-sm text-gray-600 mb-2">
                             {item.merchandise.title}
                           </p>

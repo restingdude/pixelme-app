@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import CartIcon from "../components/CartIcon";
 
 interface Variant {
@@ -59,6 +59,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  
+  // Refs for auto-scrolling
+  const colorSectionRef = useRef<HTMLDivElement>(null);
+  const sizeSectionRef = useRef<HTMLDivElement>(null);
 
   // Load cached data and products on component mount
   useEffect(() => {
@@ -122,6 +126,14 @@ export default function Home() {
     setCachedColor(null);
     setCachedSize(null);
     setCachedVariantId(null);
+    
+    // Auto-scroll to color selection
+    setTimeout(() => {
+      colorSectionRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+    }, 100);
   };
 
   const handleColorSelect = (color: string) => {
@@ -133,6 +145,14 @@ export default function Home() {
     setCachedColor(color);
     setCachedSize(null);
     setCachedVariantId(null);
+    
+    // Auto-scroll to size selection
+    setTimeout(() => {
+      sizeSectionRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+    }, 100);
   };
 
   const handleSizeSelect = (size: string) => {
@@ -176,8 +196,28 @@ export default function Home() {
     router.push(`/upload?clothing=${selectedProduct}&color=${selectedColor}&size=${size}&variantId=${encodeURIComponent(variant.node.id)}`);
   };
 
-  const handleClear = () => {
-    // Clear all cached data
+  const handleClear = async () => {
+    // Check if cart has items before clearing it
+    const cartId = localStorage.getItem('pixelme-cart-id');
+    let shouldPreserveCart = false;
+    
+    if (cartId) {
+      try {
+        const response = await fetch(`/api/shopify/cart?cartId=${encodeURIComponent(cartId)}`);
+        const data = await response.json();
+        
+        if (data.success && data.cart && data.cart.lines.edges.length > 0) {
+          shouldPreserveCart = true;
+          console.log('🛒 Preserving cart with', data.cart.lines.edges.length, 'item(s) while clearing steps');
+        }
+      } catch (error) {
+        console.error('Error checking cart status:', error);
+        // If we can't check cart status, preserve it to be safe
+        shouldPreserveCart = true;
+      }
+    }
+    
+    // Clear all editing session data
     localStorage.removeItem('pixelme-uploaded-image');
     localStorage.removeItem('pixelme-selected-style');
     localStorage.removeItem('pixelme-current-step');
@@ -187,6 +227,18 @@ export default function Home() {
     localStorage.removeItem('pixelme-selected-variant-id');
     localStorage.removeItem('pixelme-conversion-result');
     localStorage.removeItem('pixelme-edited-image');
+    localStorage.removeItem('pixelme-color-reduced-image'); // Step 6 embroidery conversion
+    localStorage.removeItem('pixelme-final-image'); // Final processed image
+    localStorage.removeItem('pixelme-selected-position'); // Image positioning presets
+    localStorage.removeItem('pixelme-zoom-level'); // Zoom level settings
+    
+    // Only clear cart if it's empty
+    if (!shouldPreserveCart) {
+      localStorage.removeItem('pixelme-cart-id');
+      console.log('🗑️ Cleared empty cart');
+    } else {
+      console.log('🛒 Cart preserved - contains items for multiple orders');
+    }
     
     // Reset local state
     setCachedClothing(null);
@@ -541,7 +593,7 @@ export default function Home() {
 
               {/* Color Selection - Show when a product is selected */}
               {selectedProduct && (
-                <div className="w-full max-w-lg mt-6 px-4">
+                <div ref={colorSectionRef} className="w-full max-w-lg mt-6 px-4">
                   <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Select Color</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {getAvailableColors().map((color) => {
@@ -584,7 +636,7 @@ export default function Home() {
 
               {/* Size Selection - Show when both product and color are selected */}
               {selectedProduct && selectedColor && (
-                <div className="w-full max-w-lg mt-6 px-4">
+                <div ref={sizeSectionRef} className="w-full max-w-lg mt-6 px-4">
                   <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Select Size</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {getAvailableSizes().map((size) => {

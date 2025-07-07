@@ -147,8 +147,28 @@ function UploadContent() {
     }
   };
 
-  const handleClear = () => {
-    // Clear all cached data
+  const handleClear = async () => {
+    // Check if cart has items before clearing it
+    const cartId = localStorage.getItem('pixelme-cart-id');
+    let shouldPreserveCart = false;
+    
+    if (cartId) {
+      try {
+        const response = await fetch(`/api/shopify/cart?cartId=${encodeURIComponent(cartId)}`);
+        const data = await response.json();
+        
+        if (data.success && data.cart && data.cart.lines.edges.length > 0) {
+          shouldPreserveCart = true;
+          console.log('🛒 Preserving cart with', data.cart.lines.edges.length, 'item(s) while clearing steps');
+        }
+      } catch (error) {
+        console.error('Error checking cart status:', error);
+        // If we can't check cart status, preserve it to be safe
+        shouldPreserveCart = true;
+      }
+    }
+    
+    // Clear all editing session data
     localStorage.removeItem('pixelme-uploaded-image');
     localStorage.removeItem('pixelme-selected-style');
     localStorage.removeItem('pixelme-current-step');
@@ -157,6 +177,19 @@ function UploadContent() {
     localStorage.removeItem('pixelme-selected-size');
     localStorage.removeItem('pixelme-selected-variant-id');
     localStorage.removeItem('pixelme-conversion-result');
+    localStorage.removeItem('pixelme-edited-image');
+    localStorage.removeItem('pixelme-color-reduced-image'); // Step 6 embroidery conversion
+    localStorage.removeItem('pixelme-final-image'); // Final processed image
+    localStorage.removeItem('pixelme-selected-position'); // Image positioning presets
+    localStorage.removeItem('pixelme-zoom-level'); // Zoom level settings
+    
+    // Only clear cart if it's empty
+    if (!shouldPreserveCart) {
+      localStorage.removeItem('pixelme-cart-id');
+      console.log('🗑️ Cleared empty cart');
+    } else {
+      console.log('🛒 Cart preserved - contains items for multiple orders');
+    }
     
     // Reset state
     setUploadedImage(null);

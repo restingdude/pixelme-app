@@ -353,19 +353,28 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                   {cart.lines.edges.map(({ node: item }) => {
                     const image = item.merchandise.product.images.edges[0]?.node;
                     const customImageUrl = getCustomAttribute(item.attributes, 'custom_design_url');
+                    const customStyle = getCustomAttribute(item.attributes, 'style');
+                    const clothingType = getCustomAttribute(item.attributes, 'clothing_type');
+                    const position = getCustomAttribute(item.attributes, 'position');
                     const color = item.merchandise.selectedOptions?.find(opt => opt.name === 'Color')?.value;
                     const size = item.merchandise.selectedOptions?.find(opt => opt.name === 'Size')?.value;
                     
                     return (
                       <div key={item.id} className="flex gap-3 p-3 border border-gray-200 rounded-lg">
                         {/* Product Image */}
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                        <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
                           {customImageUrl ? (
-                            <img
-                              src={customImageUrl}
-                              alt={item.merchandise.product.title}
-                              className="w-full h-full object-cover"
-                            />
+                            <>
+                              <img
+                                src={customImageUrl}
+                                alt={`Custom ${item.merchandise.product.title}`}
+                                className="w-full h-full object-cover"
+                              />
+                              {/* Custom design indicator */}
+                              <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1 py-0.5 rounded text-[10px] font-bold shadow-md">
+                                CUSTOM
+                              </div>
+                            </>
                           ) : image ? (
                             <img
                               src={image.url}
@@ -374,7 +383,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
                             </div>
@@ -384,8 +393,18 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                         {/* Product Details */}
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-gray-900 text-sm truncate">
-                            {item.merchandise.product.title}
+                            {customImageUrl ? `Custom ${item.merchandise.product.title}` : item.merchandise.product.title}
                           </h4>
+                          {customStyle && (
+                            <p className="text-xs text-blue-600 font-medium mt-1">
+                              {customStyle} Style
+                            </p>
+                          )}
+                          {position && (
+                            <p className="text-xs text-green-600 font-medium mt-1">
+                              Position: {position.charAt(0).toUpperCase() + position.slice(1)}
+                            </p>
+                          )}
                           {(color || size) && (
                             <p className="text-xs text-gray-600 mt-1">
                               {[color, size].filter(Boolean).join(' • ')}

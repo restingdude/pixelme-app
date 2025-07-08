@@ -2169,6 +2169,19 @@ export default function Edit() {
                 <div className="text-2xl font-bold text-gray-800">${variantPrice}</div>
               </div>
 
+              {/* Design Team Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h4 className="font-semibold text-blue-800">Design Processing</h4>
+                </div>
+                <p className="text-sm text-blue-700">
+                  Your image will be sent to our design team and printed with <span className="font-medium">10cm width or height by default</span> (whichever is larger). Our team will ensure optimal sizing and quality for your custom design.
+                </p>
+              </div>
+
               {/* Action buttons */}
               <div className="flex flex-col gap-3">
                 {/* Add to Cart and Buy Now buttons */}

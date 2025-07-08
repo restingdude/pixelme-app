@@ -1033,7 +1033,6 @@ export default function AdminPage() {
                   <option value="Studio Ghibli">Studio Ghibli</option>
                   <option value="South Park">South Park</option>
                   <option value="Dragon Ball">Dragon Ball</option>
-                  <option value="Anime">Anime</option>
                 </select>
               </div>
               

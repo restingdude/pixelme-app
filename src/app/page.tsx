@@ -422,7 +422,7 @@ export default function Home() {
                 title="Go to style selection step"
               >
                 <Image
-                  src={`/styles/${cachedStyle === 'Studio Ghibli' ? 'ghibli' : cachedStyle === 'South Park' ? 'southpark' : cachedStyle === 'Family Guy' ? 'familyguy' : cachedStyle === 'Dragon Ball' ? 'dragonball' : cachedStyle === 'Anime' ? 'anime' : cachedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                  src={`/styles/${cachedStyle === 'Studio Ghibli' ? 'ghibli' : cachedStyle === 'South Park' ? 'southpark' : cachedStyle === 'Family Guy' ? 'familyguy' : cachedStyle === 'Dragon Ball' ? 'dragonball' : cachedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
                   alt={`${cachedStyle} Style`}
                   width={60}
                   height={60}

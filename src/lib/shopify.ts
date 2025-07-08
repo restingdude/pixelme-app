@@ -28,7 +28,6 @@ export const STYLE_TYPES = {
   STUDIO_GHIBLI: 'Studio Ghibli',
   SOUTH_PARK: 'South Park',
   DRAGON_BALL: 'Dragon Ball',
-  ANIME: 'Anime',
   RICK_AND_MORTY: 'Rick and Morty',
 } as const;
 

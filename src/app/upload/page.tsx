@@ -19,6 +19,8 @@ function UploadContent() {
   const [conversionResult, setConversionResult] = useState<string | null>(null);
   const [conversionError, setConversionError] = useState<string | null>(null);
   const [cachedEditedImage, setCachedEditedImage] = useState<string | null>(null);
+  const [cachedColorReducedImage, setCachedColorReducedImage] = useState<string | null>(null);
+  const [cachedFinalImage, setCachedFinalImage] = useState<string | null>(null);
 
   // Load cached data on component mount
   useEffect(() => {
@@ -27,6 +29,8 @@ function UploadContent() {
     const cachedStep = localStorage.getItem('pixelme-current-step');
     const cachedConversionResult = localStorage.getItem('pixelme-conversion-result');
     const cachedEditedImage = localStorage.getItem('pixelme-edited-image');
+    const cachedColorReducedImage = localStorage.getItem('pixelme-color-reduced-image');
+    const cachedFinalImage = localStorage.getItem('pixelme-final-image');
     
     if (cachedImage) {
       setUploadedImage(cachedImage);
@@ -42,6 +46,12 @@ function UploadContent() {
     }
     if (cachedEditedImage) {
       setCachedEditedImage(cachedEditedImage);
+    }
+    if (cachedColorReducedImage) {
+      setCachedColorReducedImage(cachedColorReducedImage);
+    }
+    if (cachedFinalImage) {
+      setCachedFinalImage(cachedFinalImage);
     }
     
     // Store all selection data from URL params to localStorage if provided
@@ -198,6 +208,8 @@ function UploadContent() {
     setConversionResult(null);
     setConversionError(null);
     setCachedEditedImage(null);
+    setCachedColorReducedImage(null);
+    setCachedFinalImage(null);
     
     // Go back to homepage
     router.push('/');
@@ -275,7 +287,7 @@ function UploadContent() {
                   title="Go to style selection"
                 >
                   <Image
-                    src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Anime' ? 'anime' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                    src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
                     alt={`${selectedStyle} Style`}
                     width={60}
                     height={60}
@@ -355,13 +367,69 @@ function UploadContent() {
 
             {/* Step 6 - Color Reduction */}
             <div className="flex items-center gap-2">
+              {cachedColorReducedImage ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'color-reduce');
+                    router.push('/edit');
+                  }}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go to color reduction step"
+                >
+                  <img
+                    src={cachedColorReducedImage}
+                    alt="Color reduced preview"
+                    className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                  />
+                </button>
+              ) : cachedEditedImage ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'color-reduce');
+                    router.push('/edit');
+                  }}
+                  className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  title="Go to color reduction step"
+                >
+                  6
+                </button>
+              ) : (
                 <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">6</span>
+              )}
             </div>
             
             {/* Step 7 - Preview */}
             <div className="flex items-center gap-2">
+              {cachedFinalImage ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'preview');
+                    router.push('/edit');
+                  }}
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  title="Go to preview step"
+                >
+                  <img
+                    src={cachedFinalImage}
+                    alt="Final preview"
+                    className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                  />
+                </button>
+              ) : cachedColorReducedImage ? (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('pixelme-current-step', 'preview');
+                    router.push('/edit');
+                  }}
+                  className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  title="Go to preview step"
+                >
+                  7
+                </button>
+              ) : (
                 <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">7</span>
-              </div>
+              )}
+            </div>
             </div>
           </div>
           
@@ -500,18 +568,7 @@ function UploadContent() {
                       className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
-                  <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Anime' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
-                    onClick={() => handleStyleSelect('Anime')}
-                  >
-                    <Image
-                      src="/styles/anime.png"
-                      alt="Anime Style"
-                      width={120}
-                      height={120}
-                      className="object-contain rounded-lg w-full h-auto"
-                    />
-                  </button>
+
                   <button
                     className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Rick and Morty' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
                     onClick={() => handleStyleSelect('Rick and Morty')}
@@ -579,21 +636,15 @@ function UploadContent() {
                   <div className="mt-4 flex flex-col items-center w-full max-w-2xl">
                     {conversionResult.startsWith('http') ? (
                       <div className="flex flex-col items-center w-full">
-                        {/* Hair color editing tip */}
+                        {/* Editing tip */}
                         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg max-w-md">
                           <p className="text-sm text-blue-700">
-                            💡 Don't worry if hair is wrong colour, you'll be able to edit it using our fill tool.
+                            💡 Don't worry if any details are wrong, you'll be able to edit it using our fill tool.
                           </p>
                         </div>
                         
-                        <img 
-                          src={conversionResult} 
-                          alt={`${selectedStyle} conversion`}
-                          className="max-w-md h-auto rounded-lg shadow-lg mb-6"
-                        />
-                        
                         {/* Action Buttons */}
-                        <div className="flex gap-4">
+                        <div className="flex gap-4 mb-6">
                           <button 
                             onClick={() => {
                               // handleConvert will clear edited data when starting new conversion
@@ -614,6 +665,12 @@ function UploadContent() {
                             Continue to Edit →
                           </button>
                         </div>
+                        
+                        <img 
+                          src={conversionResult} 
+                          alt={`${selectedStyle} conversion`}
+                          className="max-w-md h-auto rounded-lg shadow-lg"
+                        />
                       </div>
                     ) : (
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{conversionResult}</p>

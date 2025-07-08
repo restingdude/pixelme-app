@@ -16,7 +16,7 @@ export default function Edit() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [isFilling, setIsFilling] = useState(false);
   const [brushSize, setBrushSize] = useState(20);
-  const [activeMode, setActiveMode] = useState<'remove' | 'crop' | 'background' | 'fill'>('remove');
+  const [activeMode, setActiveMode] = useState<'remove' | 'crop' | 'background' | 'fill' | 'zoom'>('remove');
   const [previousImage, setPreviousImage] = useState<string | null>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [cropArea, setCropArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -119,8 +119,8 @@ export default function Edit() {
     const cachedZoom = localStorage.getItem('pixelme-zoom-level');
     if (cachedZoom) {
       const zoomValue = Number(cachedZoom);
-      // Ensure zoom level is within new range (100-500%)
-      setZoomLevel(Math.max(100, Math.min(500, zoomValue)));
+      // Ensure zoom level is within correct range (50-100% for zoom out tool)
+      setZoomLevel(Math.max(50, Math.min(100, zoomValue)));
     }
 
     // Check if preview has been reached
@@ -153,6 +153,14 @@ export default function Edit() {
       setSelectedSize(savedSize);
     }
   }, []);
+
+  // Reset zoom to 100% when entering edit step for consistent display
+  useEffect(() => {
+    if (step === 'edit') {
+      setZoomLevel(100);
+      localStorage.setItem('pixelme-zoom-level', '100');
+    }
+  }, [step]);
 
   // Fetch variant price when variant ID is available
   useEffect(() => {
@@ -231,11 +239,28 @@ export default function Edit() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         
-        // Clamp coordinates to canvas boundaries
-        const rawX = clientX - rect.left;
-        const rawY = clientY - rect.top;
-        const currentX = Math.max(0, Math.min(canvas.width, rawX));
-        const currentY = Math.max(0, Math.min(canvas.height, rawY));
+        // Calculate mouse coordinates accounting for zoom and padding
+        let rawX, rawY;
+        
+        if (zoomLevel < 100) {
+          // When zoomed out, canvas is not scaled but positioned with -20px offset
+          // and coordinates need to account for the padding area
+          rawX = (clientX - rect.left);
+          rawY = (clientY - rect.top);
+        } else {
+          // When at 100% or above, apply zoom scaling to coordinates  
+          rawX = (clientX - rect.left) / (zoomLevel / 100);
+          rawY = (clientY - rect.top) / (zoomLevel / 100);
+        }
+        
+        // Set effective boundaries to the full canvas area
+        const effectiveMinX = 0;
+        const effectiveMinY = 0;
+        const effectiveMaxX = canvas.width;
+        const effectiveMaxY = canvas.height;
+        
+        const currentX = Math.max(effectiveMinX, Math.min(effectiveMaxX, rawX));
+        const currentY = Math.max(effectiveMinY, Math.min(effectiveMaxY, rawY));
         
         if (isCropping && cropStartPos) {
           // Creating new crop area
@@ -262,8 +287,8 @@ export default function Edit() {
           const deltaY = currentY - cropDragStart.y;
           
           const newCropArea = {
-            x: Math.max(0, Math.min(canvas.width - cropArea.width, cropArea.x + deltaX)),
-            y: Math.max(0, Math.min(canvas.height - cropArea.height, cropArea.y + deltaY)),
+            x: Math.max(effectiveMinX, Math.min(effectiveMaxX - cropArea.width, cropArea.x + deltaX)),
+            y: Math.max(effectiveMinY, Math.min(effectiveMaxY - cropArea.height, cropArea.y + deltaY)),
             width: cropArea.width,
             height: cropArea.height
           };
@@ -282,38 +307,38 @@ export default function Edit() {
           
           switch (cropResizeHandle) {
             case 'top-left':
-              newCropArea.x = Math.max(0, cropArea.x + deltaX);
-              newCropArea.y = Math.max(0, cropArea.y + deltaY);
+              newCropArea.x = Math.max(effectiveMinX, cropArea.x + deltaX);
+              newCropArea.y = Math.max(effectiveMinY, cropArea.y + deltaY);
               newCropArea.width = cropArea.width - deltaX;
               newCropArea.height = cropArea.height - deltaY;
               break;
             case 'top-right':
-              newCropArea.y = Math.max(0, cropArea.y + deltaY);
-              newCropArea.width = Math.min(canvas.width - cropArea.x, cropArea.width + deltaX);
+              newCropArea.y = Math.max(effectiveMinY, cropArea.y + deltaY);
+              newCropArea.width = Math.min(effectiveMaxX - cropArea.x, cropArea.width + deltaX);
               newCropArea.height = cropArea.height - deltaY;
               break;
             case 'bottom-left':
-              newCropArea.x = Math.max(0, cropArea.x + deltaX);
+              newCropArea.x = Math.max(effectiveMinX, cropArea.x + deltaX);
               newCropArea.width = cropArea.width - deltaX;
-              newCropArea.height = Math.min(canvas.height - cropArea.y, cropArea.height + deltaY);
+              newCropArea.height = Math.min(effectiveMaxY - cropArea.y, cropArea.height + deltaY);
               break;
             case 'bottom-right':
-              newCropArea.width = Math.min(canvas.width - cropArea.x, cropArea.width + deltaX);
-              newCropArea.height = Math.min(canvas.height - cropArea.y, cropArea.height + deltaY);
+              newCropArea.width = Math.min(effectiveMaxX - cropArea.x, cropArea.width + deltaX);
+              newCropArea.height = Math.min(effectiveMaxY - cropArea.y, cropArea.height + deltaY);
               break;
             case 'top':
-              newCropArea.y = Math.max(0, cropArea.y + deltaY);
+              newCropArea.y = Math.max(effectiveMinY, cropArea.y + deltaY);
               newCropArea.height = cropArea.height - deltaY;
               break;
             case 'bottom':
-              newCropArea.height = Math.min(canvas.height - cropArea.y, cropArea.height + deltaY);
+              newCropArea.height = Math.min(effectiveMaxY - cropArea.y, cropArea.height + deltaY);
               break;
             case 'left':
-              newCropArea.x = Math.max(0, cropArea.x + deltaX);
+              newCropArea.x = Math.max(effectiveMinX, cropArea.x + deltaX);
               newCropArea.width = cropArea.width - deltaX;
               break;
             case 'right':
-              newCropArea.width = Math.min(canvas.width - cropArea.x, cropArea.width + deltaX);
+              newCropArea.width = Math.min(effectiveMaxX - cropArea.x, cropArea.width + deltaX);
               break;
           }
           
@@ -360,7 +385,26 @@ export default function Edit() {
         document.removeEventListener('touchend', handleGlobalEnd);
       };
     }
-  }, [activeMode, isCropping, isDraggingCrop, isResizingCrop, cropStartPos, cropArea, cropDragStart, cropResizeHandle]);
+  }, [activeMode, isCropping, isDraggingCrop, isResizingCrop, cropStartPos, cropArea, cropDragStart, cropResizeHandle, zoomLevel]);
+
+  // Re-initialize canvas when zoom level changes (for zoom tool)
+  useEffect(() => {
+    if (imageRef.current && canvasRef.current) {
+      initializeCanvas();
+      
+      // Redraw crop area if it exists
+      if (activeMode === 'crop' && cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+        setTimeout(() => {
+          if (canvasRef.current) {
+            const ctx = canvasRef.current.getContext('2d');
+            if (ctx) {
+              drawCropBox(ctx, cropArea);
+            }
+          }
+        }, 10);
+      }
+    }
+  }, [zoomLevel]);
 
   // Redraw crop box when switching to crop mode or when crop area changes
   useEffect(() => {
@@ -599,9 +643,9 @@ export default function Edit() {
       }
       
       // Ensure zoom level is within range
-      if (zoomLevel < 100) {
-        setZoomLevel(100);
-        localStorage.setItem('pixelme-zoom-level', '100');
+      if (zoomLevel < 25) {
+        setZoomLevel(25);
+        localStorage.setItem('pixelme-zoom-level', '25');
       } else if (zoomLevel > 500) {
         setZoomLevel(500);
         localStorage.setItem('pixelme-zoom-level', '500');
@@ -657,10 +701,25 @@ export default function Edit() {
     // Store actual image dimensions
     setActualImageSize({ width: img.naturalWidth, height: img.naturalHeight });
     
-    // Set canvas size to match displayed image
-    canvas.width = img.clientWidth;
-    canvas.height = img.clientHeight;
-    setCanvasSize({ width: img.clientWidth, height: img.clientHeight });
+    // Calculate canvas size to cover the full container area
+    let canvasWidth = img.clientWidth;
+    let canvasHeight = img.clientHeight;
+    
+    if (zoomLevel < 100) {
+      // When zoomed out, the canvas needs to cover the entire container
+      // which includes the scaled image plus padding
+      const scaledImageWidth = img.clientWidth * (zoomLevel / 100);
+      const scaledImageHeight = img.clientHeight * (zoomLevel / 100);
+      
+      // Canvas covers: scaled image + 40px padding (20px on each side)
+      canvasWidth = scaledImageWidth + 40;
+      canvasHeight = scaledImageHeight + 40;
+    }
+    
+    // Set canvas size
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    setCanvasSize({ width: canvasWidth, height: canvasHeight });
     
     // Clear canvas with transparent background
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -752,8 +811,18 @@ export default function Edit() {
       setMousePosition({ x, y });
     } else if (activeMode === 'crop' && cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
       const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      
+      // Calculate coordinates accounting for zoom level
+      let x, y;
+      if (zoomLevel < 100) {
+        // When zoomed out, use direct coordinates
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+      } else {
+        // When at 100% or above, apply zoom scaling
+        x = (e.clientX - rect.left) / (zoomLevel / 100);
+        y = (e.clientY - rect.top) / (zoomLevel / 100);
+      }
       
       // Update cursor based on hover position
       const handle = getCropHandleAtPoint(x, y, cropArea);
@@ -847,8 +916,18 @@ export default function Edit() {
     
     const touch = e.touches[0];
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
+    
+    // Calculate coordinates accounting for zoom level
+    let x, y;
+    if (zoomLevel < 100) {
+      // When zoomed out, use direct coordinates
+      x = touch.clientX - rect.left;
+      y = touch.clientY - rect.top;
+    } else {
+      // When at 100% or above, apply zoom scaling
+      x = (touch.clientX - rect.left) / (zoomLevel / 100);
+      y = (touch.clientY - rect.top) / (zoomLevel / 100);
+    }
     
     // Check if touching existing crop area
     if (cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
@@ -984,8 +1063,18 @@ export default function Edit() {
     if (!canvasRef.current) return;
     
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    
+    // Calculate coordinates accounting for zoom level
+    let x, y;
+    if (zoomLevel < 100) {
+      // When zoomed out, use direct coordinates
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    } else {
+      // When at 100% or above, apply zoom scaling
+      x = (e.clientX - rect.left) / (zoomLevel / 100);
+      y = (e.clientY - rect.top) / (zoomLevel / 100);
+    }
     
     // Check if clicking on existing crop area
     if (cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
@@ -1712,7 +1801,7 @@ export default function Edit() {
                   title="Change style selection"
                 >
                   <Image
-                    src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Anime' ? 'anime' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                    src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
                     alt={`${selectedStyle} Style`}
                     width={60}
                     height={60}
@@ -1924,6 +2013,10 @@ export default function Edit() {
                       <div className="text-xs text-gray-500 text-center whitespace-nowrap leading-tight">
                         Drag to pan
                       </div>
+                    ) : zoomLevel < 100 ? (
+                      <div className="text-xs text-gray-500 text-center whitespace-nowrap leading-tight">
+                        Zoomed out
+                      </div>
                     ) : (
                       <div className="text-xs text-gray-400 text-center whitespace-nowrap leading-tight">
                         Zoom to explore
@@ -1935,7 +2028,7 @@ export default function Edit() {
                   <div className="flex-1 flex items-center justify-center px-4">
                     <input
                       type="range"
-                      min="100"
+                      min="25"
                       max="500"
                       value={zoomLevel}
                       onChange={(e) => {
@@ -1946,7 +2039,7 @@ export default function Edit() {
                       className="zoom-slider-horizontal w-full"
                       style={{
                         height: '8px',
-                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((zoomLevel - 100) / 400) * 100}%, #e5e7eb ${((zoomLevel - 100) / 400) * 100}%, #e5e7eb 100%)`
+                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((zoomLevel - 25) / 475) * 100}%, #e5e7eb ${((zoomLevel - 25) / 475) * 100}%, #e5e7eb 100%)`
                       }}
                     />
                   </div>
@@ -2510,7 +2603,7 @@ export default function Edit() {
                 >
                   {selectedStyle ? (
                     <Image
-                      src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Anime' ? 'anime' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                      src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
                       alt={`${selectedStyle} Style`}
                       width={60}
                       height={60}
@@ -2664,13 +2757,31 @@ export default function Edit() {
                 {/* Left Side - Image Display */}
                 <div className="flex-1 flex flex-col items-center">
                   {currentImage && (
-                    <div className="relative inline-block">
+                    <div 
+                      className="relative inline-block"
+                      style={{
+                        background: zoomLevel < 100 ? `
+                          linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+                          linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+                          linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+                          linear-gradient(-45deg, transparent 75%, #f0f0f0 75%)
+                        ` : 'transparent',
+                        backgroundSize: zoomLevel < 100 ? '20px 20px' : 'auto',
+                        backgroundPosition: zoomLevel < 100 ? '0 0, 0 10px, 10px -10px, -10px 0px' : 'auto',
+                        padding: zoomLevel < 100 ? '20px' : '0',
+                        borderRadius: '8px'
+                      }}
+                    >
                       <img 
                         ref={imageRef}
                         src={currentImage} 
                         alt={`${selectedStyle} converted image`}
                         className="max-w-full lg:max-w-lg h-auto rounded-lg shadow-lg"
                         onLoad={initializeCanvas}
+                        style={{
+                          transform: `scale(${zoomLevel / 100})`,
+                          transformOrigin: 'center'
+                        }}
                       />
                       <canvas
                         ref={canvasRef}
@@ -2703,7 +2814,14 @@ export default function Edit() {
                         style={{
                           width: canvasSize.width,
                           height: canvasSize.height,
+                          // Only scale canvas when at 100% zoom, when zoomed out it covers the full visible area
+                          transform: zoomLevel >= 100 ? `scale(${zoomLevel / 100})` : 'none',
+                          transformOrigin: 'center',
                           touchAction: 'none', // Prevent default touch gestures like scrolling/zooming
+                          zIndex: 1000, // High z-index to ensure it appears above checkered background
+                          // Position canvas to cover padding area when zoomed out  
+                          top: zoomLevel < 100 ? '-20px' : '0',
+                          left: zoomLevel < 100 ? '-20px' : '0'
                         }}
                       />
                       
@@ -2719,6 +2837,7 @@ export default function Edit() {
                             width: brushSize,
                             height: brushSize,
                             transform: 'translate(0, 0)',
+                            zIndex: 1001 // Higher than canvas to appear above crop square when in brush mode
                           }}
                         />
                       )}
@@ -2820,6 +2939,12 @@ export default function Edit() {
                           setActiveMode('crop');
                           setShowBrushCursor(false);
                           
+                          // Reset zoom to 100% for crop tool
+                          if (zoomLevel !== 100) {
+                            setZoomLevel(100);
+                            localStorage.setItem('pixelme-zoom-level', '100');
+                          }
+                          
                           // Create default crop area if none exists
                           setTimeout(() => {
                             if (!cropArea && canvasRef.current) {
@@ -2874,6 +2999,46 @@ export default function Edit() {
                             Crop Image
                           </div>
                           <div className="text-xs sm:text-sm text-gray-500">Crop to specific dimensions</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveMode('zoom');
+                          setShowBrushCursor(false);
+                          // Only clear crop area if switching from crop mode
+                          if (activeMode === 'crop') {
+                            clearMask();
+                          } else {
+                            // Clear canvas but preserve crop area
+                            if (canvasRef.current) {
+                              const ctx = canvasRef.current.getContext('2d');
+                              if (ctx) {
+                                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                              }
+                            }
+                          }
+                        }}
+                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                          activeMode === 'zoom'
+                            ? 'border-orange-500 bg-orange-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-orange-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                          activeMode === 'zoom' ? 'bg-orange-500' : 'bg-gray-400'
+                        }`}>
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10h-3m0 0V7m0 3v3" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <div className={`font-semibold text-sm sm:text-base ${
+                            activeMode === 'zoom' ? 'text-orange-700' : 'text-gray-700'
+                          }`}>
+                            Zoom Out
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-500">Add transparent padding around image</div>
                         </div>
                       </button>
                     </div>
@@ -3073,6 +3238,9 @@ export default function Edit() {
                           <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                             <p className="text-sm text-blue-700">Use the crop box to select the area you want to keep. Drag handles to resize or drag inside to move.</p>
                           </div>
+                          
+
+                          
                           <div className="flex gap-2">
                             <button 
                               onClick={resetCropArea}
@@ -3097,6 +3265,149 @@ export default function Edit() {
                               </div>
                             ) : (
                               'Crop Image'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Zoom Out Tool */}
+                    {activeMode === 'zoom' && (
+                      <div>
+                        <h5 className="font-semibold text-gray-800 mb-3">Zoom Out Tool</h5>
+                        <div className="space-y-4">
+                          <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                            <p className="text-sm text-orange-700">Add transparent padding around your image. Each time you save, the padding becomes permanent and you can add more.</p>
+                          </div>
+                          
+                          {/* Zoom Controls */}
+                          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-sm font-semibold text-gray-700">Zoom Level:</label>
+                              <span className="text-sm text-gray-600 font-medium">{zoomLevel}%</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => {
+                                  const newZoom = Math.max(50, zoomLevel - 10);
+                                  setZoomLevel(newZoom);
+                                  localStorage.setItem('pixelme-zoom-level', newZoom.toString());
+                                }}
+                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 font-medium"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="range"
+                                min="50"
+                                max="100"
+                                value={Math.min(100, Math.max(50, zoomLevel))}
+                                onChange={(e) => {
+                                  const newZoom = parseInt(e.target.value);
+                                  setZoomLevel(newZoom);
+                                  localStorage.setItem('pixelme-zoom-level', newZoom.toString());
+                                }}
+                                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                style={{
+                                  background: `linear-gradient(to right, #f97316 0%, #f97316 ${((Math.min(100, Math.max(50, zoomLevel)) - 50) / 50) * 100}%, #e5e7eb ${((Math.min(100, Math.max(50, zoomLevel)) - 50) / 50) * 100}%, #e5e7eb 100%)`
+                                }}
+                              />
+                              <button
+                                onClick={() => {
+                                  const newZoom = Math.min(100, zoomLevel + 10);
+                                  setZoomLevel(newZoom);
+                                  localStorage.setItem('pixelme-zoom-level', newZoom.toString());
+                                }}
+                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 font-medium"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <div className="mt-2 text-xs text-gray-500">
+                              {zoomLevel < 100 ? (
+                                <>📤 Zoomed out - Ready to add {100 - zoomLevel}% padding</>
+                              ) : (
+                                <>📐 100% - No additional padding</>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <button 
+                            onClick={async () => {
+                              if (!currentImage) return;
+                              
+                              // Save current image for undo
+                              setPreviousImage(currentImage);
+                              setIsFilling(true);
+                              
+                              try {
+                                // Create a canvas with the zoomed out view (including transparent padding)
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                if (!ctx || !imageRef.current) return;
+                                
+                                // Load the original image to get its natural dimensions
+                                const imgElement = document.createElement('img');
+                                imgElement.crossOrigin = 'anonymous';
+                                imgElement.onload = () => {
+                                  const originalWidth = imgElement.naturalWidth;
+                                  const originalHeight = imgElement.naturalHeight;
+                                  
+                                  // Calculate padding based on zoom level
+                                  const paddingFactor = (100 - zoomLevel) / 100; // 0 at 100%, 0.5 at 50%
+                                  const paddingX = originalWidth * paddingFactor;
+                                  const paddingY = originalHeight * paddingFactor;
+                                  
+                                  // Canvas size includes the transparent padding
+                                  canvas.width = originalWidth + (paddingX * 2);
+                                  canvas.height = originalHeight + (paddingY * 2);
+                                  
+                                  // Make the entire canvas transparent
+                                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                  
+                                  // Draw the original image centered on the canvas
+                                  ctx.drawImage(
+                                    imgElement,
+                                    paddingX, // x offset (padding)
+                                    paddingY, // y offset (padding)
+                                    originalWidth,
+                                    originalHeight
+                                  );
+                                  
+                                  const zoomedOutImage = canvas.toDataURL('image/png');
+                                  setEditedImage(zoomedOutImage);
+                                  localStorage.setItem('pixelme-edited-image', zoomedOutImage);
+                                  
+                                  // Reset zoom level to 100% since we've baked the padding into the image
+                                  setZoomLevel(100);
+                                  localStorage.setItem('pixelme-zoom-level', '100');
+                                  
+                                  setIsFilling(false);
+                                };
+                                imgElement.src = currentImage;
+                                
+                              } catch (error) {
+                                console.error('Zoom out save error:', error);
+                                alert('Failed to save zoomed out image');
+                                setIsFilling(false);
+                              }
+                            }}
+                            disabled={isFilling || !conversionResult || zoomLevel >= 100}
+                            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                              isFilling || !conversionResult || zoomLevel >= 100
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                : 'bg-orange-600 text-white hover:bg-orange-700 shadow-lg hover:shadow-xl'
+                            }`}
+                          >
+                            {isFilling ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Adding Padding...
+                              </div>
+                            ) : zoomLevel >= 100 ? (
+                              'Zoom out to add padding'
+                            ) : (
+                              'Add Transparent Padding'
                             )}
                           </button>
                         </div>

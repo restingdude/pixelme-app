@@ -22,6 +22,143 @@ function UploadContent() {
   const [cachedColorReducedImage, setCachedColorReducedImage] = useState<string | null>(null);
   const [cachedFinalImage, setCachedFinalImage] = useState<string | null>(null);
 
+  // EXIF orientation correction utility
+  const getOrientation = (file: File): Promise<number> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const arrayBuffer = e.target?.result as ArrayBuffer;
+        const dataView = new DataView(arrayBuffer);
+        
+        // Check if it's a JPEG file
+        if (dataView.getUint16(0, false) !== 0xFFD8) {
+          resolve(1); // Default orientation for non-JPEG files
+          return;
+        }
+        
+        let offset = 2;
+        let marker = dataView.getUint16(offset, false);
+        
+        while (offset < dataView.byteLength) {
+          if (marker === 0xFFE1) { // EXIF marker
+            const exifLength = dataView.getUint16(offset + 2, false);
+            const exifData = new DataView(arrayBuffer, offset + 4, exifLength - 2);
+            
+            // Check for EXIF header
+            if (exifData.getUint32(0, false) !== 0x45786966) {
+              resolve(1);
+              return;
+            }
+            
+            // Determine endianness
+            const tiffOffset = 6;
+            const endianMarker = exifData.getUint16(tiffOffset, false);
+            const littleEndian = endianMarker === 0x4949;
+            
+            // Find orientation tag (0x0112)
+            const ifdOffset = tiffOffset + exifData.getUint32(tiffOffset + 4, littleEndian);
+            const tagCount = exifData.getUint16(ifdOffset, littleEndian);
+            
+            for (let i = 0; i < tagCount; i++) {
+              const tagOffset = ifdOffset + 2 + (i * 12);
+              const tag = exifData.getUint16(tagOffset, littleEndian);
+              
+              if (tag === 0x0112) { // Orientation tag
+                const orientation = exifData.getUint16(tagOffset + 8, littleEndian);
+                resolve(orientation);
+                return;
+              }
+            }
+            break;
+          }
+          
+          offset += 2 + dataView.getUint16(offset + 2, false);
+          if (offset >= dataView.byteLength) break;
+          marker = dataView.getUint16(offset, false);
+        }
+        
+        resolve(1); // Default orientation if not found
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const correctImageOrientation = (file: File, orientation: number): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = document.createElement('img');
+      const objectURL = URL.createObjectURL(file);
+      
+      img.onload = () => {
+        URL.revokeObjectURL(objectURL); // Clean up memory
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.readAsDataURL(file);
+          return;
+        }
+        
+        let { width, height } = img;
+        
+        // Set canvas dimensions based on orientation
+        if (orientation >= 5 && orientation <= 8) {
+          canvas.width = height;
+          canvas.height = width;
+        } else {
+          canvas.width = width;
+          canvas.height = height;
+        }
+        
+        // Apply transformations based on orientation
+        switch (orientation) {
+          case 2:
+            // Flip horizontal
+            ctx.transform(-1, 0, 0, 1, width, 0);
+            break;
+          case 3:
+            // Rotate 180°
+            ctx.transform(-1, 0, 0, -1, width, height);
+            break;
+          case 4:
+            // Flip vertical
+            ctx.transform(1, 0, 0, -1, 0, height);
+            break;
+          case 5:
+            // Rotate 90° CCW + flip horizontal
+            ctx.transform(0, 1, 1, 0, 0, 0);
+            break;
+          case 6:
+            // Rotate 90° CW
+            ctx.transform(0, 1, -1, 0, height, 0);
+            break;
+          case 7:
+            // Rotate 90° CW + flip horizontal
+            ctx.transform(0, -1, -1, 0, height, width);
+            break;
+          case 8:
+            // Rotate 90° CCW
+            ctx.transform(0, -1, 1, 0, 0, width);
+            break;
+          default:
+            // No transformation needed
+            break;
+        }
+        
+        // Draw the image
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to data URL
+        const correctedDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        resolve(correctedDataUrl);
+      };
+      
+      img.src = objectURL;
+    });
+  };
+
   // Load cached data on component mount
   useEffect(() => {
     const cachedImage = localStorage.getItem('pixelme-uploaded-image');
@@ -83,19 +220,45 @@ function UploadContent() {
     router.push('/');
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageData = e.target?.result as string;
+      try {
+        // Get EXIF orientation
+        const orientation = await getOrientation(file);
+        
+        // Correct image orientation if needed
+        let imageData: string;
+        if (orientation !== 1) {
+          // Image has orientation data, need to correct it
+          imageData = await correctImageOrientation(file, orientation);
+        } else {
+          // No orientation correction needed, read normally
+          imageData = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(file);
+          });
+        }
+        
         setUploadedImage(imageData);
         localStorage.setItem('pixelme-uploaded-image', imageData);
         // Automatically proceed to style selection
         setStep('style');
         localStorage.setItem('pixelme-current-step', 'style');
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        // Fallback to normal upload without orientation correction
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageData = e.target?.result as string;
+          setUploadedImage(imageData);
+          localStorage.setItem('pixelme-uploaded-image', imageData);
+          setStep('style');
+          localStorage.setItem('pixelme-current-step', 'style');
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -482,6 +645,7 @@ function UploadContent() {
                     type="file" 
                     className="hidden" 
                     accept="image/*"
+                    capture="environment"
                     onChange={handleImageUpload}
                   />
                 </label>

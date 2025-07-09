@@ -276,9 +276,9 @@ export default function Edit() {
           
           setCropArea(newCropArea);
           
-          // Draw crop selection rectangle
+          // Draw crop selection rectangle - always show it, even for small movements
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          if (Math.abs(width) > 5 && Math.abs(height) > 5) {
+          if (Math.abs(width) > 1 && Math.abs(height) > 1) {
             drawCropBox(ctx, newCropArea);
           }
         } else if (isDraggingCrop && cropArea && cropDragStart) {
@@ -343,7 +343,7 @@ export default function Edit() {
           }
           
           // Ensure minimum size
-          if (Math.abs(newCropArea.width) >= 10 && Math.abs(newCropArea.height) >= 10) {
+          if (Math.abs(newCropArea.width) >= 5 && Math.abs(newCropArea.height) >= 5) {
             setCropArea(newCropArea);
             setCropDragStart({ x: currentX, y: currentY });
             
@@ -393,7 +393,7 @@ export default function Edit() {
       initializeCanvas();
       
       // Redraw crop area if it exists
-      if (activeMode === 'crop' && cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+      if (activeMode === 'crop' && cropArea && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
         setTimeout(() => {
           if (canvasRef.current) {
             const ctx = canvasRef.current.getContext('2d');
@@ -408,19 +408,20 @@ export default function Edit() {
 
   // Redraw crop box when switching to crop mode or when crop area changes
   useEffect(() => {
-    if (activeMode === 'crop' && cropArea && canvasRef.current && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+    if (activeMode === 'crop' && cropArea && canvasRef.current && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
       // Small delay to ensure canvas is ready
       setTimeout(() => {
         if (canvasRef.current) {
           const ctx = canvasRef.current.getContext('2d');
           if (ctx) {
+            // Only clear and redraw if we're in crop mode
             ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
             drawCropBox(ctx, cropArea);
           }
         }
       }, 10);
     } else if (activeMode !== 'crop' && canvasRef.current) {
-      // Clear canvas when not in crop mode
+      // Clear canvas when not in crop mode, but preserve crop area state
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
@@ -721,8 +722,10 @@ export default function Edit() {
     canvas.height = canvasHeight;
     setCanvasSize({ width: canvasWidth, height: canvasHeight });
     
-    // Clear canvas with transparent background
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Only clear canvas if not in crop mode or if no crop area exists
+    if (activeMode !== 'crop' || !cropArea || Math.abs(cropArea.width) <= 5 || Math.abs(cropArea.height) <= 5) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -809,7 +812,7 @@ export default function Edit() {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       setMousePosition({ x, y });
-    } else if (activeMode === 'crop' && cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+    } else if (activeMode === 'crop' && cropArea && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
       const rect = e.currentTarget.getBoundingClientRect();
       
       // Calculate coordinates accounting for zoom level
@@ -930,7 +933,7 @@ export default function Edit() {
     }
     
     // Check if touching existing crop area
-    if (cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+    if (cropArea && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
       const handle = getCropHandleAtPoint(x, y, cropArea);
       
       if (handle) {
@@ -1077,7 +1080,7 @@ export default function Edit() {
     }
     
     // Check if clicking on existing crop area
-    if (cropArea && Math.abs(cropArea.width) > 10 && Math.abs(cropArea.height) > 10) {
+    if (cropArea && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
       const handle = getCropHandleAtPoint(x, y, cropArea);
       
       if (handle) {
@@ -1099,10 +1102,12 @@ export default function Edit() {
     setCropStartPos({ x, y });
     setCropArea({ x, y, width: 0, height: 0 });
     
-    // Clear canvas for crop selection
+    // Clear canvas for new crop selection
     const ctx = canvasRef.current.getContext('2d');
     if (ctx) {
       ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      // Immediately draw a small preview crop box to show where the crop started
+      drawCropBox(ctx, { x, y, width: 1, height: 1 });
     }
   };
 
@@ -1203,7 +1208,7 @@ export default function Edit() {
 
   const handleCropImage = async () => {
     const sourceImage = currentImage; // Use current edited image, not original
-    if (!cropArea || !sourceImage || Math.abs(cropArea.width) < 10 || Math.abs(cropArea.height) < 10) {
+    if (!cropArea || !sourceImage || Math.abs(cropArea.width) < 5 || Math.abs(cropArea.height) < 5) {
       alert('Please select a valid crop area');
       return;
     }
@@ -2870,16 +2875,11 @@ export default function Edit() {
                       <button
                         onClick={() => {
                           setActiveMode('background');
-                          // Only clear crop area if switching from crop mode
-                          if (activeMode === 'crop') {
-                            clearMask();
-                          } else {
-                            // Clear canvas but preserve crop area
-                            if (canvasRef.current) {
-                              const ctx = canvasRef.current.getContext('2d');
-                              if (ctx) {
-                                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-                              }
+                          // Clear canvas but preserve crop area state for later use
+                          if (canvasRef.current) {
+                            const ctx = canvasRef.current.getContext('2d');
+                            if (ctx) {
+                              ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
                             }
                           }
                           setShowBrushCursor(false);
@@ -2982,7 +2982,7 @@ export default function Edit() {
                                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                                 drawCropBox(ctx, defaultCropArea);
                               }
-                            } else if (cropArea && canvasRef.current) {
+                            } else if (cropArea && canvasRef.current && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
                               // Redraw existing crop area
                               const ctx = canvasRef.current.getContext('2d');
                               if (ctx) {
@@ -3019,16 +3019,11 @@ export default function Edit() {
                         onClick={() => {
                           setActiveMode('zoom');
                           setShowBrushCursor(false);
-                          // Only clear crop area if switching from crop mode
-                          if (activeMode === 'crop') {
-                            clearMask();
-                          } else {
-                            // Clear canvas but preserve crop area
-                            if (canvasRef.current) {
-                              const ctx = canvasRef.current.getContext('2d');
-                              if (ctx) {
-                                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-                              }
+                          // Clear canvas but preserve crop area state for later use
+                          if (canvasRef.current) {
+                            const ctx = canvasRef.current.getContext('2d');
+                            if (ctx) {
+                              ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
                             }
                           }
                         }}
@@ -3264,9 +3259,9 @@ export default function Edit() {
                           </div>
                           <button 
                             onClick={handleCropImage}
-                            disabled={isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 10 || Math.abs(cropArea.height) < 10}
+                            disabled={isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 5 || Math.abs(cropArea.height) < 5}
                             className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                              isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 10 || Math.abs(cropArea.height) < 10
+                                                              isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 5 || Math.abs(cropArea.height) < 5
                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                                 : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
                             }`}

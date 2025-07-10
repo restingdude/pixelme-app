@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/cart/c/:path*",
+      "destination": "https://aeufcr-ch.myshopify.com/cart/c/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/checkout/:path*", 
+      "destination": "https://aeufcr-ch.myshopify.com/checkout/:path*",
+      "permanent": false
+    }
+  ]
+} 

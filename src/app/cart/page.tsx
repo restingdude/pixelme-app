@@ -201,41 +201,41 @@ export default function CartPage() {
     // Clear any existing errors
     setError(null);
     
-    // SIMPLIFIED LOCALHOST DETECTION - Check immediately
-    const hostname = window.location.hostname;
-    const port = window.location.port;
-    const isLocalDev = hostname === 'localhost' || hostname === '127.0.0.1' || port === '3000';
+    console.log('🚀 OFFICIAL SHOPIFY CHECKOUT - Creating checkout session...');
     
-    console.log('🚀 CHECKOUT ATTEMPT:');
-    console.log('  - Hostname:', hostname);
-    console.log('  - Port:', port);
-    console.log('  - Is Local Dev?', isLocalDev);
-    
-    if (isLocalDev) {
-      // LOCALHOST: Choose between mock and real checkout
-      const useMockCheckout = confirm('Use mock checkout for testing? (Cancel for real checkout)');
-      
-      if (useMockCheckout) {
-        console.log('🧪 Using mock checkout for testing');
-        router.push(`/mock-checkout?cartId=${encodeURIComponent(cart.id)}`);
-      } else {
-        console.log('💳 Using real checkout on localhost');
-        router.push(`/checkout-real?cartId=${encodeURIComponent(cart.id)}`);
-      }
-      return;
-    }
-    
-    // PRODUCTION: Use real checkout
     try {
-      console.log('🌐 PRODUCTION MODE - Using real checkout');
+      const response = await fetch('/api/shopify/checkout-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cartId: cart.id })
+      });
       
-      // Redirect to real checkout page
-      router.push(`/checkout-real?cartId=${encodeURIComponent(cart.id)}`);
+      const data = await response.json();
       
+      if (data.success && data.checkout?.webUrl) {
+        console.log('✅ API Response successful');
+        console.log('📋 Full API response:', JSON.stringify(data, null, 2));
+        console.log('🔗 URL from API:', data.checkout.webUrl);
+        console.log('🎨 Custom items preserved:', data.checkout.customItemsCount);
+        
+        // CRITICAL: Log the exact URL we're about to redirect to
+        console.log('🚀 ABOUT TO REDIRECT TO:', data.checkout.webUrl);
+        console.log('🚀 URL TYPE:', typeof data.checkout.webUrl);
+        console.log('🚀 URL LENGTH:', data.checkout.webUrl.length);
+        
+        // Add a small delay to ensure console.log appears
+        setTimeout(() => {
+          console.log('🚀 EXECUTING REDIRECT NOW TO:', data.checkout.webUrl);
+          window.location.href = data.checkout.webUrl;
+        }, 100);
+      } else {
+        console.error('❌ Failed to create checkout:', data.error);
+        setError(`Failed to create checkout: ${data.error || 'Unknown error'}`);
+      }
     } catch (error) {
-      console.error('Checkout error:', error);
+      console.error('❌ Checkout error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError(`Failed to proceed to checkout: ${errorMessage}`);
+      setError(`Network error: ${errorMessage}`);
     }
   };
 
@@ -744,16 +744,16 @@ export default function CartPage() {
                   Continue Shopping
                 </button>
                 
-                {/* Temporary test button for localhost */}
+                {/* Quick test button for localhost */}
                 <button
                   onClick={() => {
-                    console.log('🧪 Direct mock checkout test - bypassing API');
+                    console.log('🧪 Direct real checkout test');
                     console.log('🧪 Cart ID:', cart.id);
-                    router.push(`/mock-checkout?cartId=${encodeURIComponent(cart.id)}`);
+                    router.push(`/checkout-real?cartId=${encodeURIComponent(cart.id)}`);
                   }}
                   className="w-full px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors text-sm"
                 >
-                  🧪 Test Mock Checkout (Dev Only)
+                  🧪 Quick Checkout Test (Dev Only)
                 </button>
               </div>
             </div>

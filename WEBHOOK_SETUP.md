@@ -1,140 +1,200 @@
-# Shopify Webhook Setup for PixelMe
+# Shopify Webhook Setup for Order Sync
 
-This guide covers setting up webhooks to complete your checkout flow integration as recommended by the Shopify AI.
+This guide explains how to set up Shopify webhooks to automatically sync order data with your PixelMe admin dashboard.
 
-## 🎯 What You've Implemented
+## **What This Provides:**
 
-✅ **Cart System** - Working with Storefront API  
-✅ **Checkout Creation** - Creating Shopify checkout URLs  
-✅ **Order Sync** - API endpoint to sync order data  
-✅ **Success Page** - Customer return flow after checkout  
-✅ **Webhooks** - Endpoint to receive order notifications  
+✅ **Real-time order notifications** in your server logs  
+✅ **Automatic sync** between Shopify and your admin dashboard  
+✅ **PixelMe order tracking** with custom design data  
+✅ **Webhook security** with signature verification  
 
-## 🔧 Webhook Setup in Shopify Admin
+## **1. Environment Variables**
 
-### 1. Access Your Shopify Admin
-Navigate to: `Settings > Notifications`
-
-### 2. Create Order Webhooks
-Scroll down to "Webhooks" section and add these endpoints:
-
-#### Order Created Webhook
-- **Event:** `Order creation`
-- **Format:** `JSON`
-- **URL:** `https://pixelmecustoms.com/api/shopify/webhooks`
-- **API Version:** `2024-07 (recommended)`
-
-#### Order Paid Webhook  
-- **Event:** `Order payment`
-- **Format:** `JSON` 
-- **URL:** `https://pixelmecustoms.com/api/shopify/webhooks`
-- **API Version:** `2024-07 (recommended)`
-
-#### Order Updated Webhook
-- **Event:** `Order updated`
-- **Format:** `JSON`
-- **URL:** `https://pixelmecustoms.com/api/shopify/webhooks`
-- **API Version:** `2024-07 (recommended)`
-
-#### Order Fulfilled Webhook
-- **Event:** `Order fulfillment`
-- **Format:** `JSON`
-- **URL:** `https://pixelmecustoms.com/api/shopify/webhooks`
-- **API Version:** `2024-07 (recommended)`
-
-### 3. Set Webhook Secret (Optional but Recommended)
-1. Generate a webhook secret key
-2. Add it to your environment variables as `SHOPIFY_WEBHOOK_SECRET`
-3. This ensures webhook authenticity
-
-## 🌐 Environment Variables
-
-Add to your `.env.local`:
+Add this to your `.env.local`:
 
 ```bash
-# Existing variables...
-SHOPIFY_STOREFRONT_ACCESS_TOKEN=your_storefront_token
-SHOPIFY_ADMIN_ACCESS_TOKEN=your_admin_token
-
-# New webhook security
-SHOPIFY_WEBHOOK_SECRET=your_webhook_secret_key
+# Webhook Security (optional but recommended)
+SHOPIFY_WEBHOOK_SECRET=your_webhook_secret_here
 ```
 
-## 🔄 Complete Checkout Flow
+## **2. Shopify Admin Setup**
 
-Here's how your complete checkout flow now works:
+### **Step 1: Go to Shopify Admin**
+1. Navigate to **Settings** → **Notifications**
+2. Scroll down to **Webhooks** section
+3. Click **Create webhook**
 
-### 1. Customer Creates Design
-- User customizes product in your app
-- Design gets added to cart via Storefront API
-- Cart stores custom attributes (design URL, style, position)
+### **Step 2: Create Order Webhooks**
 
-### 2. Checkout Process
-- Customer clicks "Checkout" 
-- Your API creates Shopify checkout session
-- Customer redirects to Shopify's hosted checkout
-- Customer completes payment on `pixelmecustoms.com` domain
+Create **4 separate webhooks** for different order events:
 
-### 3. Order Completion
-- Shopify processes payment
-- Webhook notifications sent to your API
-- Order data synced with custom design details
-- Customer redirected to success page
+#### **Webhook 1: Order Created**
+- **Event**: `Order creation`
+- **Format**: `JSON`
+- **URL**: `https://yourdomain.com/api/shopify/webhooks/orders`
+- **Webhook API version**: `2023-10` (latest)
 
-### 4. Order Tracking
-- Webhooks update order status in real-time
-- Custom design data preserved through entire flow
-- Production team gets notified with design URLs
+#### **Webhook 2: Order Paid**
+- **Event**: `Order payment`
+- **Format**: `JSON`
+- **URL**: `https://yourdomain.com/api/shopify/webhooks/orders`
+- **Webhook API version**: `2023-10`
 
-## 📋 Testing Your Implementation
+#### **Webhook 3: Order Fulfilled**
+- **Event**: `Order fulfillment`
+- **Format**: `JSON`
+- **URL**: `https://yourdomain.com/api/shopify/webhooks/orders`
+- **Webhook API version**: `2023-10`
 
-### Test Webhook Endpoint
-Run in PowerShell:
-```powershell
-curl -X GET https://pixelmecustoms.com/api/shopify/webhooks
+#### **Webhook 4: Order Cancelled**
+- **Event**: `Order cancellation`
+- **Format**: `JSON`
+- **URL**: `https://yourdomain.com/api/shopify/webhooks/orders`
+- **Webhook API version**: `2023-10`
+
+### **Step 3: Add Webhook Security (Recommended)**
+
+For each webhook:
+1. Click **Show webhook signing secret**
+2. Copy the secret key
+3. Add it to your `.env.local` as `SHOPIFY_WEBHOOK_SECRET`
+
+**Note**: All webhooks will share the same secret if created in the same store.
+
+## **3. Testing Webhooks**
+
+### **Test with Ngrok (Development)**
+
+If testing locally:
+
+```bash
+# Install ngrok
+npm install -g ngrok
+
+# Expose your local server
+ngrok http 3000
+
+# Use the ngrok URL in webhook setup
+# Example: https://abc123.ngrok.io/api/shopify/webhooks/orders
 ```
-Should return: `{"message":"PixelMe Shopify Webhooks endpoint"}`
 
-### Test Order Sync
-```powershell
-curl -X POST https://pixelmecustoms.com/api/shopify/sync-order `
-  -H "Content-Type: application/json" `
-  -d '{"orderNumber":"1001"}'
+### **Create Test Order**
+
+1. Go to your **PixelMe app**
+2. Create a custom design and add to cart
+3. Complete checkout process
+4. Check your **server logs** for webhook events
+
+You should see logs like:
+```
+📦 Order Webhook Received: {
+  topic: 'orders/create',
+  orderId: 5234567890,
+  orderNumber: 1001,
+  email: 'customer@example.com',
+  totalPrice: '108.00'
+}
+
+🎨 Custom PixelMe Items Found:
+  Item 1: Hoodie - M / Beige
+  Custom Properties: {
+    custom_design_url: 'https://replicate.delivery/...',
+    style: 'Studio Ghibli',
+    position: 'middle-chest',
+    clothing_type: 'hoodie'
+  }
 ```
 
-### Test Success Page
-Visit: `https://pixelmecustoms.com/success?order_id=1001&order_number=1001`
+## **4. Admin Dashboard Integration**
 
-## 🚀 What's Working Now
+### **View Orders**
 
-1. **Complete Storefront API Integration** ✅
-2. **Shopify Hosted Checkout** ✅ 
-3. **Custom Design Attributes** ✅
-4. **Order Webhook Notifications** ✅
-5. **Success Page with Order Details** ✅
-6. **Real-time Order Sync** ✅
+Your admin now has order management:
 
-## 💡 Next Steps (Optional Enhancements)
+1. **Admin Dashboard** → **View Orders** button
+2. **Filter by type**: All Orders, PixelMe Orders, Regular Orders
+3. **Filter by status**: Any, Open, Closed, Cancelled
+4. **PixelMe Order Summary**: Revenue, custom designs count
 
-- **Database Storage**: Store order data in your database
-- **Email Notifications**: Send custom confirmation emails
-- **Production Workflow**: Automate design file generation
-- **Customer Portal**: Order history and tracking
-- **Inventory Sync**: Real-time stock updates
+### **Order Data Available**
 
-## 🔍 Monitoring & Debugging
+- ✅ **Customer information** (name, email, address)
+- ✅ **Payment status** (paid, pending, refunded)
+- ✅ **Fulfillment status** (fulfilled, unfulfilled)
+- ✅ **Custom design URLs** and attributes
+- ✅ **Order totals** and item counts
 
-Check your webhook logs in:
-- Shopify Admin > Settings > Notifications > Webhooks
-- Your application logs for webhook processing
-- Network tab to verify webhook delivery
+## **5. Webhook Event Details**
 
-## 🎨 Custom Design Flow
+### **Order Created (`orders/create`)**
+- Triggered when draft order becomes real order
+- Contains all customer and item data
+- **Perfect for** triggering production workflows
 
-Your implementation perfectly handles:
-- Design URLs preserved through checkout
-- Style and position metadata
-- Production-ready custom attributes
-- Seamless customer experience
+### **Order Paid (`orders/paid`)**
+- Triggered when payment is completed
+- **Perfect for** confirming payment and starting fulfillment
 
-You now have a complete, production-ready checkout system that follows Shopify's best practices! 
+### **Order Fulfilled (`orders/fulfilled`)**
+- Triggered when order is marked as fulfilled
+- Contains tracking information
+- **Perfect for** sending shipping notifications
+
+### **Order Cancelled (`orders/cancelled`)**
+- Triggered when order is cancelled
+- **Perfect for** handling refunds and inventory
+
+## **6. Custom Integration Options**
+
+You can extend the webhook handler in `/api/shopify/webhooks/orders/route.ts`:
+
+```javascript
+async function handleOrderCreated(order) {
+  // Your custom logic here:
+  
+  // 1. Send to production system
+  // await sendToProductionAPI(order);
+  
+  // 2. Save to database
+  // await saveOrderToDatabase(order);
+  
+  // 3. Send custom emails
+  // await sendCustomConfirmationEmail(order);
+  
+  // 4. Update inventory systems
+  // await updateInventorySystem(order);
+}
+```
+
+## **7. Security Best Practices**
+
+✅ **Use HTTPS** for webhook URLs  
+✅ **Verify webhook signatures** (automatic with `SHOPIFY_WEBHOOK_SECRET`)  
+✅ **Rate limiting** (consider implementing)  
+✅ **Error handling** (already implemented)  
+
+## **8. Troubleshooting**
+
+### **Webhooks Not Firing?**
+- Check webhook URL is accessible
+- Verify HTTPS is working
+- Check Shopify webhook delivery status in admin
+
+### **Signature Verification Failing?**
+- Ensure `SHOPIFY_WEBHOOK_SECRET` matches Shopify admin
+- Check URL encoding in webhook setup
+
+### **Missing Order Data?**
+- Confirm webhook API version is `2023-10`
+- Check webhook format is `JSON`
+
+## **Benefits of This Setup**
+
+🎯 **Complete Order Visibility**: See all orders in both Shopify admin AND your custom dashboard  
+🎨 **PixelMe Data Preserved**: Custom designs, styles, and positions tracked throughout  
+📊 **Business Insights**: Revenue tracking specifically for custom orders  
+🔄 **Real-time Sync**: Instant updates when orders change status  
+💼 **Professional Workflow**: Automated notifications and processing  
+
+**Your headless checkout now has full enterprise-level order management!** 🚀 

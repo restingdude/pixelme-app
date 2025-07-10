@@ -11,14 +11,16 @@ export async function POST(request: NextRequest) {
       return await createCheckoutFromCart(body.cartId);
     }
     
-    // Original single-item checkout functionality
+    // Modern single-item checkout functionality using Cart API
     const { 
       variantId, 
       quantity = 1, 
       customImageUrl,
       clothing,
       style,
-      size 
+      size,
+      color,
+      position 
     } = body;
 
     if (!variantId) {
@@ -28,43 +30,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const mutation = `
-      mutation checkoutCreate($input: CheckoutCreateInput!) {
-        checkoutCreate(input: $input) {
-          checkout {
+    console.log('🛒 Buy Now - Creating cart for single item checkout');
+    console.log('📋 Item details:', { variantId, quantity, clothing, style, size, color, position });
+
+    // Step 1: Create a cart with the single item using Cart API
+    const cartCreateMutation = `
+      mutation cartCreate($input: CartInput!) {
+        cartCreate(input: $input) {
+          cart {
             id
-            webUrl
-            subtotalPrice {
-              amount
-              currencyCode
+            checkoutUrl
+            totalQuantity
+            cost {
+              totalAmount {
+                amount
+                currencyCode
+              }
+              subtotalAmount {
+                amount
+                currencyCode
+              }
             }
-            totalPrice {
-              amount
-              currencyCode
-            }
-            lineItems(first: 5) {
+            lines(first: 10) {
               edges {
                 node {
                   id
-                  title
                   quantity
-                  variant {
-                    id
-                    title
-                    price {
-                      amount
-                      currencyCode
-                    }
-                  }
-                  customAttributes {
+                  attributes {
                     key
                     value
+                  }
+                  merchandise {
+                    ... on ProductVariant {
+                      id
+                      title
+                      price {
+                        amount
+                        currencyCode
+                      }
+                      product {
+                        title
+                        handle
+                      }
+                    }
                   }
                 }
               }
             }
           }
-          checkoutUserErrors {
+          userErrors {
             field
             message
           }
@@ -72,33 +86,79 @@ export async function POST(request: NextRequest) {
       }
     `;
 
+    // Prepare line item with all custom attributes
     const lineItems = [{
-      variantId: `gid://shopify/ProductVariant/${variantId}`,
+      merchandiseId: variantId.startsWith('gid://') ? variantId : `gid://shopify/ProductVariant/${variantId}`,
       quantity,
-      customAttributes: [
+      attributes: [
         ...(customImageUrl ? [{ key: 'custom_design_url', value: customImageUrl }] : []),
         ...(clothing ? [{ key: 'clothing_type', value: clothing }] : []),
         ...(style ? [{ key: 'style', value: style }] : []),
         ...(size ? [{ key: 'size', value: size }] : []),
-        { key: 'created_via', value: 'PixelMe App' }
+        ...(color ? [{ key: 'color', value: color }] : []),
+        ...(position ? [{ key: 'position', value: position }] : []),
+        { key: 'created_via', value: 'PixelMe Buy Now' }
       ]
     }];
 
-    const response = await shopifyStorefront.request(mutation, {
-      variables: { input: { lineItems } }
+    const cartResponse = await shopifyStorefront.request(cartCreateMutation, {
+      variables: { 
+        input: { 
+          lines: lineItems
+        } 
+      }
     });
 
-    if (response.data.checkoutCreate.checkoutUserErrors.length > 0) {
+    console.log('🔍 Cart creation response:', JSON.stringify(cartResponse, null, 2));
+
+    // Check for cart creation errors
+    if (!cartResponse.data || !cartResponse.data.cartCreate) {
+      console.error('❌ Invalid cart creation response:', cartResponse);
       return NextResponse.json(
-        { error: 'Checkout creation errors', details: response.data.checkoutCreate.checkoutUserErrors },
+        { error: 'Failed to create cart', details: cartResponse },
+        { status: 500 }
+      );
+    }
+
+    if (cartResponse.data.cartCreate.userErrors.length > 0) {
+      console.error('❌ Cart creation errors:', cartResponse.data.cartCreate.userErrors);
+      return NextResponse.json(
+        { error: 'Cart creation errors', details: cartResponse.data.cartCreate.userErrors },
         { status: 400 }
       );
     }
 
+    const cart = cartResponse.data.cartCreate.cart;
+    console.log('✅ Cart created successfully:', cart.id);
+    console.log('🎨 Custom attributes:', cart.lines.edges[0]?.node.attributes);
+
+    // Step 2: Convert checkout URL from custom domain to Shopify domain
+    let shopifyCheckoutUrl = cart.checkoutUrl;
+    const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
+    
+    if (shopifyCheckoutUrl.includes('pixelmecustoms.com')) {
+      shopifyCheckoutUrl = shopifyCheckoutUrl.replace('pixelmecustoms.com', storeDomain);
+      console.log('🔄 Buy Now - Converted checkout URL:', shopifyCheckoutUrl);
+    } else if (shopifyCheckoutUrl.includes('www.pixelmecustoms.com')) {
+      shopifyCheckoutUrl = shopifyCheckoutUrl.replace('www.pixelmecustoms.com', storeDomain);
+      console.log('🔄 Buy Now - Converted checkout URL (www):', shopifyCheckoutUrl);
+    } else {
+      console.log('✅ Buy Now - Using original checkout URL:', shopifyCheckoutUrl);
+    }
+
     return NextResponse.json({
       success: true,
-      checkout: response.data.checkoutCreate.checkout,
-      message: 'Checkout created successfully'
+      checkout: {
+        id: cart.id,
+        webUrl: shopifyCheckoutUrl,
+        totalPrice: cart.cost.totalAmount,
+        subtotalPrice: cart.cost.subtotalAmount,
+        totalQuantity: cart.totalQuantity,
+        customItemsCount: cart.lines.edges.filter((edge: any) => 
+          edge.node.attributes.some((attr: any) => attr.key === 'custom_design_url')
+        ).length
+      },
+      message: 'Buy Now checkout created successfully'
     });
 
   } catch (error) {
@@ -262,9 +322,9 @@ async function createCheckoutFromCart(cartId: string) {
       if (checkoutWebUrl.includes('/cart/c/')) {
         console.log('🔄 Converting cart URL to proper checkout format...');
         
-        // Get the domain
-        const urlObj = new URL(checkoutWebUrl);
-        const domain = urlObj.origin;
+                 // Use Shopify domain instead of custom domain
+         const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
+         const domain = `https://${storeDomain}`;
         
                  // According to Shopify docs, we should redirect to their hosted checkout
          // Try the direct cart URL first, then fallback to cart page (since /checkout gives 404)
@@ -318,8 +378,20 @@ async function createCheckoutFromCart(cartId: string) {
          }
       }
 
-      // If it's already a proper checkout URL, use it directly
-      console.log('✅ Using Shopify checkout URL directly:', checkoutWebUrl);
+      // Convert the checkout URL from custom domain to Shopify domain
+      // Extract the store domain from environment
+      const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
+      
+      // Replace the custom domain with Shopify domain
+      if (checkoutWebUrl.includes('pixelmecustoms.com')) {
+        checkoutWebUrl = checkoutWebUrl.replace('pixelmecustoms.com', storeDomain);
+        console.log('🔄 Cart checkout - Converted checkout URL:', checkoutWebUrl);
+      } else if (checkoutWebUrl.includes('www.pixelmecustoms.com')) {
+        checkoutWebUrl = checkoutWebUrl.replace('www.pixelmecustoms.com', storeDomain);
+        console.log('🔄 Cart checkout - Converted checkout URL (www):', checkoutWebUrl);
+      } else {
+        console.log('✅ Cart checkout - Using original checkout URL:', checkoutWebUrl);
+      }
 
       return NextResponse.json({
         success: true,
@@ -336,8 +408,11 @@ async function createCheckoutFromCart(cartId: string) {
     } catch (error) {
       console.error('❌ Storefront API checkout error:', error);
       
-      // Fallback to cart page (since /checkout gives 404)
-      const fallbackUrl = `https://pixelmecustoms.com/cart`;
+      // Fallback to Shopify cart page
+      const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
+      const fallbackUrl = `https://${storeDomain}/cart`;
+      
+      console.log('🔄 Using Shopify cart fallback:', fallbackUrl);
       
       return NextResponse.json({
         success: true,

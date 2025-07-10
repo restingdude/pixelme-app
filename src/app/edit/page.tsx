@@ -2512,8 +2512,22 @@ export default function Edit() {
                         
                         const checkoutData = await checkoutResponse.json();
                         
-                        // Redirect to Shopify checkout
-                        window.location.href = checkoutData.checkout.webUrl;
+                        console.log('✅ Buy Now - API Response received');
+                        console.log('📋 Buy Now - Full response:', JSON.stringify(checkoutData, null, 2));
+                        console.log('🔗 Buy Now - URL from API:', checkoutData.checkout?.webUrl);
+                        console.log('🚀 Buy Now - ABOUT TO REDIRECT TO:', checkoutData.checkout?.webUrl);
+                        console.log('🚀 Buy Now - URL TYPE:', typeof checkoutData.checkout?.webUrl);
+                        
+                        if (checkoutData.success && checkoutData.checkout?.webUrl) {
+                          // Add delay to ensure logs appear
+                          setTimeout(() => {
+                            console.log('🚀 Buy Now - EXECUTING REDIRECT NOW TO:', checkoutData.checkout.webUrl);
+                            window.location.href = checkoutData.checkout.webUrl;
+                          }, 100);
+                        } else {
+                          console.error('❌ Buy Now - Invalid response:', checkoutData);
+                          alert('Failed to create checkout. Please try again.');
+                        }
                         
                       } catch (error) {
                         console.error('Checkout error:', error);

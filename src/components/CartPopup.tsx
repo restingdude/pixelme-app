@@ -192,7 +192,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
     }
   };
 
-  const proceedToCheckout = async () => {
+  const handleCheckout = async () => {
     if (!cart) {
       setError('Cart not available');
       return;
@@ -211,45 +211,44 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
     // Clear any existing errors
     setError(null);
     
-    // LOCALHOST DETECTION - Same as main cart page
-    const hostname = window.location.hostname;
-    const port = window.location.port;
-    const isLocalDev = hostname === 'localhost' || hostname === '127.0.0.1' || port === '3000';
+    console.log('🚀 OFFICIAL SHOPIFY CHECKOUT - Creating checkout session...');
     
-    console.log('🚀 POPUP CHECKOUT ATTEMPT:');
-    console.log('  - Hostname:', hostname);
-    console.log('  - Port:', port);
-    console.log('  - Is Local Dev?', isLocalDev);
-    
-    if (isLocalDev) {
-      // LOCALHOST: Choose between mock and real checkout
-      const useMockCheckout = confirm('Use mock checkout for testing? (Cancel for real checkout)');
-      
-      onClose();
-      if (useMockCheckout) {
-        console.log('🧪 Using mock checkout from popup');
-        router.push(`/mock-checkout?cartId=${encodeURIComponent(cart.id)}`);
-      } else {
-        console.log('💳 Using real checkout from popup');
-        window.location.href = `/checkout-real?cartId=${encodeURIComponent(cart.id)}`;
-      }
-      return;
-    }
-    
-    // PRODUCTION: Use real checkout
     try {
-      console.log('🌐 PRODUCTION MODE - Using real checkout from popup');
+      const response = await fetch('/api/shopify/checkout-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cartId: cart.id })
+      });
       
-      // Close popup first
-      onClose();
+      const data = await response.json();
       
-      // Redirect to real checkout page
-      window.location.href = `/checkout-real?cartId=${encodeURIComponent(cart.id)}`;
-      
+      if (data.success && data.checkout?.webUrl) {
+        console.log('✅ API Response successful');
+        console.log('📋 Full API response:', JSON.stringify(data, null, 2));
+        console.log('🔗 URL from API:', data.checkout.webUrl);
+        console.log('🎨 Custom items preserved:', data.checkout.customItemsCount);
+        
+        // CRITICAL: Log the exact URL we're about to redirect to
+        console.log('🚀 ABOUT TO REDIRECT TO:', data.checkout.webUrl);
+        console.log('🚀 URL TYPE:', typeof data.checkout.webUrl);
+        console.log('🚀 URL LENGTH:', data.checkout.webUrl.length);
+        
+        // Close popup and redirect to official Shopify checkout
+        onClose();
+        
+        // Add a small delay to ensure console.log appears
+        setTimeout(() => {
+          console.log('🚀 EXECUTING REDIRECT NOW TO:', data.checkout.webUrl);
+          window.location.href = data.checkout.webUrl;
+        }, 100);
+      } else {
+        console.error('❌ Failed to create checkout:', data.error);
+        setError(`Failed to create checkout: ${data.error || 'Unknown error'}`);
+      }
     } catch (error) {
-      console.error('Checkout error from popup:', error);
+      console.error('❌ Checkout error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError(`Failed to proceed to checkout: ${errorMessage}`);
+      setError(`Network error: ${errorMessage}`);
     }
   };
 
@@ -523,7 +522,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                 
                 return (
                   <button
-                    onClick={proceedToCheckout}
+                    onClick={handleCheckout}
                     disabled={!canCheckout}
                     className={`w-full px-4 py-3 rounded-lg font-semibold transition-colors ${
                       canCheckout

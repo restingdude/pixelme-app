@@ -55,6 +55,8 @@ export default function Home() {
   const [cachedStyle, setCachedStyle] = useState<string | null>(null);
   const [cachedConversionResult, setCachedConversionResult] = useState<string | null>(null);
   const [cachedEditedImage, setCachedEditedImage] = useState<string | null>(null);
+  const [cachedColorReducedImage, setCachedColorReducedImage] = useState<string | null>(null);
+  const [cachedFinalImage, setCachedFinalImage] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
@@ -74,6 +76,8 @@ export default function Home() {
     const style = localStorage.getItem('pixelme-selected-style');
     const conversionResult = localStorage.getItem('pixelme-conversion-result');
     const editedImage = localStorage.getItem('pixelme-edited-image');
+    const colorReducedImage = localStorage.getItem('pixelme-color-reduced-image');
+    const finalImage = localStorage.getItem('pixelme-final-image');
     
     setCachedClothing(clothing);
     setCachedColor(color);
@@ -83,6 +87,8 @@ export default function Home() {
     setCachedStyle(style);
     setCachedConversionResult(conversionResult);
     setCachedEditedImage(editedImage);
+    setCachedColorReducedImage(colorReducedImage);
+    setCachedFinalImage(finalImage);
 
     // Set selected product and color if we have cached data
     if (clothing) {
@@ -249,6 +255,8 @@ export default function Home() {
     setCachedStyle(null);
     setCachedConversionResult(null);
     setCachedEditedImage(null);
+    setCachedColorReducedImage(null);
+    setCachedFinalImage(null);
     setSelectedProduct(null);
     setSelectedColor(null);
   };
@@ -500,13 +508,69 @@ export default function Home() {
 
           {/* Step 6 - Color Reduction */}
           <div className="flex items-center gap-2">
+            {cachedColorReducedImage ? (
+              <button
+                onClick={() => {
+                  localStorage.setItem('pixelme-current-step', 'color-reduce');
+                  router.push('/edit');
+                }}
+                className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                title="Go to color reduction step"
+              >
+                <img
+                  src={cachedColorReducedImage}
+                  alt="Color reduced preview"
+                  className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                />
+              </button>
+            ) : cachedEditedImage ? (
+              <button
+                onClick={() => {
+                  localStorage.setItem('pixelme-current-step', 'color-reduce');
+                  router.push('/edit');
+                }}
+                className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
+                title="Go to color reduction step"
+              >
+                6
+              </button>
+            ) : (
               <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">6</span>
+            )}
           </div>
           
           {/* Step 7 - Preview */}
           <div className="flex items-center gap-2">
+            {cachedFinalImage ? (
+              <button
+                onClick={() => {
+                  localStorage.setItem('pixelme-current-step', 'preview');
+                  router.push('/edit');
+                }}
+                className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                title="Go to preview step"
+              >
+                <img
+                  src={cachedFinalImage}
+                  alt="Final preview"
+                  className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                />
+              </button>
+            ) : cachedColorReducedImage ? (
+              <button
+                onClick={() => {
+                  localStorage.setItem('pixelme-current-step', 'preview');
+                  router.push('/edit');
+                }}
+                className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer"
+                title="Go to preview step"
+              >
+                7
+              </button>
+            ) : (
               <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">7</span>
-            </div>
+            )}
+          </div>
           </div>
           
           {/* Cart and Clear Buttons */}

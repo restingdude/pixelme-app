@@ -192,9 +192,9 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
     }
   };
 
-  const proceedToCheckout = () => {
-    if (!cart?.checkoutUrl) {
-      setError('Checkout URL not available');
+  const proceedToCheckout = async () => {
+    if (!cart) {
+      setError('Cart not available');
       return;
     }
 
@@ -211,9 +211,46 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
     // Clear any existing errors
     setError(null);
     
-    // Close popup and redirect to Shopify checkout
-    onClose();
-    window.location.href = cart.checkoutUrl;
+    // LOCALHOST DETECTION - Same as main cart page
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+    const isLocalDev = hostname === 'localhost' || hostname === '127.0.0.1' || port === '3000';
+    
+    console.log('🚀 POPUP CHECKOUT ATTEMPT:');
+    console.log('  - Hostname:', hostname);
+    console.log('  - Port:', port);
+    console.log('  - Is Local Dev?', isLocalDev);
+    
+    if (isLocalDev) {
+      // LOCALHOST: Choose between mock and real checkout
+      const useMockCheckout = confirm('Use mock checkout for testing? (Cancel for real checkout)');
+      
+      onClose();
+      if (useMockCheckout) {
+        console.log('🧪 Using mock checkout from popup');
+        router.push(`/mock-checkout?cartId=${encodeURIComponent(cart.id)}`);
+      } else {
+        console.log('💳 Using real checkout from popup');
+        window.location.href = `/checkout-real?cartId=${encodeURIComponent(cart.id)}`;
+      }
+      return;
+    }
+    
+    // PRODUCTION: Use real checkout
+    try {
+      console.log('🌐 PRODUCTION MODE - Using real checkout from popup');
+      
+      // Close popup first
+      onClose();
+      
+      // Redirect to real checkout page
+      window.location.href = `/checkout-real?cartId=${encodeURIComponent(cart.id)}`;
+      
+    } catch (error) {
+      console.error('Checkout error from popup:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(`Failed to proceed to checkout: ${errorMessage}`);
+    }
   };
 
   const continueShopping = () => {
@@ -482,7 +519,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                 const hasItemsWithQuantity = cart.lines.edges.some(({ node }) => 
                   node.quantity > 0 || (node.quantity === 0 && cart.lines.edges.length > 0)
                 );
-                const canCheckout = cart.checkoutUrl && hasItemsWithQuantity;
+                const canCheckout = hasItemsWithQuantity; // Removed cart.checkoutUrl dependency
                 
                 return (
                   <button

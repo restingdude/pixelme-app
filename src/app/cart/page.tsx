@@ -182,9 +182,9 @@ export default function CartPage() {
     }
   };
 
-  const proceedToCheckout = () => {
-    if (!cart?.checkoutUrl) {
-      setError('Checkout URL not available');
+  const proceedToCheckout = async () => {
+    if (!cart) {
+      setError('Cart not available');
       return;
     }
 
@@ -201,8 +201,42 @@ export default function CartPage() {
     // Clear any existing errors
     setError(null);
     
-    // Redirect to Shopify checkout
-    window.location.href = cart.checkoutUrl;
+    // SIMPLIFIED LOCALHOST DETECTION - Check immediately
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+    const isLocalDev = hostname === 'localhost' || hostname === '127.0.0.1' || port === '3000';
+    
+    console.log('🚀 CHECKOUT ATTEMPT:');
+    console.log('  - Hostname:', hostname);
+    console.log('  - Port:', port);
+    console.log('  - Is Local Dev?', isLocalDev);
+    
+    if (isLocalDev) {
+      // LOCALHOST: Choose between mock and real checkout
+      const useMockCheckout = confirm('Use mock checkout for testing? (Cancel for real checkout)');
+      
+      if (useMockCheckout) {
+        console.log('🧪 Using mock checkout for testing');
+        router.push(`/mock-checkout?cartId=${encodeURIComponent(cart.id)}`);
+      } else {
+        console.log('💳 Using real checkout on localhost');
+        router.push(`/checkout-real?cartId=${encodeURIComponent(cart.id)}`);
+      }
+      return;
+    }
+    
+    // PRODUCTION: Use real checkout
+    try {
+      console.log('🌐 PRODUCTION MODE - Using real checkout');
+      
+      // Redirect to real checkout page
+      router.push(`/checkout-real?cartId=${encodeURIComponent(cart.id)}`);
+      
+    } catch (error) {
+      console.error('Checkout error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(`Failed to proceed to checkout: ${errorMessage}`);
+    }
   };
 
   const fixCartQuantities = async () => {
@@ -687,7 +721,7 @@ export default function CartPage() {
                   const hasItemsWithQuantity = cart.lines.edges.some(({ node }) => 
                     node.quantity > 0 || (node.quantity === 0 && cart.lines.edges.length > 0)
                   );
-                  const canCheckout = cart.checkoutUrl && hasItemsWithQuantity;
+                  const canCheckout = hasItemsWithQuantity; // Removed cart.checkoutUrl dependency
                   
                   return (
                     <button
@@ -708,6 +742,18 @@ export default function CartPage() {
                   className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
                 >
                   Continue Shopping
+                </button>
+                
+                {/* Temporary test button for localhost */}
+                <button
+                  onClick={() => {
+                    console.log('🧪 Direct mock checkout test - bypassing API');
+                    console.log('🧪 Cart ID:', cart.id);
+                    router.push(`/mock-checkout?cartId=${encodeURIComponent(cart.id)}`);
+                  }}
+                  className="w-full px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors text-sm"
+                >
+                  🧪 Test Mock Checkout (Dev Only)
                 </button>
               </div>
             </div>

@@ -132,19 +132,9 @@ export async function POST(request: NextRequest) {
     console.log('✅ Cart created successfully:', cart.id);
     console.log('🎨 Custom attributes:', cart.lines.edges[0]?.node.attributes);
 
-    // Step 2: Convert checkout URL from custom domain to Shopify domain
+    // Step 2: Use original checkout URL - let dynamic route handle redirect
     let shopifyCheckoutUrl = cart.checkoutUrl;
-    const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
-    
-    if (shopifyCheckoutUrl.includes('pixelmecustoms.com')) {
-      shopifyCheckoutUrl = shopifyCheckoutUrl.replace('pixelmecustoms.com', storeDomain);
-      console.log('🔄 Buy Now - Converted checkout URL:', shopifyCheckoutUrl);
-    } else if (shopifyCheckoutUrl.includes('www.pixelmecustoms.com')) {
-      shopifyCheckoutUrl = shopifyCheckoutUrl.replace('www.pixelmecustoms.com', storeDomain);
-      console.log('🔄 Buy Now - Converted checkout URL (www):', shopifyCheckoutUrl);
-    } else {
-      console.log('✅ Buy Now - Using original checkout URL:', shopifyCheckoutUrl);
-    }
+    console.log('✅ Buy Now - Using original checkout URL (will be handled by dynamic route):', shopifyCheckoutUrl);
 
     return NextResponse.json({
       success: true,
@@ -322,7 +312,7 @@ async function createCheckoutFromCart(cartId: string) {
       if (checkoutWebUrl.includes('/cart/c/')) {
         console.log('🔄 Converting cart URL to proper checkout format...');
         
-                 // Use Shopify domain instead of custom domain
+                 // Use Shopify domain for cart/add URLs since these need to go directly to Shopify
          const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
          const domain = `https://${storeDomain}`;
         
@@ -378,20 +368,8 @@ async function createCheckoutFromCart(cartId: string) {
          }
       }
 
-      // Convert the checkout URL from custom domain to Shopify domain
-      // Extract the store domain from environment
-      const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
-      
-      // Replace the custom domain with Shopify domain
-      if (checkoutWebUrl.includes('pixelmecustoms.com')) {
-        checkoutWebUrl = checkoutWebUrl.replace('pixelmecustoms.com', storeDomain);
-        console.log('🔄 Cart checkout - Converted checkout URL:', checkoutWebUrl);
-      } else if (checkoutWebUrl.includes('www.pixelmecustoms.com')) {
-        checkoutWebUrl = checkoutWebUrl.replace('www.pixelmecustoms.com', storeDomain);
-        console.log('🔄 Cart checkout - Converted checkout URL (www):', checkoutWebUrl);
-      } else {
-        console.log('✅ Cart checkout - Using original checkout URL:', checkoutWebUrl);
-      }
+      // Use original checkout URL - let dynamic route handle the redirect
+      console.log('✅ Cart checkout - Using original checkout URL (will be handled by dynamic route):', checkoutWebUrl);
 
       return NextResponse.json({
         success: true,
@@ -408,11 +386,10 @@ async function createCheckoutFromCart(cartId: string) {
     } catch (error) {
       console.error('❌ Storefront API checkout error:', error);
       
-      // Fallback to Shopify cart page
-      const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
-      const fallbackUrl = `https://${storeDomain}/cart`;
+      // Fallback to custom domain cart page (will be handled by dynamic route if needed)
+      const fallbackUrl = `https://pixelmecustoms.com/cart`;
       
-      console.log('🔄 Using Shopify cart fallback:', fallbackUrl);
+      console.log('🔄 Using cart fallback (will be handled by dynamic route):', fallbackUrl);
       
       return NextResponse.json({
         success: true,

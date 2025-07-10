@@ -102,21 +102,9 @@ export async function POST(request: NextRequest) {
       originalCheckoutUrl: cart.checkoutUrl
     });
 
-    // Convert the checkout URL from custom domain to Shopify domain
-    // From: https://pixelmecustoms.com/cart/c/CART_ID?key=KEY
-    // To:   https://aeufcr-ch.myshopify.com/cart/c/CART_ID?key=KEY
+    // Use the original checkout URL - let our dynamic route handle the redirect
     let shopifyCheckoutUrl = cart.checkoutUrl;
-    
-    // Extract the store domain from environment
-    const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
-    
-    // Replace the custom domain with Shopify domain
-    if (shopifyCheckoutUrl.includes('pixelmecustoms.com')) {
-      shopifyCheckoutUrl = shopifyCheckoutUrl.replace('pixelmecustoms.com', storeDomain);
-      console.log('🔄 Converted checkout URL:', shopifyCheckoutUrl);
-    } else {
-      console.log('✅ Using original checkout URL:', shopifyCheckoutUrl);
-    }
+    console.log('✅ Using original checkout URL (will be handled by dynamic route):', shopifyCheckoutUrl);
 
     // Count custom items for reporting
     const customItems = cart.lines.edges.filter((edge: any) => 

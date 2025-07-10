@@ -1,35 +1,28 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 export default function CartRedirectPage() {
   const params = useParams();
+  const router = useRouter();
   
   useEffect(() => {
-    // Get the cart path segments
+    // Instead of client-side redirect, use an API route to handle this
     const slug = params.slug as string[];
     const cartPath = slug ? slug.join('/') : '';
-    
-    // Extract cart ID and key from the path
-    const fullPath = `/cart/c/${cartPath}`;
-    console.log('🔄 Cart redirect - Original path:', fullPath);
     
     // Get current URL search params (for the key parameter)
     const currentUrl = new URL(window.location.href);
     const searchParams = currentUrl.searchParams.toString();
     
-    // Build the Shopify domain URL
-    const shopifyDomain = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || 'aeufcr-ch.myshopify.com';
-    const shopifyUrl = `https://${shopifyDomain}${fullPath}${searchParams ? `?${searchParams}` : ''}`;
+    console.log('🔄 Cart redirect - Using API route to avoid loops');
+    console.log('📋 Cart path:', cartPath);
+    console.log('📋 Search params:', searchParams);
     
-    console.log('🚀 Cart redirect - Redirecting to:', shopifyUrl);
-    console.log('🎯 Cart redirect - This should work without infinite loops!');
-    
-    // Small delay to ensure logs appear, then redirect
-    setTimeout(() => {
-      window.location.href = shopifyUrl;
-    }, 100);
+    // Redirect to our API route that will handle the server-side redirect
+    const apiUrl = `/api/shopify/redirect-cart?path=${encodeURIComponent(cartPath)}&${searchParams}`;
+    window.location.href = apiUrl;
     
   }, [params]);
 

@@ -15,21 +15,24 @@ export async function POST(request: NextRequest) {
 
     console.log('🚀 Creating modern checkout for cart:', cartId);
 
-    // Method 1: Try Shopify's Cart-based checkout (recommended)
-    const checkoutResult = await createModernCheckout(cartId);
-    
-    if (checkoutResult.success) {
-      return NextResponse.json(checkoutResult);
-    }
-
-    // Method 2: Fallback to embedded checkout
+    // Method 1: Try embedded checkout first (most reliable)
     const embeddedResult = await createEmbeddedCheckout(cartId);
     
-    if (embeddedResult.success) {
+    if (embeddedResult.success && embeddedResult.checkout) {
+      console.log('✅ Embedded checkout successful:', embeddedResult.checkout.webUrl);
       return NextResponse.json(embeddedResult);
     }
 
+    // Method 2: Try cart-based checkout
+    const checkoutResult = await createModernCheckout(cartId);
+    
+    if (checkoutResult.success && checkoutResult.checkout) {
+      console.log('✅ Cart checkout successful:', checkoutResult.checkout.webUrl);
+      return NextResponse.json(checkoutResult);
+    }
+
     // Method 3: Last fallback - direct Shopify store checkout
+    console.log('⚠️ Using direct store fallback');
     const directResult = await createDirectCheckout(cartId);
     
     return NextResponse.json(directResult);
@@ -129,18 +132,13 @@ async function createModernCheckout(cartId: string) {
       throw new Error('No checkout URL provided by Shopify');
     }
 
-    // Modern approach: Convert cart URL to proper checkout
+    // Check if cart URL is actually a working checkout URL
+    console.log('📋 Original Shopify checkout URL:', checkoutUrl);
+    
+    // If it's a cart URL, it might not work for checkout - throw error to try other methods
     if (checkoutUrl.includes('/cart/c/')) {
-      // Extract cart token from URL
-      const cartToken = checkoutUrl.split('/cart/c/')[1]?.split('?')[0];
-      
-      if (cartToken) {
-        // Create proper Shopify checkout URL
-        const domain = new URL(checkoutUrl).origin;
-        checkoutUrl = `${domain}/checkouts/c/${cartToken}`;
-        
-        console.log('🔄 Converted to modern checkout URL:', checkoutUrl);
-      }
+      console.log('⚠️ Got cart URL instead of checkout URL - will try embedded checkout');
+      throw new Error('Cart URL provided instead of checkout URL');
     }
 
     return {
@@ -209,7 +207,40 @@ async function createEmbeddedCheckout(cartId: string) {
       customAttributes: node.attributes
     }));
 
-    // Create checkout using newer mutation
+    console.log('🔗 Creating embedded checkout with line items:', lineItems);
+
+    // Try using the newer cartBuyerIdentityUpdate + cartCheckoutUrl approach
+    // First, try to get a direct checkout URL from the cart
+    const cartCheckoutQuery = `
+      query getCartCheckoutUrl($cartId: ID!) {
+        cart(id: $cartId) {
+          id
+          checkoutUrl
+          totalQuantity
+        }
+      }
+    `;
+
+    const cartCheckoutResponse = await shopifyStorefront.request(cartCheckoutQuery, {
+      variables: { cartId }
+    });
+
+    console.log('🔗 Cart checkout URL response:', JSON.stringify(cartCheckoutResponse.data, null, 2));
+
+    if (cartCheckoutResponse.data?.cart?.checkoutUrl && !cartCheckoutResponse.data.cart.checkoutUrl.includes('/cart/c/')) {
+      // We got a proper checkout URL directly
+      return {
+        success: true,
+        checkout: {
+          webUrl: cartCheckoutResponse.data.cart.checkoutUrl,
+          id: cartCheckoutResponse.data.cart.id,
+          method: 'cart_checkout_url'
+        },
+        message: 'Direct cart checkout URL obtained'
+      };
+    }
+
+    // Fall back to checkoutCreate if cart checkout URL is not available
     const checkoutMutation = `
       mutation checkoutCreate($input: CheckoutCreateInput!) {
         checkoutCreate(input: $input) {
@@ -246,12 +277,19 @@ async function createEmbeddedCheckout(cartId: string) {
       variables: {
         input: {
           lineItems,
-          allowPartialAddresses: true
+          allowPartialAddresses: true,
+          note: 'PixelMe Custom Design Order'
         }
       }
     });
 
+    console.log('🔗 Raw GraphQL response:', JSON.stringify(checkoutResponse, null, 2));
+
     console.log('🔗 Embedded checkout response:', JSON.stringify(checkoutResponse.data, null, 2));
+
+    if (!checkoutResponse.data || !checkoutResponse.data.checkoutCreate) {
+      throw new Error('Invalid GraphQL response - checkoutCreate mutation failed');
+    }
 
     if (checkoutResponse.data.checkoutCreate.checkoutUserErrors?.length > 0) {
       throw new Error(`Checkout errors: ${checkoutResponse.data.checkoutCreate.checkoutUserErrors.map((e: any) => e.message).join(', ')}`);
@@ -330,19 +368,30 @@ async function createDirectCheckout(cartId: string) {
       const variantId = firstItem.merchandise.id.split('/').pop();
       const productHandle = firstItem.merchandise.product.handle;
       
-      // Create Add to Cart URL that will work with Shopify's store
-      const addToCartUrl = `${storeUrl}/products/${productHandle}?variant=${variantId}`;
+      // Create cart/add URL that automatically adds item and redirects to cart
+      const cartAddUrl = `${storeUrl}/cart/add`;
+      const formData = new URLSearchParams({
+        id: variantId,
+        quantity: firstItem.quantity.toString()
+      });
       
-      console.log('🛍️ Direct store URL:', addToCartUrl);
+      // Add custom attributes as properties
+      firstItem.attributes.forEach((attr: any) => {
+        formData.append(`properties[${attr.key}]`, attr.value);
+      });
+      
+      const fullCartAddUrl = `${cartAddUrl}?${formData.toString()}&return_to=/cart`;
+      
+      console.log('🛍️ Cart add URL:', fullCartAddUrl);
       
       return {
         success: true,
         checkout: {
-          webUrl: addToCartUrl,
+          webUrl: fullCartAddUrl,
           id: cart.id,
-          method: 'direct_store_checkout'
+          method: 'cart_add_redirect'
         },
-        message: 'Direct store checkout URL created'
+        message: 'Cart add redirect URL created'
       };
     }
 

@@ -34,12 +34,32 @@ export default function RealCheckoutPage() {
         setCartData(cartData.cart);
       }
 
-      // Create real checkout
-      const checkoutResponse = await fetch('/api/shopify/checkout-v2', {
+      // Create real checkout - try direct method for headless stores
+      let checkoutResponse = await fetch('/api/shopify/checkout-direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cartId })
       });
+
+      // If direct method fails, try simple method
+      if (!checkoutResponse.ok) {
+        console.log('⚠️ Direct checkout failed, trying simple method...');
+        checkoutResponse = await fetch('/api/shopify/checkout-simple', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cartId })
+        });
+      }
+
+      // If simple method fails, try the complex v2 method
+      if (!checkoutResponse.ok) {
+        console.log('⚠️ Simple checkout failed, trying v2 method...');
+        checkoutResponse = await fetch('/api/shopify/checkout-v2', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cartId })
+        });
+      }
 
       const checkoutData = await checkoutResponse.json();
       
@@ -61,18 +81,14 @@ export default function RealCheckoutPage() {
 
   const proceedToShopifyCheckout = () => {
     if (checkoutUrl) {
-      // Add return URL for after checkout completion
-      const returnUrl = `${window.location.origin}/success`;
-      const urlWithReturn = new URL(checkoutUrl);
-      urlWithReturn.searchParams.set('return_to', returnUrl);
-      
-      console.log('🚀 Redirecting to Shopify checkout:', urlWithReturn.toString());
+      console.log('🚀 Redirecting to Shopify checkout:', checkoutUrl);
       
       // Clear cart since we're going to checkout
       localStorage.removeItem('pixelme-cart-id');
       
-      // Redirect to Shopify's real checkout
-      window.location.href = urlWithReturn.toString();
+      // For headless stores, redirect directly without modifying the URL
+      // The return_to parameter was causing issues with localhost URLs
+      window.location.href = checkoutUrl;
     }
   };
 

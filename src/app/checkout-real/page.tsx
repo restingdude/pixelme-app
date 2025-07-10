@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-// Real production checkout page
-export default function RealCheckoutPage() {
+// Component that uses useSearchParams - wrapped in Suspense
+function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [cartData, setCartData] = useState<any>(null);
@@ -399,5 +399,26 @@ export default function RealCheckoutPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+// Loading component for Suspense fallback
+function CheckoutLoading() {
+  return (
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading checkout...</p>
+      </div>
+    </main>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function RealCheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutLoading />}>
+      <CheckoutContent />
+    </Suspense>
   );
 } 

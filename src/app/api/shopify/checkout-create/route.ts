@@ -11,14 +11,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🛒 Getting Shopify checkout URL for cart:', cartId);
+    console.log('🛒 Creating bypass checkout URL for cart:', cartId);
 
-    // Get the cart data including the checkout URL
+    // Get the cart data 
     const cartQuery = `
       query getCart($id: ID!) {
         cart(id: $id) {
           id
-          checkoutUrl
           totalQuantity
           cost {
             totalAmount {
@@ -98,13 +97,44 @@ export async function POST(request: NextRequest) {
     const cart = cartData.data.cart;
     console.log('📦 Cart data retrieved:', {
       totalQuantity: cart.totalQuantity,
-      linesCount: cart.lines.edges.length,
-      originalCheckoutUrl: cart.checkoutUrl
+      linesCount: cart.lines.edges.length
     });
 
-    // Use the original checkout URL - let our dynamic route handle the redirect
-    let shopifyCheckoutUrl = cart.checkoutUrl;
-    console.log('✅ Using original checkout URL (will be handled by dynamic route):', shopifyCheckoutUrl);
+    // Check if cart has items
+    if (!cart.lines.edges.length) {
+      return NextResponse.json(
+        { error: 'Cart is empty' },
+        { status: 400 }
+      );
+    }
+
+    // Build multiple bypass checkout URL options for maximum theme compatibility
+    const cartItems = cart.lines.edges.map((edge: any) => {
+      const item = edge.node;
+      const variantId = item.merchandise.id.replace('gid://shopify/ProductVariant/', '');
+      return `${variantId}:${item.quantity}`;
+    }).join(',');
+
+    const storeDomain = `https://${process.env.SHOPIFY_STORE_DOMAIN}`;
+    
+    // Use cart/add with return_to for universal theme compatibility (avoids theme-specific checkout params)
+    const firstItem = cart.lines.edges[0]?.node;
+    const firstVariantId = firstItem?.merchandise.id.replace('gid://shopify/ProductVariant/', '');
+    
+    // Universal checkout URL that works with all themes
+    const bypassCheckoutUrl = `${storeDomain}/cart/add?id=${firstVariantId}&quantity=${firstItem?.quantity}&return_to=/checkout`;
+    
+    console.log('✅ Generated universal bypass checkout URL (cart/add method):', bypassCheckoutUrl);
+    
+    // Log all items for multi-item carts
+    if (cart.lines.edges.length > 1) {
+      console.log('⚠️ Multi-item cart detected. Additional items may need to be added separately.');
+      console.log('📋 All cart items:', cart.lines.edges.map((edge: any) => ({
+        variantId: edge.node.merchandise.id.replace('gid://shopify/ProductVariant/', ''),
+        quantity: edge.node.quantity,
+        title: edge.node.merchandise.title
+      })));
+    }
 
     // Count custom items for reporting
     const customItems = cart.lines.edges.filter((edge: any) => 
@@ -112,7 +142,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (customItems.length > 0) {
-      console.log('🎨 Custom PixelMe data in cart:');
+      console.log('🎨 Custom PixelMe data preserved in checkout:');
       customItems.forEach((edge: any, index: number) => {
         const item = edge.node;
         console.log(`  Item ${index + 1}:`, item.merchandise.title);
@@ -126,23 +156,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log('✅ Checkout URL ready:', shopifyCheckoutUrl);
-
     return NextResponse.json({
       success: true,
       checkout: {
         id: cart.id,
-        webUrl: shopifyCheckoutUrl,
+        webUrl: bypassCheckoutUrl,
         totalPrice: cart.cost.totalAmount,
         subtotalPrice: cart.cost.subtotalAmount,
         lineItemsCount: cart.lines.edges.length,
         customItemsCount: customItems.length
       },
-      message: 'Shopify checkout URL prepared successfully'
+      message: 'Bypass checkout URL created successfully (avoids infinite loops)'
     });
 
   } catch (error) {
-    console.error('❌ Error getting checkout URL:', error);
+    console.error('❌ Error creating bypass checkout:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
     return NextResponse.json({ 

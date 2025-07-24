@@ -777,24 +777,36 @@ function UploadContent() {
                     />
                   </button>
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Studio Ghibli' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
-                    onClick={() => handleStyleSelect('Studio Ghibli')}
-                  >
-                    <Image
-                      src="/styles/ghibli.png"
-                      alt="Studio Ghibli Style"
-                      width={120}
-                      height={120}
-                      className="object-contain rounded-lg w-full h-auto"
-                    />
-                  </button>
-                  <button
                     className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'South Park' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
                     onClick={() => handleStyleSelect('South Park')}
                   >
                     <Image
                       src="/styles/southpark.png"
                       alt="South Park Style"
+                      width={120}
+                      height={120}
+                      className="object-contain rounded-lg w-full h-auto"
+                    />
+                  </button>
+                  <button
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Rick and Morty' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    onClick={() => handleStyleSelect('Rick and Morty')}
+                  >
+                    <Image
+                      src="/styles/rickandmorty.png"
+                      alt="Rick and Morty Style"
+                      width={120}
+                      height={120}
+                      className="object-contain rounded-lg w-full h-auto"
+                    />
+                  </button>
+                  <button
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Studio Ghibli' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    onClick={() => handleStyleSelect('Studio Ghibli')}
+                  >
+                    <Image
+                      src="/styles/ghibli.png"
+                      alt="Studio Ghibli Style"
                       width={120}
                       height={120}
                       className="object-contain rounded-lg w-full h-auto"
@@ -813,18 +825,7 @@ function UploadContent() {
                     />
                   </button>
 
-                  <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Rick and Morty' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
-                    onClick={() => handleStyleSelect('Rick and Morty')}
-                  >
-                    <Image
-                      src="/styles/rickandmorty.png"
-                      alt="Rick and Morty Style"
-                      width={120}
-                      height={120}
-                      className="object-contain rounded-lg w-full h-auto"
-                    />
-                  </button>
+
                 </div>
               </div>
             )}

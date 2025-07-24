@@ -724,7 +724,7 @@ function UploadContent() {
                   <input 
                     type="file" 
                     className="hidden" 
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                     onChange={handleImageUpload}
                   />
                 </label>

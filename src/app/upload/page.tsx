@@ -725,7 +725,6 @@ function UploadContent() {
                     type="file" 
                     className="hidden" 
                     accept="image/*"
-                    capture="environment"
                     onChange={handleImageUpload}
                   />
                 </label>

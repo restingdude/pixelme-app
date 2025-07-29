@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
     const { 
       variantId, 
       quantity = 1, 
-      customImageUrl,
       clothing,
       style,
       size,
@@ -30,45 +29,108 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('�� Buy Now - Creating bypass checkout for single item');
+    console.log('🛒 Buy Now - Creating fresh cart for single item (clears existing cart)');
     console.log('📋 Item details:', { variantId, quantity, clothing, style, size, color, position });
 
-    // Extract variant ID number for cart/add URL
-    const variantNumber = variantId.startsWith('gid://') 
-      ? variantId.replace('gid://shopify/ProductVariant/', '') 
-      : variantId;
+    // Build custom attributes for the cart item (no image URLs since only saved after payment)
+    const customAttributes = [];
+    if (clothing) customAttributes.push({ key: 'clothing_type', value: clothing });
+    if (style) customAttributes.push({ key: 'style', value: style });
+    if (size) customAttributes.push({ key: 'size', value: size });
+    if (color) customAttributes.push({ key: 'color', value: color });
+    if (position) customAttributes.push({ key: 'position', value: position });
 
-    const storeDomain = `https://${process.env.SHOPIFY_STORE_DOMAIN}`;
-    
-    // Universal checkout URL that works with all themes (cart/add method)
-    const bypassCheckoutUrl = `${storeDomain}/cart/add?id=${variantNumber}&quantity=${quantity}&return_to=/checkout`;
-    
-    console.log('✅ Buy Now - Generated universal bypass checkout URL (cart/add method):', bypassCheckoutUrl);
+    // Create a fresh cart with the single item
+    const cartCreateMutation = `
+      mutation cartCreate($input: CartInput!) {
+        cartCreate(input: $input) {
+          cart {
+            id
+            checkoutUrl
+            totalQuantity
+            cost {
+              totalAmount {
+                amount
+                currencyCode
+              }
+              subtotalAmount {
+                amount
+                currencyCode
+              }
+            }
+            lines(first: 10) {
+              edges {
+                node {
+                  id
+                  quantity
+                  attributes {
+                    key
+                    value
+                  }
+                }
+              }
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
 
-    // Log custom attributes that will be preserved (Note: cart/add URLs have limitations with custom attributes)
-    if (customImageUrl || clothing || style || size || color || position) {
-      console.log('⚠️ Note: Custom attributes may need to be handled via cart API for full preservation');
-      console.log('🎨 Intended custom attributes:', {
-        custom_design_url: customImageUrl,
-        clothing_type: clothing,
-        style,
-        size,
-        color,
-        position
-      });
+    // Ensure variantId is in proper GID format
+    const merchandiseId = variantId.startsWith('gid://') ? variantId : `gid://shopify/ProductVariant/${variantId}`;
+    
+    const cartInput = {
+      lines: [{
+        merchandiseId: merchandiseId,
+        quantity: quantity,
+        attributes: customAttributes
+      }]
+    };
+
+    console.log('🔄 Creating fresh cart with attributes:', customAttributes);
+    console.log('🆔 Original variant ID:', variantId);
+    console.log('🆔 Formatted merchandise ID:', merchandiseId);
+    console.log('📦 Cart input:', JSON.stringify(cartInput, null, 2));
+    
+    const cartResponse = await shopifyStorefront.request(cartCreateMutation, {
+      variables: { input: cartInput }
+    });
+
+    console.log('📋 Full cart response:', JSON.stringify(cartResponse, null, 2));
+
+    if (cartResponse.data?.cartCreate?.userErrors?.length > 0) {
+      console.error('❌ Cart creation errors:', cartResponse.data.cartCreate.userErrors);
+      throw new Error(`Failed to create cart: ${cartResponse.data.cartCreate.userErrors.map((e: any) => e.message).join(', ')}`);
     }
+
+    const cart = cartResponse.data?.cartCreate?.cart;
+    if (!cart) {
+      console.error('❌ No cart returned. Full response:', cartResponse);
+      throw new Error('Failed to create cart - no cart returned');
+    }
+
+    console.log('✅ Fresh cart created successfully:', cart.id);
+    console.log('🎨 Custom attributes preserved:', cart.lines.edges[0]?.node.attributes?.length || 0);
+
+    // Use the cart's checkout URL
+    const checkoutUrl = cart.checkoutUrl;
+    
+    console.log('✅ Buy Now - Fresh cart checkout URL:', checkoutUrl);
 
     return NextResponse.json({
       success: true,
       checkout: {
-        id: 'bypass-checkout',
-        webUrl: bypassCheckoutUrl,
-        totalPrice: { amount: '80.00', currencyCode: 'USD' }, // Default price - will be calculated by Shopify
-        subtotalPrice: { amount: '80.00', currencyCode: 'USD' },
-        totalQuantity: quantity,
-        customItemsCount: customImageUrl ? 1 : 0
+        id: cart.id,
+        webUrl: checkoutUrl,
+        totalPrice: cart.cost.totalAmount,
+        subtotalPrice: cart.cost.subtotalAmount,
+        totalQuantity: cart.totalQuantity,
+        customItemsCount: customAttributes.length > 0 ? 1 : 0
       },
-      message: 'Buy Now bypass checkout created successfully (avoids infinite loops)'
+      message: 'Buy Now fresh cart created successfully (cart cleared first)'
     });
 
   } catch (error) {
@@ -161,10 +223,25 @@ async function createCheckoutFromCart(cartId: string) {
 
     const storeDomain = `https://${process.env.SHOPIFY_STORE_DOMAIN}`;
     
-    // Universal checkout URL that works with all themes
-    const bypassCheckoutUrl = `${storeDomain}/cart/add?id=${firstVariantId}&quantity=${firstItem?.quantity}&return_to=/checkout`;
+    // Build cart permalink URL - this shows ONLY the specified items (doesn't add to existing cart)
+    const cartItems = cart.lines.edges.map((edge: any) => {
+      const item = edge.node;
+      const variantId = item.merchandise.id.replace('gid://shopify/ProductVariant/', '');
+      return `${variantId}:${item.quantity}`;
+    }).join(',');
     
-    console.log('✅ Generated universal bypass checkout URL (cart/add method):', bypassCheckoutUrl);
+    // Cart permalink format - bypasses existing cart completely
+    const bypassCheckoutUrl = `${storeDomain}/cart/${cartItems}`;
+    
+    console.log('✅ Generated cart permalink URL (shows only specified items):', bypassCheckoutUrl);
+    console.log('📋 Cart items in URL:', cartItems);
+    
+    // Log custom attributes for debugging (these will be preserved via cart API, not URL)
+    const attributes = firstItem?.attributes || [];
+    if (attributes.length > 0) {
+      console.log('🎨 Custom attributes preserved in cart (not in URL):', attributes.length, 'attributes');
+      console.log('📝 Note: Custom attributes preserved via Shopify cart, not permalink URL');
+    }
     
     // Log all items for multi-item carts
     if (cart.lines.edges.length > 1) {

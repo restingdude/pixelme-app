@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { saveOrderImages } from '@/lib/imageStorage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -100,7 +101,49 @@ async function handleOrderPaid(order: any) {
     paymentStatus: order.financial_status
   });
 
-  // Here you could:
+  // 🎨 CRITICAL: Save custom design images to permanent storage
+  try {
+    console.log('🎨 Starting image preservation for paid order...');
+    const imageResults = await saveOrderImages(order);
+    
+    if (imageResults.savedImages.length > 0) {
+      console.log('✅ Successfully saved custom design images:', {
+        orderId: order.id,
+        orderNumber: order.order_number,
+        savedCount: imageResults.savedImages.length,
+        savedImages: imageResults.savedImages
+      });
+    }
+    
+    if (imageResults.failures.length > 0) {
+      console.error('❌ Some images failed to save:', {
+        orderId: order.id,
+        orderNumber: order.order_number,
+        failureCount: imageResults.failures.length,
+        failures: imageResults.failures
+      });
+    }
+
+    // Log final status
+    const totalCustomItems = imageResults.savedImages.length + imageResults.failures.length;
+    if (totalCustomItems > 0) {
+      console.log(`📊 Image preservation summary for order ${order.order_number}:`, {
+        totalCustomItems,
+        successfulSaves: imageResults.savedImages.length,
+        failures: imageResults.failures.length,
+        successRate: `${Math.round((imageResults.savedImages.length / totalCustomItems) * 100)}%`
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Critical error during image preservation:', {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+
+  // Additional order paid actions:
   // - Trigger production workflows
   // - Send payment confirmation
   // - Update order status in your system

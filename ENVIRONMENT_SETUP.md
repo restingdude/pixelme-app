@@ -14,6 +14,9 @@ SHOPIFY_STOREFRONT_ACCESS_TOKEN=your_storefront_access_token
 # Replicate AI Configuration  
 REPLICATE_API_TOKEN=your_replicate_api_token
 
+# Vercel Blob Storage (for permanent image storage)
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
+
 # Next.js Configuration
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
@@ -28,6 +31,9 @@ SHOPIFY_STOREFRONT_ACCESS_TOKEN=your_storefront_access_token
 
 # Replicate AI Configuration  
 REPLICATE_API_TOKEN=your_replicate_api_token
+
+# Vercel Blob Storage (for permanent image storage)
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
 
 # Production URL
 NEXT_PUBLIC_BASE_URL=https://your-production-domain.com

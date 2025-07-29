@@ -16,7 +16,7 @@ export default function Edit() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [isFilling, setIsFilling] = useState(false);
   const [brushSize, setBrushSize] = useState(20);
-  const [activeMode, setActiveMode] = useState<'remove' | 'crop' | 'background' | 'fill' | 'zoom'>('remove');
+  const [activeMode, setActiveMode] = useState<'remove' | 'crop' | 'background' | 'fill' | 'zoom' | 'rotate'>('remove');
   const [previousImage, setPreviousImage] = useState<string | null>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [cropArea, setCropArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -25,6 +25,7 @@ export default function Edit() {
   const [isResizingCrop, setIsResizingCrop] = useState(false);
   const [cropResizeHandle, setCropResizeHandle] = useState<string | null>(null);
   const [cropDragStart, setCropDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [imageRotation, setImageRotation] = useState<number>(0); // Rotation angle in degrees (0, 90, 180, 270)
   const [step, setStep] = useState<'edit' | 'color-reduce' | 'preview' | 'before'>('edit');
   const [selectedPosition, setSelectedPosition] = useState<string>('middle-chest');
   const [zoomLevel, setZoomLevel] = useState<number>(100);
@@ -36,7 +37,8 @@ export default function Edit() {
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('Black'); // Default to Black
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
-  const [variantPrice, setVariantPrice] = useState<string>('29.99');
+  const [variantPrice, setVariantPrice] = useState<string | null>(null);
+  const [isPriceLoading, setIsPriceLoading] = useState<boolean>(false);
   const [isCheckingOut, setIsCheckingOut] = useState<boolean>(false);
   
   // Custom presets state
@@ -147,6 +149,12 @@ export default function Edit() {
     if (savedColor) {
       setSelectedColor(savedColor);
     }
+
+    // Load saved rotation
+    const savedRotation = localStorage.getItem('pixelme-image-rotation');
+    if (savedRotation) {
+      setImageRotation(Number(savedRotation));
+    }
     
     const savedSize = localStorage.getItem('pixelme-selected-size');
     if (savedSize) {
@@ -165,8 +173,12 @@ export default function Edit() {
   // Fetch variant price when variant ID is available
   useEffect(() => {
     const fetchVariantPrice = async () => {
-      if (!selectedVariantId || !selectedClothing) return;
+      if (!selectedVariantId || !selectedClothing) {
+        setVariantPrice(null);
+        return;
+      }
 
+      setIsPriceLoading(true);
       try {
         // Extract the numeric part from the Shopify variant ID
         const numericVariantId = selectedVariantId.replace('gid://shopify/ProductVariant/', '');
@@ -191,7 +203,9 @@ export default function Edit() {
         }
       } catch (error) {
         console.error('Error fetching variant price:', error);
-        // Keep default price on error
+        setVariantPrice(null); // Clear price on error
+      } finally {
+        setIsPriceLoading(false);
       }
     };
 
@@ -227,6 +241,11 @@ export default function Edit() {
       setPanOffset({ x: 0, y: 0 });
     }
   }, [zoomLevel]);
+
+  // Save rotation state to localStorage
+  useEffect(() => {
+    localStorage.setItem('pixelme-image-rotation', imageRotation.toString());
+  }, [imageRotation]);
 
   // Global mouse and touch event listeners for crop mode
   useEffect(() => {
@@ -1171,6 +1190,7 @@ export default function Edit() {
     setCropDragStart(null);
     setCropStartPos(null);
     setHasSelection(false);
+    setImageRotation(0); // Reset rotation when resetting crop
     
     // Set new crop area
     setCropArea(defaultCropArea);
@@ -1267,6 +1287,75 @@ export default function Edit() {
       alert('Crop failed: ' + error);
     } finally {
       setIsFilling(false);
+    }
+  };
+
+  const handleRotateImage = async (direction: 'left' | 'right') => {
+    const sourceImage = currentImage;
+    if (!sourceImage) {
+      alert('No image to rotate');
+      return;
+    }
+
+    // Save current image for undo
+    setPreviousImage(sourceImage);
+
+    try {
+      // Update rotation angle for display purposes
+      const rotationChange = direction === 'right' ? 90 : -90;
+      const newRotation = (imageRotation + rotationChange + 360) % 360;
+      setImageRotation(newRotation);
+
+      // Load current image (which may already be rotated)
+      const img = document.createElement('img');
+      img.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = sourceImage;
+      });
+
+      // Create rotated canvas - always swap dimensions for 90° rotation
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Failed to create canvas context');
+      }
+
+      // For any rotation, we need to swap width and height
+      canvas.width = img.naturalHeight;
+      canvas.height = img.naturalWidth;
+
+      // Apply incremental rotation transformation
+      ctx.save();
+      
+      if (direction === 'right') {
+        // Rotate 90° clockwise
+        ctx.translate(canvas.width, 0);
+        ctx.rotate(Math.PI / 2);
+      } else {
+        // Rotate 90° counter-clockwise  
+        ctx.translate(0, canvas.height);
+        ctx.rotate(-Math.PI / 2);
+      }
+      
+      ctx.drawImage(img, 0, 0);
+      ctx.restore();
+
+      const rotatedImageUrl = canvas.toDataURL('image/png');
+      
+      setEditedImage(rotatedImageUrl);
+      localStorage.setItem('pixelme-edited-image', rotatedImageUrl);
+      
+      // Clear crop area since image dimensions have changed
+      setCropArea(null);
+      clearMask();
+      
+    } catch (error) {
+      console.error('Rotation error:', error);
+      alert('Rotation failed: ' + error);
     }
   };
 
@@ -2171,7 +2260,16 @@ export default function Edit() {
             <div className="w-full max-w-md">
               {/* Price Display */}
               <div className="text-center mb-6">
-                <div className="text-2xl font-bold text-gray-800">${variantPrice}</div>
+                {isPriceLoading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-lg text-gray-600">Loading price...</span>
+                  </div>
+                ) : variantPrice ? (
+                  <div className="text-2xl font-bold text-gray-800">${variantPrice}</div>
+                ) : (
+                  <div className="text-lg text-gray-500">Select size & color to see price</div>
+                )}
               </div>
 
               {/* Design Team Notice */}
@@ -2201,8 +2299,35 @@ export default function Edit() {
                       setIsCheckingOut(true);
                       
                       try {
-                                                                          // Get the final image for add to cart
-                        const finalImage = localStorage.getItem('pixelme-final-image') || currentImage;
+                        // Get the final image for add to cart
+                        let finalImage: string = localStorage.getItem('pixelme-final-image') || currentImage || '';
+                        
+                        // 🎯 CONVERT TO PERMANENT URL: If final image is a Replicate URL, save it to permanent storage for cart display
+                        if (finalImage && typeof finalImage === 'string' && finalImage.includes('replicate.delivery')) {
+                          console.log('🎨 Final image is temporary Replicate URL, converting to permanent storage for cart...');
+                          try {
+                            const saveResponse = await fetch('/api/shopify/save-design', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                imageUrl: finalImage,
+                                style: selectedStyle,
+                                clothing: selectedClothing
+                              })
+                            });
+                            
+                            if (saveResponse.ok) {
+                              const saveData = await saveResponse.json();
+                              if (saveData.success && saveData.permanentUrl && typeof saveData.permanentUrl === 'string') {
+                                finalImage = saveData.permanentUrl;
+                                localStorage.setItem('pixelme-final-image', finalImage);
+                                console.log('✅ Converted to permanent URL for cart:', finalImage);
+                              }
+                            }
+                          } catch (error) {
+                            console.warn('⚠️ Failed to convert to permanent storage, using temporary URL:', error);
+                          }
+                        }
                         
                         // Use the basic clothing products that already exist and work
                         const existingProductResponse = await fetch('/api/shopify/products');
@@ -2291,13 +2416,13 @@ export default function Edit() {
                         console.log('Selected variant:', variant);
                         const variantId = variant.node.id;
                         console.log('Variant ID for cart:', variantId);
-                        // Custom attributes including the artwork/design image and position
+                        // Custom attributes for cart display (include image for cart preview)
                         const customAttributes = [
+                          { key: 'custom_design_url', value: finalImage || '' },
                           { key: 'clothing_type', value: selectedClothing || 'hoodie' },
                           { key: 'style', value: selectedStyle || 'Dragon Ball' },
                           { key: 'size', value: selectedSize || 'M' },
-                          { key: 'position', value: selectedPosition || 'chest' },
-                          { key: 'custom_design_url', value: finalImage || '' }
+                          { key: 'position', value: selectedPosition || 'chest' }
                         ];
                         console.log('Custom attributes for cart:', customAttributes);
                         
@@ -2370,9 +2495,9 @@ export default function Edit() {
                         setIsCheckingOut(false);
                       }
                     }}
-                    disabled={isCheckingOut || !selectedSize}
+                    disabled={isCheckingOut || !selectedSize || !variantPrice}
                     className={`flex-1 px-6 py-4 rounded-lg font-semibold text-lg transition-all duration-200 ${
-                      isCheckingOut || !selectedSize
+                      isCheckingOut || !selectedSize || !variantPrice
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
                     }`}
@@ -2382,6 +2507,8 @@ export default function Edit() {
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Adding...
                       </div>
+                    ) : !variantPrice ? (
+                      'Loading...'
                     ) : selectedSize ? (
                       'Add to Cart'
                     ) : (
@@ -2490,14 +2617,13 @@ export default function Edit() {
                         // Extract variant ID (remove the GraphQL prefix)
                         const variantId = variant.node.id.replace('gid://shopify/ProductVariant/', '');
                         
-                        // Create checkout with custom attributes (style passed as attributes, not separate product)
+                        // Create checkout with custom attributes (no image URL since only saved after payment)
                         const checkoutResponse = await fetch('/api/shopify/checkout', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
                             variantId,
                             quantity: 1,
-                            customImageUrl: finalImage || undefined,
                             clothing: selectedClothing,
                             style: selectedStyle,
                             size: selectedSize,
@@ -2536,9 +2662,9 @@ export default function Edit() {
                         setIsCheckingOut(false);
                       }
                     }}
-                    disabled={isCheckingOut || !selectedSize}
+                    disabled={isCheckingOut || !selectedSize || !variantPrice}
                     className={`flex-1 px-6 py-4 rounded-lg font-semibold text-lg transition-all duration-200 ${
-                      isCheckingOut || !selectedSize
+                      isCheckingOut || !selectedSize || !variantPrice
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-green-600 text-white hover:bg-green-700 shadow-lg hover:shadow-xl'
                     }`}
@@ -2548,6 +2674,8 @@ export default function Edit() {
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Creating Order...
                       </div>
+                    ) : !variantPrice ? (
+                      'Loading...'
                     ) : selectedSize ? (
                       'Buy Now'
                     ) : (
@@ -2821,25 +2949,26 @@ export default function Edit() {
                           activeMode === 'remove' ? 'cursor-none' : 
                           activeMode === 'fill' ? 'cursor-none' :
                           activeMode === 'crop' ? 'cursor-crosshair' : 
+                          activeMode === 'rotate' ? 'cursor-default' :
                           'cursor-default'
                         }`}
-                        onMouseDown={activeMode === 'background' ? undefined : startDrawing}
-                        onMouseMove={activeMode === 'background' ? undefined : (e) => {
+                        onMouseDown={activeMode === 'background' || activeMode === 'rotate' ? undefined : startDrawing}
+                        onMouseMove={activeMode === 'background' || activeMode === 'rotate' ? undefined : (e) => {
                           handleMouseMove(e);
                           draw(e);
                         }}
-                        onMouseUp={activeMode === 'background' ? undefined : stopDrawing}
-                        onMouseLeave={activeMode === 'background' ? undefined : handleMouseLeave}
-                        onMouseEnter={activeMode === 'background' ? undefined : handleMouseEnter}
-                        onTouchStart={activeMode === 'background' ? undefined : (e) => {
+                        onMouseUp={activeMode === 'background' || activeMode === 'rotate' ? undefined : stopDrawing}
+                        onMouseLeave={activeMode === 'background' || activeMode === 'rotate' ? undefined : handleMouseLeave}
+                        onMouseEnter={activeMode === 'background' || activeMode === 'rotate' ? undefined : handleMouseEnter}
+                        onTouchStart={activeMode === 'background' || activeMode === 'rotate' ? undefined : (e) => {
                           handleTouchStart();
                           startTouchDrawing(e);
                         }}
-                        onTouchMove={activeMode === 'background' ? undefined : (e) => {
+                        onTouchMove={activeMode === 'background' || activeMode === 'rotate' ? undefined : (e) => {
                           handleTouchMove(e);
                           drawTouch(e);
                         }}
-                        onTouchEnd={activeMode === 'background' ? undefined : (e) => {
+                        onTouchEnd={activeMode === 'background' || activeMode === 'rotate' ? undefined : (e) => {
                           handleTouchEnd();
                           stopTouchDrawing(e);
                         }}
@@ -3026,6 +3155,41 @@ export default function Edit() {
                             Crop Image
                           </div>
                           <div className="text-xs sm:text-sm text-gray-500">Crop to specific dimensions</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveMode('rotate');
+                          setShowBrushCursor(false);
+                          // Clear canvas but preserve crop area state for later use
+                          if (canvasRef.current) {
+                            const ctx = canvasRef.current.getContext('2d');
+                            if (ctx) {
+                              ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                            }
+                          }
+                        }}
+                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                          activeMode === 'rotate'
+                            ? 'border-indigo-500 bg-indigo-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                          activeMode === 'rotate' ? 'bg-indigo-500' : 'bg-gray-400'
+                        }`}>
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <div className={`font-semibold text-sm sm:text-base ${
+                            activeMode === 'rotate' ? 'text-indigo-700' : 'text-gray-700'
+                          }`}>
+                            Rotate Image
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-500">Rotate in 90° increments</div>
                         </div>
                       </button>
 
@@ -3261,8 +3425,6 @@ export default function Edit() {
                             <p className="text-sm text-blue-700">Use the crop box to select the area you want to keep. Drag handles to resize or drag inside to move.</p>
                           </div>
                           
-
-                          
                           <div className="flex gap-2">
                             <button 
                               onClick={resetCropArea}
@@ -3289,6 +3451,70 @@ export default function Edit() {
                               'Crop Image'
                             )}
                           </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rotate Tool */}
+                    {activeMode === 'rotate' && (
+                      <div>
+                        <h5 className="font-semibold text-gray-800 mb-3">Rotate Tool</h5>
+                        <div className="space-y-4">
+                          <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                            <p className="text-sm text-indigo-700">Rotate your image in 90-degree increments. The rotation will be applied to the entire image.</p>
+                          </div>
+                          
+                          {/* Rotation Controls */}
+                          <div className="space-y-3">
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => handleRotateImage('left')}
+                                disabled={isFilling}
+                                className="flex-1 px-3 py-2 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8V4l3 3m-6 0l3-3m-3 3v4m7.586 5L16 12l-2 2m0-2l2-2m-2 2h-4m-2 7a9 9 0 110-18 9 9 0 010 18z" />
+                                </svg>
+                                90° Left
+                              </button>
+                              <button 
+                                onClick={() => handleRotateImage('right')}
+                                disabled={isFilling}
+                                className="flex-1 px-3 py-2 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                90° Right
+                              </button>
+                            </div>
+                            
+                            {imageRotation !== 0 && (
+                              <div className="p-3 bg-indigo-100 rounded-lg border border-indigo-200">
+                                <div className="text-sm text-indigo-700 text-center font-medium">
+                                  Current rotation: {imageRotation}°
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Reset Rotation Button */}
+                          {imageRotation !== 0 && (
+                            <button 
+                              onClick={() => {
+                                setImageRotation(0);
+                                // Reset to original image
+                                const originalImage = localStorage.getItem('pixelme-conversion-result');
+                                if (originalImage) {
+                                  setEditedImage(originalImage);
+                                  localStorage.setItem('pixelme-edited-image', originalImage);
+                                }
+                              }}
+                              className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300"
+                            >
+                              Reset to Original Orientation
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}

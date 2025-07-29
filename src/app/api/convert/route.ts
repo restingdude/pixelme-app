@@ -122,9 +122,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 🔄 TEMPORARY URL - Only save to permanent storage when order is paid
     return NextResponse.json({
       success: true,
-      imageUrl: generatedImageUrl,
+      imageUrl: generatedImageUrl, // Keep as temporary Replicate URL
       style,
       clothing
     });

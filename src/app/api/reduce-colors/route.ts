@@ -41,9 +41,11 @@ export async function POST(request: NextRequest) {
 4. THICK BLACK OUTLINES - Add bold black outlines (8-10 pixels wide) around the exterior edges and important interior features
 5. DO NOT convert to black and white - This must remain a COLORFUL image with all original color types preserved
 
-Transform the style to look like embroidery stitching while maintaining vibrant colors. Keep background unchanged if it's transparent or checkered. Focus on making the main subject bold and colorful with thick outlines suitable for embroidery digitization.
+6. CRITICAL: PRESERVE TRANSPARENCY - If the background is transparent (shown as checkered grey/white pattern), keep it completely transparent. Do NOT convert transparent or checkered areas to solid colors. Only convert the actual subject/foreground elements.
 
-CRITICAL: This must be a COLORFUL result, not black and white. Preserve the color palette while simplifying it to 15 colors maximum.`;
+Transform the style to look like embroidery stitching while maintaining vibrant colors. The checkered background pattern indicates transparency and must remain transparent - do not treat it as content to be converted. Focus on making the main subject bold and colorful with thick outlines suitable for embroidery digitization.
+
+CRITICAL: This must be a COLORFUL result with transparent background preserved, not black and white. Preserve the color palette while simplifying it to 15 colors maximum.`;
 
     // Use FLUX Kontext Pro for high-quality color reduction
     const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions', {
@@ -58,9 +60,10 @@ CRITICAL: This must be a COLORFUL result, not black and white. Preserve the colo
           prompt: prompt,
           output_format: "png",
           output_quality: 95,
-          // Additional parameters for better color control
+          // Additional parameters for better color control and transparency preservation
           guidance_scale: 3.5,
-          num_inference_steps: 28
+          num_inference_steps: 28,
+          strength: 0.8  // Lower strength to preserve more original features including transparency
         }
       }),
     });

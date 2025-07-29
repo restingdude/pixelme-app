@@ -108,23 +108,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build multiple bypass checkout URL options for maximum theme compatibility
+    // Cart items for logging (used later in permalink format)
+
+    const storeDomain = `https://${process.env.SHOPIFY_STORE_DOMAIN}`;
+    
+    // Use cart permalink method instead of cart/add to avoid adding to existing cart
+    const firstItem = cart.lines.edges[0]?.node;
+    const firstVariantId = firstItem?.merchandise.id.replace('gid://shopify/ProductVariant/', '');
+    
+    // Build cart permalink URL - this shows ONLY the specified items (doesn't add to existing cart)
     const cartItems = cart.lines.edges.map((edge: any) => {
       const item = edge.node;
       const variantId = item.merchandise.id.replace('gid://shopify/ProductVariant/', '');
       return `${variantId}:${item.quantity}`;
     }).join(',');
-
-    const storeDomain = `https://${process.env.SHOPIFY_STORE_DOMAIN}`;
     
-    // Use cart/add with return_to for universal theme compatibility (avoids theme-specific checkout params)
-    const firstItem = cart.lines.edges[0]?.node;
-    const firstVariantId = firstItem?.merchandise.id.replace('gid://shopify/ProductVariant/', '');
+    // Cart permalink format - bypasses existing cart completely
+    const bypassCheckoutUrl = `${storeDomain}/cart/${cartItems}`;
     
-    // Universal checkout URL that works with all themes
-    const bypassCheckoutUrl = `${storeDomain}/cart/add?id=${firstVariantId}&quantity=${firstItem?.quantity}&return_to=/checkout`;
+    console.log('✅ Generated cart permalink URL (shows only specified items):', bypassCheckoutUrl);
+    console.log('📋 Cart items in URL:', cartItems);
     
-    console.log('✅ Generated universal bypass checkout URL (cart/add method):', bypassCheckoutUrl);
+    // Log custom attributes for debugging (these will be preserved via cart API, not URL)
+    const attributes = firstItem?.attributes || [];
+    if (attributes.length > 0) {
+      console.log('🎨 Custom attributes preserved in cart (not in URL):', attributes.length, 'attributes');
+      console.log('📝 Note: Custom attributes preserved via Shopify cart, not permalink URL');
+    }
     
     // Log all items for multi-item carts
     if (cart.lines.edges.length > 1) {

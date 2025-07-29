@@ -214,7 +214,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
     console.log('🚀 OFFICIAL SHOPIFY CHECKOUT - Creating checkout session...');
     
     try {
-      const response = await fetch('/api/shopify/checkout-create', {
+      const response = await fetch('/api/shopify/checkout-hosted', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cartId: cart.id })
@@ -397,31 +397,52 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                     
                     return (
                       <div key={item.id} className="flex gap-3 p-3 border border-gray-200 rounded-lg">
-                        {/* Product Image */}
-                        <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
-                          {customImageUrl ? (
-                            <>
+                        {/* Product Images Section */}
+                        <div className="flex-shrink-0">
+                          {/* Main Product Image */}
+                          <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden relative">
+                            {image ? (
                               <img
-                                src={customImageUrl}
-                                alt={`Custom ${item.merchandise.product.title}`}
+                                src={image.url}
+                                alt={image.altText || item.merchandise.product.title}
                                 className="w-full h-full object-cover"
                               />
-                              {/* Custom design indicator */}
-                              <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1 py-0.5 rounded text-[10px] font-bold shadow-md">
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                            )}
+                            
+                            {/* Custom design indicator */}
+                            {customImageUrl && (
+                              <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1 py-0.5 rounded text-[10px] font-bold shadow-md">
                                 CUSTOM
                               </div>
-                            </>
-                          ) : image ? (
-                            <img
-                              src={image.url}
-                              alt={image.altText || item.merchandise.product.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
+                            )}
+                          </div>
+
+                          {/* Custom Design Preview - shown as a patch below the main image */}
+                          {customImageUrl && (
+                            <div className="mt-2 w-20">
+                              <div className="bg-white border border-gray-200 rounded overflow-hidden shadow-sm">
+                                <div className="px-1 py-0.5 bg-gray-50 border-b border-gray-200">
+                                  <p className="text-xs font-medium text-gray-600 text-center text-[10px]">Custom Design</p>
+                                  {position && (
+                                    <p className="text-xs text-green-600 font-medium text-center text-[9px] mt-0.5">
+                                      {position.charAt(0).toUpperCase() + position.slice(1)}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="p-1">
+                                  <img
+                                    src={customImageUrl}
+                                    alt="Custom design preview"
+                                    className="w-full h-10 object-cover rounded border border-gray-100"
+                                  />
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -434,11 +455,6 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                           {customStyle && (
                             <p className="text-xs text-blue-600 font-medium mt-1">
                               {customStyle} Style
-                            </p>
-                          )}
-                          {position && (
-                            <p className="text-xs text-green-600 font-medium mt-1">
-                              Position: {position.charAt(0).toUpperCase() + position.slice(1)}
                             </p>
                           )}
                           {(color || size) && (

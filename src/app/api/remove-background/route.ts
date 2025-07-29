@@ -33,7 +33,9 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         version: "a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc",
         input: {
-          image: imageData // Send base64 data directly
+          image: imageData, // Send base64 data directly
+          threshold: 0.20, // Lower threshold = less sensitive, more soft edges (0.0-1.0, default would be ~0.5)
+          background_type: 'rgba' // Ensures transparent background with soft alpha blending
         }
       }),
     });
@@ -78,9 +80,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 🔄 TEMPORARY URL - Background removal is intermediate edit, not final design
     return NextResponse.json({
       success: true,
-      imageUrl: generatedImageUrl,
+      imageUrl: generatedImageUrl, // Keep as temporary Replicate URL for intermediate edits
       method: '851-labs-background-remover'
     });
 

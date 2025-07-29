@@ -82,9 +82,11 @@ export async function POST(request: NextRequest) {
 
     if (finalResult.status === 'succeeded' && finalResult.output) {
       console.log('Generated image URL:', finalResult.output);
+      
+      // 🔄 TEMPORARY URL - Smart fill is intermediate edit, not final design
       return NextResponse.json({
         success: true,
-        imageUrl: finalResult.output
+        imageUrl: finalResult.output // Keep as temporary Replicate URL for intermediate edits
       });
     } else {
       console.error('Smart remove & fill failed:', finalResult.error || 'Unknown error');

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 1. PRESERVE ALL ORIGINAL COLORS - Keep red, blue, green, yellow, purple, orange, pink, brown, skin tones, hair colors, and ALL other existing colors in the image
 2. REDUCE to maximum 15 colors total - simplify similar shades but KEEP the original color families
 3. FLAT COLOR AREAS - Remove gradients and shading, fill each area with solid flat colors
-4. THICK BLACK OUTLINES - Add bold black outlines (8-10 pixels wide) around the exterior edges and important interior features
+4. THICK BLACK OUTLINES - Add bold black outlines (18-22 pixels wide) around the exterior edges and important interior features
 5. DO NOT convert to black and white - This must remain a COLORFUL image with all original color types preserved
 
 6. CRITICAL: PRESERVE TRANSPARENCY - If the background is transparent (shown as checkered grey/white pattern), keep it completely transparent. Do NOT convert transparent or checkered areas to solid colors. Only convert the actual subject/foreground elements.

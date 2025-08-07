@@ -21,6 +21,13 @@ function UploadContent() {
   const [cachedEditedImage, setCachedEditedImage] = useState<string | null>(null);
   const [cachedColorReducedImage, setCachedColorReducedImage] = useState<string | null>(null);
   const [cachedFinalImage, setCachedFinalImage] = useState<string | null>(null);
+  
+  // Rate limiting state
+  const [rateLimitStatus, setRateLimitStatus] = useState<{
+    remainingGenerations: number;
+    timeUntilReset: number;
+    maxGenerations: number;
+  } | null>(null);
 
   // EXIF orientation correction utility
   const getOrientation = (file: File): Promise<number> => {
@@ -342,6 +349,52 @@ function UploadContent() {
     }
   };
 
+  // Rate limiting functions
+  const fetchRateLimitStatus = async () => {
+    try {
+      const response = await fetch('/api/convert/status');
+      const data = await response.json();
+      
+      if (data.success) {
+        setRateLimitStatus(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch rate limit status:', error);
+    }
+  };
+
+  // Update rate limit status when on convert step
+  useEffect(() => {
+    if (step === 'convert') {
+      fetchRateLimitStatus();
+      
+      // Update every 10 seconds while on convert step
+      const interval = setInterval(fetchRateLimitStatus, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [step]);
+
+  // Update countdown every second when there's a time limit
+  useEffect(() => {
+    if (rateLimitStatus && rateLimitStatus.timeUntilReset > 0) {
+      const interval = setInterval(() => {
+        setRateLimitStatus(prev => {
+          if (!prev || prev.timeUntilReset <= 1000) {
+            // Time's up, refresh the status
+            fetchRateLimitStatus();
+            return prev;
+          }
+          return {
+            ...prev,
+            timeUntilReset: prev.timeUntilReset - 1000
+          };
+        });
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [rateLimitStatus?.timeUntilReset]);
+
   const handleStyleSelect = (style: string) => {
     setSelectedStyle(style);
     setStep('convert');
@@ -389,8 +442,17 @@ function UploadContent() {
         setConversionResult(result);
         // Cache the conversion result
         localStorage.setItem('pixelme-conversion-result', result);
+        // Refresh rate limit status after successful conversion
+        fetchRateLimitStatus();
       } else {
-        setConversionError(data.error || 'Conversion failed');
+        // Handle rate limit errors specially
+        if (response.status === 429 && data.rateLimitExceeded) {
+          setConversionError(`⏰ ${data.error}`);
+        } else {
+          setConversionError(data.error || 'Conversion failed');
+        }
+        // Refresh rate limit status after any API response
+        fetchRateLimitStatus();
       }
     } catch (error) {
       console.error('Conversion error:', error);
@@ -823,6 +885,39 @@ function UploadContent() {
                 <div className="text-center mb-6">
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">Ready to Convert</h3>
                   <p className="text-gray-600">Transform your photo into <span className="font-semibold text-amber-600">{selectedStyle}</span> style</p>
+                  
+                  {/* Rate Limit Status */}
+                  {rateLimitStatus && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-blue-800 font-medium">
+                          Generations left: {rateLimitStatus.remainingGenerations}/{rateLimitStatus.maxGenerations}
+                        </span>
+                        {rateLimitStatus.timeUntilReset > 0 && (
+                          <span className="text-blue-600">
+                            Resets in: {Math.ceil(rateLimitStatus.timeUntilReset / (60 * 1000))}m
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${(rateLimitStatus.remainingGenerations / rateLimitStatus.maxGenerations) * 100}%` 
+                          }}
+                        ></div>
+                      </div>
+                      
+                      {/* Countdown Timer */}
+                      {rateLimitStatus.timeUntilReset > 0 && (
+                        <div className="mt-2 text-xs text-blue-600 text-center">
+                          Next reset: {new Date(Date.now() + rateLimitStatus.timeUntilReset).toLocaleTimeString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 {!conversionResult && !conversionError && (
@@ -831,9 +926,9 @@ function UploadContent() {
                       // handleConvert will clear edited data when starting conversion
                       handleConvert();
                     }}
-                    disabled={isConverting}
+                    disabled={isConverting || (rateLimitStatus && rateLimitStatus.remainingGenerations === 0)}
                     className={`px-8 py-4 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 ${
-                      isConverting 
+                      isConverting || (rateLimitStatus && rateLimitStatus.remainingGenerations === 0)
                         ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
                         : 'bg-amber-600 text-white hover:bg-amber-700'
                     }`}
@@ -843,6 +938,8 @@ function UploadContent() {
                         <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
                         Converting...
                       </div>
+                    ) : rateLimitStatus && rateLimitStatus.remainingGenerations === 0 ? (
+                      'Rate Limit Reached'
                     ) : (
                       `Convert to ${selectedStyle}`
                     )}
@@ -850,8 +947,14 @@ function UploadContent() {
                 )}
 
                 {conversionError && (
-                  <div className="mt-4 p-4 bg-red-100 border border-red-300 rounded-lg text-red-700 text-center max-w-md">
-                    <p className="font-semibold mb-2">Conversion Failed</p>
+                  <div className={`mt-4 p-4 rounded-lg text-center max-w-md ${
+                    conversionError.startsWith('⏰') 
+                      ? 'bg-yellow-100 border border-yellow-300 text-yellow-800' 
+                      : 'bg-red-100 border border-red-300 text-red-700'
+                  }`}>
+                    <p className="font-semibold mb-2">
+                      {conversionError.startsWith('⏰') ? 'Rate Limit Reached' : 'Conversion Failed'}
+                    </p>
                     <p className="text-sm">{conversionError}</p>
                     <button 
                       onClick={() => {

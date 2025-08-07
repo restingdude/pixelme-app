@@ -1,7 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimitStore, cleanupExpiredEntries } from '../../../lib/rateLimitStore';
 
 export async function POST(request: NextRequest) {
   try {
+    // Get client IP address
+    const clientIP = request.headers.get('x-forwarded-for') || 
+                    request.headers.get('x-real-ip') || 
+                    '127.0.0.1';
+
+    // Clean up expired entries
+    cleanupExpiredEntries();
+
+    // Check rate limit (5 generations per hour)
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+    const maxGenerations = 5;
+
+    const clientData = rateLimitStore.get(clientIP);
+    
+    if (clientData) {
+      // Check if the hour has passed
+      if (now > clientData.resetTime) {
+        // Reset the counter
+        rateLimitStore.set(clientIP, { count: 1, resetTime: now + oneHour });
+      } else {
+        // Check if limit exceeded
+        if (clientData.count >= maxGenerations) {
+          const timeUntilReset = Math.ceil((clientData.resetTime - now) / (60 * 1000)); // minutes
+          return NextResponse.json(
+            { 
+              error: `Rate limit exceeded. You can only generate ${maxGenerations} images per hour. Please try again in ${timeUntilReset} minutes.`,
+              rateLimitExceeded: true,
+              timeUntilReset: timeUntilReset
+            },
+            { status: 429 }
+          );
+        }
+        // Increment counter
+        rateLimitStore.set(clientIP, { count: clientData.count + 1, resetTime: clientData.resetTime });
+      }
+    } else {
+      // First generation for this IP
+      rateLimitStore.set(clientIP, { count: 1, resetTime: now + oneHour });
+    }
+
     const { imageData, style, clothing } = await request.json();
 
     if (!imageData || !style || !clothing) {

@@ -2527,7 +2527,34 @@ export default function Edit() {
                       
                       try {
                         // Get the final image for checkout
-                        const finalImage = localStorage.getItem('pixelme-final-image') || currentImage || '';
+                        let finalImage: string = localStorage.getItem('pixelme-final-image') || currentImage || '';
+                        
+                        // 🎯 CONVERT TO PERMANENT URL: If final image is a Replicate URL, save it to permanent storage for checkout
+                        if (finalImage && typeof finalImage === 'string' && finalImage.includes('replicate.delivery')) {
+                          console.log('🎨 Final image is temporary Replicate URL, converting to permanent storage for checkout...');
+                          try {
+                            const saveResponse = await fetch('/api/shopify/save-design', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                imageUrl: finalImage,
+                                style: selectedStyle,
+                                clothing: selectedClothing
+                              })
+                            });
+                            
+                            if (saveResponse.ok) {
+                              const saveData = await saveResponse.json();
+                              if (saveData.success && saveData.permanentUrl && typeof saveData.permanentUrl === 'string') {
+                                finalImage = saveData.permanentUrl;
+                                localStorage.setItem('pixelme-final-image', finalImage);
+                                console.log('✅ Converted to permanent URL for checkout:', finalImage);
+                              }
+                            }
+                          } catch (error) {
+                            console.error('⚠️ Failed to convert to permanent URL, using temporary URL:', error);
+                          }
+                        }
                         
                         // Use the same basic clothing products as Add to Cart
                         const existingProductResponse = await fetch('/api/shopify/products');

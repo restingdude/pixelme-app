@@ -759,18 +759,7 @@ export default function CartPage() {
                 >
                   Continue Shopping
                 </button>
-                
-                {/* Quick test button for localhost */}
-                <button
-                  onClick={() => {
-                    console.log('🧪 Direct real checkout test');
-                    console.log('🧪 Cart ID:', cart.id);
-                    router.push(`/checkout-real?cartId=${encodeURIComponent(cart.id)}`);
-                  }}
-                  className="w-full px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors text-sm"
-                >
-                  🧪 Quick Checkout Test (Dev Only)
-                </button>
+
               </div>
             </div>
           </div>

@@ -75,6 +75,19 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [imageModal, setImageModal] = useState<{ isOpen: boolean; src: string; alt: string }>({
+    isOpen: false,
+    src: '',
+    alt: ''
+  });
+
+  const openImageModal = (src: string, alt: string) => {
+    setImageModal({ isOpen: true, src, alt });
+  };
+
+  const closeImageModal = () => {
+    setImageModal({ isOpen: false, src: '', alt: '' });
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -400,7 +413,10 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                         {/* Product Images Section */}
                         <div className="flex-shrink-0">
                           {/* Main Product Image */}
-                          <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden relative">
+                          <div 
+                            className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden relative cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => image && openImageModal(image.url, image.altText || item.merchandise.product.title)}
+                          >
                             {image ? (
                               <img
                                 src={image.url}
@@ -439,7 +455,8 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                                   <img
                                     src={customImageUrl}
                                     alt="Custom design preview"
-                                    className="w-full h-10 object-cover rounded border border-gray-100"
+                                    className="w-full h-10 object-cover rounded border border-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => openImageModal(customImageUrl, 'Custom design preview')}
                                   />
                                 </div>
                               </div>
@@ -568,6 +585,33 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
           </div>
         )}
       </div>
+
+      {/* Image Modal */}
+      {imageModal.isOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+          onClick={closeImageModal}
+        >
+          <div className="relative max-w-2xl max-h-[80vh] w-full h-full overflow-auto bg-white rounded-lg shadow-2xl">
+            <button
+              onClick={closeImageModal}
+              className="absolute top-4 right-4 z-10 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors shadow-lg"
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="p-6">
+              <img
+                src={imageModal.src}
+                alt={imageModal.alt}
+                className="w-full h-auto object-contain rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 } 

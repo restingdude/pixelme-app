@@ -501,7 +501,7 @@ export default function Edit() {
   }, [isPanning, dragStart, zoomLevel]);
 
   const handleBack = () => {
-    router.push(`/upload?clothing=${selectedClothing}`);
+    router.push(`/upload?clothing=${selectedClothing}&color=${selectedColor}&size=${selectedSize}&variantId=${encodeURIComponent(selectedVariantId || '')}`);
   };
 
   const handleGoHome = () => {
@@ -695,9 +695,9 @@ export default function Edit() {
     if (newStep === 'convert') {
       // Don't clear edited image data - preserve user's step 5 edits when navigating
       // The edited image will only be cleared when actually re-running conversion
-      router.push(`/upload?clothing=${selectedClothing}`);
+      router.push(`/upload?clothing=${selectedClothing}&color=${selectedColor}&size=${selectedSize}&variantId=${encodeURIComponent(selectedVariantId || '')}`);
     } else if (newStep === 'upload' || newStep === 'style') {
-      router.push(`/upload?clothing=${selectedClothing}`);
+      router.push(`/upload?clothing=${selectedClothing}&color=${selectedColor}&size=${selectedSize}&variantId=${encodeURIComponent(selectedVariantId || '')}`);
     } else if (newStep === 'before') {
       setStep('before');
     } else if (newStep === 'edit') {
@@ -1895,7 +1895,7 @@ export default function Edit() {
                   title="Change style selection"
                 >
                   <Image
-                    src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                    src={`/styles/${selectedStyle === 'Anime Fantasy' ? 'ghibli' : selectedStyle === 'Paper Animation' ? 'southpark' : selectedStyle === 'Animated Comedy' ? 'familyguy' : selectedStyle === 'Action Anime' ? 'dragonball' :  'simpsons'}.png`}
                     alt={`${selectedStyle} Style`}
                     width={60}
                     height={60}
@@ -2617,7 +2617,7 @@ export default function Edit() {
                         // Extract variant ID (remove the GraphQL prefix)
                         const variantId = variant.node.id.replace('gid://shopify/ProductVariant/', '');
                         
-                        // Create checkout with custom attributes (no image URL since only saved after payment)
+                        // Create checkout with custom attributes including design URL
                         const checkoutResponse = await fetch('/api/shopify/checkout', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
@@ -2628,7 +2628,8 @@ export default function Edit() {
                             style: selectedStyle,
                             size: selectedSize,
                             color: selectedColor || 'Black',
-                            position: selectedPosition || 'chest'
+                            position: selectedPosition || 'chest',
+                            custom_design_url: finalImage || ''
                           })
                         });
                         
@@ -2689,7 +2690,7 @@ export default function Edit() {
         </div>
 
         {/* Floating Cart Button */}
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed top-6 right-6 z-50">
           <CartIcon />
         </div>
       </main>
@@ -2763,7 +2764,7 @@ export default function Edit() {
                 >
                   {selectedStyle ? (
                     <Image
-                      src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                      src={`/styles/${selectedStyle === 'Anime Fantasy' ? 'ghibli' : selectedStyle === 'Paper Animation' ? 'southpark' : selectedStyle === 'Animated Comedy' ? 'familyguy' : selectedStyle === 'Action Anime' ? 'dragonball' :  'simpsons'}.png`}
                       alt={`${selectedStyle} Style`}
                       width={60}
                       height={60}
@@ -3498,23 +3499,7 @@ export default function Edit() {
                             )}
                           </div>
 
-                          {/* Reset Rotation Button */}
-                          {imageRotation !== 0 && (
-                            <button 
-                              onClick={() => {
-                                setImageRotation(0);
-                                // Reset to original image
-                                const originalImage = localStorage.getItem('pixelme-conversion-result');
-                                if (originalImage) {
-                                  setEditedImage(originalImage);
-                                  localStorage.setItem('pixelme-edited-image', originalImage);
-                                }
-                              }}
-                              className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300"
-                            >
-                              Reset to Original Orientation
-                            </button>
-                          )}
+
                         </div>
                       </div>
                     )}
@@ -3589,54 +3574,122 @@ export default function Edit() {
                               setIsFilling(true);
                               
                               try {
-                                // Create a canvas with the zoomed out view (including transparent padding)
-                                const canvas = document.createElement('canvas');
-                                const ctx = canvas.getContext('2d');
-                                if (!ctx || !imageRef.current) return;
+                                // First, remove background from current image
+                                console.log('Step 1: Removing background before adding padding...');
                                 
-                                // Load the original image to get its natural dimensions
-                                const imgElement = document.createElement('img');
-                                imgElement.crossOrigin = 'anonymous';
-                                imgElement.onload = () => {
-                                  const originalWidth = imgElement.naturalWidth;
-                                  const originalHeight = imgElement.naturalHeight;
+                                // Create canvas for current image
+                                const tempCanvas = document.createElement('canvas');
+                                const tempCtx = tempCanvas.getContext('2d');
+                                if (!tempCtx) return;
+                                
+                                const tempImg = document.createElement('img');
+                                tempImg.crossOrigin = 'anonymous';
+                                tempImg.onload = async () => {
+                                  tempCanvas.width = tempImg.naturalWidth;
+                                  tempCanvas.height = tempImg.naturalHeight;
+                                  tempCtx.drawImage(tempImg, 0, 0);
+                                  const imageDataUrl = tempCanvas.toDataURL('image/jpeg', 0.95);
                                   
-                                  // Calculate padding based on zoom level
-                                  const paddingFactor = (100 - zoomLevel) / 100; // 0 at 100%, 0.5 at 50%
-                                  const paddingX = originalWidth * paddingFactor;
-                                  const paddingY = originalHeight * paddingFactor;
+                                  // Remove background first
+                                  const response = await fetch('/api/remove-background', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                      imageData: imageDataUrl
+                                    }),
+                                  });
                                   
-                                  // Canvas size includes the transparent padding
-                                  canvas.width = originalWidth + (paddingX * 2);
-                                  canvas.height = originalHeight + (paddingY * 2);
+                                  const data = await response.json();
                                   
-                                  // Make the entire canvas transparent
-                                  ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                  
-                                  // Draw the original image centered on the canvas
-                                  ctx.drawImage(
-                                    imgElement,
-                                    paddingX, // x offset (padding)
-                                    paddingY, // y offset (padding)
-                                    originalWidth,
-                                    originalHeight
-                                  );
-                                  
-                                  const zoomedOutImage = canvas.toDataURL('image/png');
-                                  setEditedImage(zoomedOutImage);
-                                  localStorage.setItem('pixelme-edited-image', zoomedOutImage);
-                                  
-                                  // Reset zoom level to 100% since we've baked the padding into the image
-                                  setZoomLevel(100);
-                                  localStorage.setItem('pixelme-zoom-level', '100');
-                                  
-                                  setIsFilling(false);
+                                  if (response.ok && data.success) {
+                                    console.log('Step 2: Background removed, now adding padding...');
+                                    
+                                    // Now add padding to the background-removed image
+                                    const bgRemovedImg = document.createElement('img');
+                                    bgRemovedImg.crossOrigin = 'anonymous';
+                                    bgRemovedImg.onload = () => {
+                                      const originalWidth = bgRemovedImg.naturalWidth;
+                                      const originalHeight = bgRemovedImg.naturalHeight;
+                                      
+                                      // Calculate padding based on zoom level
+                                      const paddingFactor = (100 - zoomLevel) / 100; // 0 at 100%, 0.5 at 50%
+                                      const paddingX = originalWidth * paddingFactor;
+                                      const paddingY = originalHeight * paddingFactor;
+                                      
+                                      // Create final canvas with padding
+                                      const finalCanvas = document.createElement('canvas');
+                                      const finalCtx = finalCanvas.getContext('2d');
+                                      if (!finalCtx) return;
+                                      
+                                      // Canvas size includes the transparent padding
+                                      finalCanvas.width = originalWidth + (paddingX * 2);
+                                      finalCanvas.height = originalHeight + (paddingY * 2);
+                                      
+                                      // Make the entire canvas transparent
+                                      finalCtx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
+                                      
+                                      // Draw the background-removed image centered on the canvas
+                                      finalCtx.drawImage(
+                                        bgRemovedImg,
+                                        paddingX, // x offset (padding)
+                                        paddingY, // y offset (padding)
+                                        originalWidth,
+                                        originalHeight
+                                      );
+                                      
+                                      const finalImage = finalCanvas.toDataURL('image/png');
+                                      setEditedImage(finalImage);
+                                      localStorage.setItem('pixelme-edited-image', finalImage);
+                                      
+                                      // Reset zoom level to 100% since we've baked the padding into the image
+                                      setZoomLevel(100);
+                                      localStorage.setItem('pixelme-zoom-level', '100');
+                                      
+                                      setIsFilling(false);
+                                      console.log('Zoom out with background removal completed successfully');
+                                    };
+                                    bgRemovedImg.src = data.imageUrl;
+                                    
+                                  } else {
+                                    console.error('Background removal failed:', data.error);
+                                    // Fallback to original behavior if background removal fails
+                                    const imgElement = document.createElement('img');
+                                    imgElement.crossOrigin = 'anonymous';
+                                    imgElement.onload = () => {
+                                      const originalWidth = imgElement.naturalWidth;
+                                      const originalHeight = imgElement.naturalHeight;
+                                      
+                                      // Calculate padding based on zoom level
+                                      const paddingFactor = (100 - zoomLevel) / 100;
+                                      const paddingX = originalWidth * paddingFactor;
+                                      const paddingY = originalHeight * paddingFactor;
+                                      
+                                      const canvas = document.createElement('canvas');
+                                      const ctx = canvas.getContext('2d');
+                                      if (!ctx) return;
+                                      
+                                      canvas.width = originalWidth + (paddingX * 2);
+                                      canvas.height = originalHeight + (paddingY * 2);
+                                      ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                      ctx.drawImage(imgElement, paddingX, paddingY, originalWidth, originalHeight);
+                                      
+                                      const zoomedOutImage = canvas.toDataURL('image/png');
+                                      setEditedImage(zoomedOutImage);
+                                      localStorage.setItem('pixelme-edited-image', zoomedOutImage);
+                                      setZoomLevel(100);
+                                      localStorage.setItem('pixelme-zoom-level', '100');
+                                      setIsFilling(false);
+                                    };
+                                    imgElement.src = currentImage;
+                                  }
                                 };
-                                imgElement.src = currentImage;
+                                tempImg.src = currentImage;
                                 
                               } catch (error) {
-                                console.error('Zoom out save error:', error);
-                                alert('Failed to save zoomed out image');
+                                console.error('Zoom out with background removal error:', error);
+                                alert('Failed to process image');
                                 setIsFilling(false);
                               }
                             }}

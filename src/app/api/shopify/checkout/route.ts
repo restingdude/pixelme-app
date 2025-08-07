@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
       style,
       size,
       color,
-      position 
+      position,
+      custom_design_url
     } = body;
 
     if (!variantId) {
@@ -30,10 +31,11 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🛒 Buy Now - Creating fresh cart for single item (clears existing cart)');
-    console.log('📋 Item details:', { variantId, quantity, clothing, style, size, color, position });
+    console.log('📋 Item details:', { variantId, quantity, clothing, style, size, color, position, custom_design_url });
 
-    // Build custom attributes for the cart item (no image URLs since only saved after payment)
+    // Build custom attributes for the cart item including custom design URL
     const customAttributes = [];
+    if (custom_design_url) customAttributes.push({ key: 'custom_design_url', value: custom_design_url });
     if (clothing) customAttributes.push({ key: 'clothing_type', value: clothing });
     if (style) customAttributes.push({ key: 'style', value: style });
     if (size) customAttributes.push({ key: 'size', value: size });

@@ -530,7 +530,7 @@ function UploadContent() {
                   title="Go to style selection"
                 >
                   <Image
-                    src={`/styles/${selectedStyle === 'Studio Ghibli' ? 'ghibli' : selectedStyle === 'South Park' ? 'southpark' : selectedStyle === 'Family Guy' ? 'familyguy' : selectedStyle === 'Dragon Ball' ? 'dragonball' : selectedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                    src={`/styles/${selectedStyle === 'Anime Fantasy' ? 'ghibli' : selectedStyle === 'Paper Animation' ? 'southpark' : selectedStyle === 'Animated Comedy' ? 'familyguy' : selectedStyle === 'Action Anime' ? 'dragonball' : 'simpsons'}.png`}
                     alt={`${selectedStyle} Style`}
                     width={60}
                     height={60}
@@ -752,72 +752,61 @@ function UploadContent() {
               <div className="flex flex-col items-center w-full">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 mb-4 w-full max-w-4xl px-4">
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Simpsons' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
-                    onClick={() => handleStyleSelect('Simpsons')}
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Yellow Cartoon' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    onClick={() => handleStyleSelect('Yellow Cartoon')}
                   >
                     <Image
                       src="/styles/simpsons.png"
-                      alt="Simpsons Style"
+                      alt="Yellow Cartoon Style"
                       width={120}
                       height={120}
                       className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Family Guy' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
-                    onClick={() => handleStyleSelect('Family Guy')}
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Animated Comedy' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    onClick={() => handleStyleSelect('Animated Comedy')}
                   >
                     <Image
                       src="/styles/familyguy.png"
-                      alt="Family Guy Style"
+                      alt="Animated Comedy Style"
                       width={120}
                       height={120}
                       className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'South Park' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
-                    onClick={() => handleStyleSelect('South Park')}
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Paper Animation' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    onClick={() => handleStyleSelect('Paper Animation')}
                   >
                     <Image
                       src="/styles/southpark.png"
-                      alt="South Park Style"
+                      alt="Paper Animation Style"
                       width={120}
                       height={120}
                       className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
+
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Rick and Morty' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
-                    onClick={() => handleStyleSelect('Rick and Morty')}
-                  >
-                    <Image
-                      src="/styles/rickandmorty.png"
-                      alt="Rick and Morty Style"
-                      width={120}
-                      height={120}
-                      className="object-contain rounded-lg w-full h-auto"
-                    />
-                  </button>
-                  <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Studio Ghibli' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
-                    onClick={() => handleStyleSelect('Studio Ghibli')}
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Anime Fantasy' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    onClick={() => handleStyleSelect('Anime Fantasy')}
                   >
                     <Image
                       src="/styles/ghibli.png"
-                      alt="Studio Ghibli Style"
+                      alt="Anime Fantasy Style"
                       width={120}
                       height={120}
                       className="object-contain rounded-lg w-full h-auto"
                     />
                   </button>
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Dragon Ball' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
-                    onClick={() => handleStyleSelect('Dragon Ball')}
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Action Anime' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    onClick={() => handleStyleSelect('Action Anime')}
                   >
                     <Image
                       src="/styles/dragonball.png"
-                      alt="Dragon Ball Style"
+                      alt="Action Anime Style"
                       width={120}
                       height={120}
                       className="object-contain rounded-lg w-full h-auto"
@@ -928,7 +917,7 @@ function UploadContent() {
       </div>
 
       {/* Floating Cart Button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed top-6 right-6 z-50">
         <CartIcon />
       </div>
     </main>

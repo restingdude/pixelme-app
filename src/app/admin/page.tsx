@@ -1524,7 +1524,7 @@ export default function AdminPage() {
       )}
 
       {/* Floating Cart Button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed top-6 right-6 z-50">
         <CartIcon />
       </div>
     </main>

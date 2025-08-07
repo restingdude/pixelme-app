@@ -23,12 +23,12 @@ export const PRODUCT_TYPES = {
 
 // Style types available in PixelMe
 export const STYLE_TYPES = {
-  SIMPSONS: 'Simpsons',
-  FAMILY_GUY: 'Family Guy',
-  STUDIO_GHIBLI: 'Studio Ghibli',
-  SOUTH_PARK: 'South Park',
-  DRAGON_BALL: 'Dragon Ball',
-  RICK_AND_MORTY: 'Rick and Morty',
+  YELLOW_CARTOON: 'Yellow Cartoon',
+  ANIMATED_COMEDY: 'Animated Comedy',
+  ANIME_FANTASY: 'Anime Fantasy',
+  PAPER_ANIMATION: 'Paper Animation',
+  ACTION_ANIME: 'Action Anime',
+
 } as const;
 
 // Colors available for clothing

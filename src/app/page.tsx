@@ -61,6 +61,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
   
   // Refs for auto-scrolling
   const colorSectionRef = useRef<HTMLDivElement>(null);
@@ -90,12 +91,15 @@ export default function Home() {
     setCachedColorReducedImage(colorReducedImage);
     setCachedFinalImage(finalImage);
 
-    // Set selected product and color if we have cached data
+    // Set selected product, color, and size if we have cached data
     if (clothing) {
       setSelectedProduct(clothing);
     }
     if (color) {
       setSelectedColor(color);
+    }
+    if (size) {
+      setSelectedSize(size);
     }
 
     // Fetch products from Shopify
@@ -123,6 +127,7 @@ export default function Home() {
   const handleProductSelect = (clothingType: string) => {
     setSelectedProduct(clothingType);
     setSelectedColor(null); // Reset color selection when product changes
+    setSelectedSize(null); // Reset size selection when product changes
     // Cache the clothing selection but don't proceed yet
     localStorage.setItem('pixelme-selected-clothing', clothingType);
     localStorage.removeItem('pixelme-selected-color');
@@ -144,6 +149,7 @@ export default function Home() {
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
+    setSelectedSize(null); // Reset size selection when color changes
     // Cache the color selection but don't proceed yet
     localStorage.setItem('pixelme-selected-color', color);
     localStorage.removeItem('pixelme-selected-size');
@@ -259,6 +265,7 @@ export default function Home() {
     setCachedFinalImage(null);
     setSelectedProduct(null);
     setSelectedColor(null);
+    setSelectedSize(null);
   };
 
   // Get available colors for the selected product (only colors with stock)
@@ -430,7 +437,7 @@ export default function Home() {
                 title="Go to style selection step"
               >
                 <Image
-                  src={`/styles/${cachedStyle === 'Studio Ghibli' ? 'ghibli' : cachedStyle === 'South Park' ? 'southpark' : cachedStyle === 'Family Guy' ? 'familyguy' : cachedStyle === 'Dragon Ball' ? 'dragonball' : cachedStyle === 'Rick and Morty' ? 'rickandmorty' : 'simpsons'}.png`}
+                  src={`/styles/${cachedStyle === 'Anime Fantasy' ? 'ghibli' : cachedStyle === 'Paper Animation' ? 'southpark' : cachedStyle === 'Animated Comedy' ? 'familyguy' : cachedStyle === 'Action Anime' ? 'dragonball' :  'simpsons'}.png`}
                   alt={`${cachedStyle} Style`}
                   width={60}
                   height={60}
@@ -744,7 +751,7 @@ export default function Home() {
       </div>
 
       {/* Floating Cart Button */}
-      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
+      <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-50">
         <CartIcon />
       </div>
     </main>

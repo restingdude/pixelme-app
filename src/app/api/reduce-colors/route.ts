@@ -33,19 +33,32 @@ export async function POST(request: NextRequest) {
     console.log('Image data format:', imageData.substring(0, 50) + '...');
 
     // Embroidery-style conversion prompt optimized for color preservation and digitization
-    const prompt = `Convert this image to embroidery-ready style with these EXACT requirements:
+    const prompt = `Transform this into EMBROIDERY PATCH STYLE with ULTRA-THICK BLACK BORDERS:
 
-1. PRESERVE ALL ORIGINAL COLORS - Keep red, blue, green, yellow, purple, orange, pink, brown, skin tones, hair colors, and ALL other existing colors in the image
-2. REDUCE to maximum 15 colors total - simplify similar shades but KEEP the original color families
-3. FLAT COLOR AREAS - Remove gradients and shading, fill each area with solid flat colors
-4. THICK BLACK OUTLINES - Add bold black outlines (18-22 pixels wide) around the exterior edges and important interior features
-5. DO NOT convert to black and white - This must remain a COLORFUL image with all original color types preserved
+1. CRITICAL COLOR PRESERVATION - EXACTLY maintain these specific colors:
+   - SKIN TONES: Keep the exact skin color from original (pale, medium, dark, olive, etc.) - do NOT change skin tone at all
+   - HAIR COLORS: Preserve exact hair color (blonde, brown, black, red, gray, etc.) - maintain the specific shade
+   - CLOTHING COLORS: Keep exact clothing colors (red shirt stays red, blue jeans stay blue, etc.)
+   - EYE COLORS: Maintain original eye colors (brown, blue, green, hazel, etc.)
+   - ALL OTHER COLORS: Preserve the original color family for every element
 
-6. CRITICAL: PRESERVE TRANSPARENCY - If the background is transparent (shown as checkered grey/white pattern), keep it completely transparent. Do NOT convert transparent or checkered areas to solid colors. Only convert the actual subject/foreground elements.
+2. SMART COLOR REDUCTION to maximum 15 thread colors:
+   - Group similar shades within each color family (light blue + dark blue = one blue thread)
+   - Keep one representative color per major element (one skin tone, one hair color, one shirt color, etc.)
+   - Maintain color relationships and contrast between different elements
 
-Transform the style to look like embroidery stitching while maintaining vibrant colors. The checkered background pattern indicates transparency and must remain transparent - do not treat it as content to be converted. Focus on making the main subject bold and colorful with thick outlines suitable for embroidery digitization.
+3. FLAT COLOR AREAS - Remove gradients and shading, fill each area with solid flat colors matching original hues
 
-CRITICAL: This must be a COLORFUL result with transparent background preserved, not black and white. Preserve the color palette while simplifying it to 15 colors maximum.`;
+4. MASSIVE BLACK OUTLINES - Create ULTRA-THICK BLACK BORDERS around EVERY shape and element. The black outlines should be the DOMINANT feature - like iron-on patches or embroidered badges with heavy black stitching around every edge. Make outlines so thick they look like they were drawn with a fat marker.
+
+5. EMBROIDERY THREAD SIMULATION - Make colors look like embroidery thread: vibrant, saturated, but true to original colors
+
+6. PRESERVE TRANSPARENCY - Keep transparent backgrounds completely transparent
+
+CRITICAL: This must look like a colorful embroidery patch where someone could easily identify the original colors of skin, hair, clothes, etc. Never change the basic color identity of any element - a red shirt must stay red, brown hair must stay brown, etc.`;
+
+    // Negative prompt to avoid thin outlines and color changes
+    const negativePrompt = `thin outlines, fine lines, delicate borders, subtle edges, minimal outlines, pencil lines, hairline borders, light strokes, faded edges, color changes, skin color changes, hair color changes, clothing color changes, monochrome, black and white, desaturated colors, wrong colors, color shifting`;
 
     // Use FLUX Kontext Pro for high-quality color reduction
     const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions', {
@@ -58,12 +71,13 @@ CRITICAL: This must be a COLORFUL result with transparent background preserved, 
         input: {
           input_image: imageData,
           prompt: prompt,
+          negative_prompt: negativePrompt,
           output_format: "png",
           output_quality: 95,
-          // Additional parameters for better color control and transparency preservation
-          guidance_scale: 3.5,
-          num_inference_steps: 28,
-          strength: 0.8  // Lower strength to preserve more original features including transparency
+          // Aggressive parameters for maximum outline thickness
+          guidance_scale: 12.0,  // Much higher for strict prompt adherence
+          num_inference_steps: 35,  // More steps for better quality
+          strength: 0.95  // Very high strength for dramatic changes
         }
       }),
     });

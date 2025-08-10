@@ -926,9 +926,9 @@ function UploadContent() {
                       // handleConvert will clear edited data when starting conversion
                       handleConvert();
                     }}
-                    disabled={isConverting || (rateLimitStatus && rateLimitStatus.remainingGenerations === 0)}
+                    disabled={isConverting || (rateLimitStatus?.remainingGenerations === 0)}
                     className={`px-8 py-4 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 ${
-                      isConverting || (rateLimitStatus && rateLimitStatus.remainingGenerations === 0)
+                      isConverting || (rateLimitStatus?.remainingGenerations === 0)
                         ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
                         : 'bg-amber-600 text-white hover:bg-amber-700'
                     }`}
@@ -938,7 +938,7 @@ function UploadContent() {
                         <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
                         Converting...
                       </div>
-                    ) : rateLimitStatus && rateLimitStatus.remainingGenerations === 0 ? (
+                    ) : rateLimitStatus?.remainingGenerations === 0 ? (
                       'Rate Limit Reached'
                     ) : (
                       `Convert to ${selectedStyle}`

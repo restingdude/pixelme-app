@@ -969,16 +969,9 @@ export default function Edit() {
       }
     }
     
-    // Start new crop area
-    setIsCropping(true);
-    setCropStartPos({ x, y });
-    setCropArea({ x, y, width: 0, height: 0 });
-    
-    // Clear canvas for crop selection
-    const ctx = canvasRef.current.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    }
+    // Don't create new crop areas when touching outside existing crop
+    // The crop square should be fixed and only adjustable when changing size
+    return;
   };
 
   const updateTouchCrop = (e: React.TouchEvent<HTMLCanvasElement>) => {
@@ -1116,18 +1109,9 @@ export default function Edit() {
       }
     }
     
-    // Start new crop area
-    setIsCropping(true);
-    setCropStartPos({ x, y });
-    setCropArea({ x, y, width: 0, height: 0 });
-    
-    // Clear canvas for new crop selection
-    const ctx = canvasRef.current.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      // Immediately draw a small preview crop box to show where the crop started
-      drawCropBox(ctx, { x, y, width: 1, height: 1 });
-    }
+    // Don't create new crop areas when clicking outside existing crop
+    // The crop square should be fixed and only adjustable when changing size
+    return;
   };
 
   const updateCrop = (e: React.MouseEvent<HTMLCanvasElement>) => {

@@ -139,7 +139,7 @@ export default function Edit() {
     }
 
     // Try to find an image that matches the color in its alt text or filename
-    const colorImage = product.images.edges.find(edge => {
+    const colorImage = product.images.edges.find((edge: any) => {
       const altText = edge.node.altText?.toLowerCase() || '';
       const url = edge.node.url.toLowerCase();
       const colorLower = color.toLowerCase();

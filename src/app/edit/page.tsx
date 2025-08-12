@@ -40,6 +40,8 @@ export default function Edit() {
   const [variantPrice, setVariantPrice] = useState<string | null>(null);
   const [isPriceLoading, setIsPriceLoading] = useState<boolean>(false);
   const [isCheckingOut, setIsCheckingOut] = useState<boolean>(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   
   // Custom presets state
   const [customPresets, setCustomPresets] = useState<{[key: string]: {name: string, x: number, y: number, size: number}}>({});
@@ -84,6 +86,69 @@ export default function Edit() {
     } finally {
       setPresetsLoading(false);
     }
+  };
+
+  // Fetch products from Shopify
+  const fetchProducts = async () => {
+    try {
+      setProductsLoading(true);
+      
+      // Try to load cached products first
+      const cachedProducts = localStorage.getItem('pixelme-products-cache');
+      if (cachedProducts) {
+        try {
+          const parsedProducts = JSON.parse(cachedProducts);
+          setProducts(parsedProducts);
+          setProductsLoading(false);
+        } catch (error) {
+          console.warn('Failed to parse cached products:', error);
+        }
+      }
+      
+      const response = await fetch('/api/shopify/products');
+      const data = await response.json();
+      
+      if (data.success) {
+        setProducts(data.products || []);
+        // Cache products for next time
+        localStorage.setItem('pixelme-products-cache', JSON.stringify(data.products || []));
+      } else {
+        console.error('Failed to fetch products:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
+  // Get product image for a specific color
+  const getProductImageForColor = (clothingType: string, color: string | null) => {
+    const product = products.find(p => 
+      p.title.toLowerCase().includes(clothingType) || 
+      p.handle.toLowerCase().includes(clothingType)
+    );
+
+    if (!product || !product.images?.edges) {
+      return `/clothes/${clothingType}.png`; // fallback to local image
+    }
+
+    // If no color selected, return first image
+    if (!color) {
+      return product.images.edges[0]?.node?.url || `/clothes/${clothingType}.png`;
+    }
+
+    // Try to find an image that matches the color in its alt text or filename
+    const colorImage = product.images.edges.find(edge => {
+      const altText = edge.node.altText?.toLowerCase() || '';
+      const url = edge.node.url.toLowerCase();
+      const colorLower = color.toLowerCase();
+      
+      return altText.includes(colorLower) || url.includes(colorLower);
+    });
+
+    // Return color-specific image or fallback to first image
+    return colorImage?.node?.url || product.images.edges[0]?.node?.url || `/clothes/${clothingType}.png`;
   };
 
   // Load cached data on component mount
@@ -160,6 +225,9 @@ export default function Edit() {
     if (savedSize) {
       setSelectedSize(savedSize);
     }
+
+    // Fetch products for color-specific images
+    fetchProducts();
   }, []);
 
   // Reset zoom to 100% when entering edit step for consistent display
@@ -1831,7 +1899,7 @@ export default function Edit() {
         
         <div className="w-full max-w-6xl bg-white rounded-lg shadow p-4 sm:p-6 lg:p-8 flex flex-col items-center relative">
           <div className="w-full flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 min-w-0 flex-shrink-0">
+            <div className="flex items-center gap-2 pb-2 lg:pb-0 min-w-0 flex-shrink-0">
               <div className="flex items-center gap-2 min-w-max">
                 {/* Step indicators */}
                 {selectedClothing && (
@@ -1841,14 +1909,27 @@ export default function Edit() {
                       className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
                       title="Change clothing style"
                     >
-                      <Image
-                        src={`/clothes/${selectedClothing}.png`}
-                        alt={selectedClothing}
-                        width={60}
-                        height={60}
-                        className="object-contain w-12 h-12 sm:w-14 sm:h-14"
-                        priority
-                      />
+                      {productsLoading ? (
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-200 rounded animate-pulse"></div>
+                      ) : (() => {
+                        const stepImage = getProductImageForColor(selectedClothing, selectedColor);
+                        return stepImage.startsWith('/clothes/') ? (
+                          <Image
+                            src={stepImage}
+                            alt={`${selectedClothing} ${selectedColor || ''}`}
+                            width={60}
+                            height={60}
+                            className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                            priority
+                          />
+                        ) : (
+                          <img
+                            src={stepImage}
+                            alt={`${selectedClothing} ${selectedColor || ''}`}
+                            className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                          />
+                        );
+                      })()}
                     </button>
                   </div>
                 )}
@@ -1875,7 +1956,7 @@ export default function Edit() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleStepChange('style')}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
                   title="Change style selection"
                 >
                   <Image
@@ -1883,7 +1964,7 @@ export default function Edit() {
                     alt={`${selectedStyle} Style`}
                     width={60}
                     height={60}
-                    className="object-contain rounded-lg"
+                    className="object-contain rounded-lg w-12 h-12 sm:w-14 sm:h-14"
                   />
                 </button>
               </div>
@@ -1893,7 +1974,7 @@ export default function Edit() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleStepChange('convert')}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
                   title="Go back to convert step"
                 >
                   <img
@@ -1901,7 +1982,7 @@ export default function Edit() {
                     alt="Converted preview"
                     width={60}
                     height={60}
-                    className="object-contain rounded-lg w-16 h-16"
+                    className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
                   />
                 </button>
               </div>
@@ -1914,7 +1995,7 @@ export default function Edit() {
                     setStep('edit');
                     localStorage.setItem('pixelme-current-step', 'edit');
                   }}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
                   title="Go back to edit step"
                 >
                   {editedImage && (
@@ -1923,7 +2004,7 @@ export default function Edit() {
                       alt="Edited image preview"
                       width={60}
                       height={60}
-                      className="object-contain rounded-lg w-16 h-16"
+                      className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
                     />
                   )}
                 </button>
@@ -1933,7 +2014,7 @@ export default function Edit() {
                     setStep('edit');
                     localStorage.setItem('pixelme-current-step', 'edit');
                   }}
-                  className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
                   title="Go back to edit step"
                 >
                   5
@@ -1949,7 +2030,7 @@ export default function Edit() {
                     setStep('color-reduce');
                     localStorage.setItem('pixelme-current-step', 'color-reduce');
                   }}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-20 h-20"
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
                   title="Go back to color reduction step"
                 >
                   <img
@@ -1957,7 +2038,7 @@ export default function Edit() {
                     alt="Color reduced image preview"
                     width={60}
                     height={60}
-                    className="object-contain rounded-lg w-16 h-16"
+                    className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
                   />
                 </button>
               ) : (
@@ -1966,7 +2047,7 @@ export default function Edit() {
                     setStep('color-reduce');
                     localStorage.setItem('pixelme-current-step', 'color-reduce');
                   }}
-                  className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-20 h-20 flex items-center justify-center border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
                   title="Go back to color reduction step"
                 >
                   6
@@ -1979,14 +2060,27 @@ export default function Edit() {
               <div className="relative flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 w-20 h-20">
                 {selectedClothing && finalImage ? (
                   <div className="relative w-16 h-16">
-                    <Image
-                      src={`/clothes/${selectedClothing}.png`}
-                      alt={selectedClothing}
-                      width={64}
-                      height={64}
-                      className="object-contain w-full h-full"
-                      priority
-                    />
+                    {productsLoading ? (
+                      <div className="w-full h-full bg-gray-200 rounded animate-pulse"></div>
+                    ) : (() => {
+                      const stepImage = getProductImageForColor(selectedClothing, selectedColor);
+                      return stepImage.startsWith('/clothes/') ? (
+                        <Image
+                          src={stepImage}
+                          alt={`${selectedClothing} ${selectedColor || ''}`}
+                          width={64}
+                          height={64}
+                          className="object-contain w-full h-full"
+                          priority
+                        />
+                      ) : (
+                        <img
+                          src={stepImage}
+                          alt={`${selectedClothing} ${selectedColor || ''}`}
+                          className="object-contain w-full h-full"
+                        />
+                      );
+                    })()}
                     <div 
                       className="absolute"
                       style={{
@@ -2208,14 +2302,27 @@ export default function Edit() {
                       }}
                     >
                       <div className="relative">
-                        <Image
-                          src={`/clothes/${selectedClothing}.png`}
-                          alt={selectedClothing}
-                          width={400}
-                          height={400}
-                          className="object-contain"
-                          priority
-                        />
+                        {productsLoading ? (
+                          <div className="w-[400px] h-[400px] bg-gray-200 rounded animate-pulse"></div>
+                        ) : (() => {
+                          const stepImage = getProductImageForColor(selectedClothing, selectedColor);
+                          return stepImage.startsWith('/clothes/') ? (
+                            <Image
+                              src={stepImage}
+                              alt={`${selectedClothing} ${selectedColor || ''}`}
+                              width={400}
+                              height={400}
+                              className="object-contain"
+                              priority
+                            />
+                          ) : (
+                            <img
+                              src={stepImage}
+                              alt={`${selectedClothing} ${selectedColor || ''}`}
+                              className="object-contain w-[400px] h-[400px]"
+                            />
+                          );
+                        })()}
                         {finalImage && selectedClothing && (
                           <div 
                             className="absolute"
@@ -2733,14 +2840,27 @@ export default function Edit() {
                   title="Go back to product selection"
                 >
                   {selectedClothing ? (
-                    <Image
-                      src={`/clothes/${selectedClothing}.png`}
-                      alt={selectedClothing}
-                      width={60}
-                      height={60}
-                      className="object-contain w-12 h-12 sm:w-14 sm:h-14"
-                      priority
-                    />
+                    productsLoading ? (
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-200 rounded animate-pulse"></div>
+                    ) : (() => {
+                      const stepImage = getProductImageForColor(selectedClothing, selectedColor);
+                      return stepImage.startsWith('/clothes/') ? (
+                        <Image
+                          src={stepImage}
+                          alt={`${selectedClothing} ${selectedColor || ''}`}
+                          width={60}
+                          height={60}
+                          className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                          priority
+                        />
+                      ) : (
+                        <img
+                          src={stepImage}
+                          alt={`${selectedClothing} ${selectedColor || ''}`}
+                          className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                        />
+                      );
+                    })()
                   ) : (
                     <span className="text-xs sm:text-sm font-semibold text-gray-400">1</span>
                   )}
@@ -2865,11 +2985,24 @@ export default function Edit() {
             </div>
           </div>
           
-          {/* Clear Button */}
-          <div className="flex items-center gap-3 lg:ml-auto">
+          {/* Selection Info and Clear Button */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 lg:ml-auto">
+            {/* Selection Info */}
+            {(selectedClothing || selectedColor || selectedSize) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm w-full sm:w-auto">
+                <div className="font-semibold text-blue-800 mb-1">Current Selection:</div>
+                <div className="text-blue-700">
+                  <div><span className="font-medium">Product:</span> {selectedClothing ? (selectedClothing.charAt(0).toUpperCase() + selectedClothing.slice(1)) : 'Not Selected'}</div>
+                  <div><span className="font-medium">Color:</span> {selectedColor || 'Not Selected'}</div>
+                  <div><span className="font-medium">Size:</span> {selectedSize || 'Not Selected'}</div>
+                </div>
+              </div>
+            )}
+            
+            {/* Clear Button */}
             <button
               onClick={handleClear}
-              className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
+              className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center flex-shrink-0"
               title="Clear all cached data and start over"
             >
               <Image
@@ -3026,7 +3159,7 @@ export default function Edit() {
                     <h4 className="text-lg font-semibold text-gray-800 mb-4">Tools</h4>
                     
                     {/* Tool Selection Grid */}
-                    <div className="grid grid-cols-1 gap-3 mb-4">
+                    <div className="grid grid-cols-2 gap-2 mb-4">
                       <button
                         onClick={() => {
                           setActiveMode('background');
@@ -3039,26 +3172,23 @@ export default function Edit() {
                           }
                           setShowBrushCursor(false);
                         }}
-                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
                           activeMode === 'background'
                             ? 'border-emerald-500 bg-emerald-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-sm'
                         }`}
                       >
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                           activeMode === 'background' ? 'bg-emerald-500' : 'bg-gray-400'
                         }`}>
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
-                        <div className="text-left">
-                          <div className={`font-semibold text-sm sm:text-base ${
-                            activeMode === 'background' ? 'text-emerald-700' : 'text-gray-700'
-                          }`}>
-                            Remove Background
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-500">AI-powered background removal</div>
+                        <div className={`font-medium text-xs text-center ${
+                          activeMode === 'background' ? 'text-emerald-700' : 'text-gray-700'
+                        }`}>
+                          Remove Background
                         </div>
                       </button>
 
@@ -3079,26 +3209,23 @@ export default function Edit() {
                           }
                           setShowBrushCursor(false);
                         }}
-                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
                           activeMode === 'remove' || activeMode === 'fill'
                             ? 'border-purple-500 bg-purple-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
                         }`}
                       >
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                           activeMode === 'remove' || activeMode === 'fill' ? 'bg-purple-500' : 'bg-gray-400'
                         }`}>
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
                         </div>
-                        <div className="text-left">
-                          <div className={`font-semibold text-sm sm:text-base ${
-                            activeMode === 'remove' || activeMode === 'fill' ? 'text-purple-700' : 'text-gray-700'
-                          }`}>
-                            Erase / Fill
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-500">Remove objects or fill with AI</div>
+                        <div className={`font-medium text-xs text-center ${
+                          activeMode === 'remove' || activeMode === 'fill' ? 'text-purple-700' : 'text-gray-700'
+                        }`}>
+                          Erase / Fill
                         </div>
                       </button>
 
@@ -3147,26 +3274,23 @@ export default function Edit() {
                             }
                           }, 50);
                         }}
-                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
                           activeMode === 'crop'
                             ? 'border-blue-500 bg-blue-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
                         }`}
                       >
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                           activeMode === 'crop' ? 'bg-blue-500' : 'bg-gray-400'
                         }`}>
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
-                        <div className="text-left">
-                          <div className={`font-semibold text-sm sm:text-base ${
-                            activeMode === 'crop' ? 'text-blue-700' : 'text-gray-700'
-                          }`}>
-                            Crop Image
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-500">Crop to specific dimensions</div>
+                        <div className={`font-medium text-xs text-center ${
+                          activeMode === 'crop' ? 'text-blue-700' : 'text-gray-700'
+                        }`}>
+                          Crop
                         </div>
                       </button>
 
@@ -3182,26 +3306,23 @@ export default function Edit() {
                             }
                           }
                         }}
-                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
                           activeMode === 'rotate'
                             ? 'border-indigo-500 bg-indigo-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow-sm'
                         }`}
                       >
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                           activeMode === 'rotate' ? 'bg-indigo-500' : 'bg-gray-400'
                         }`}>
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                           </svg>
                         </div>
-                        <div className="text-left">
-                          <div className={`font-semibold text-sm sm:text-base ${
-                            activeMode === 'rotate' ? 'text-indigo-700' : 'text-gray-700'
-                          }`}>
-                            Rotate Image
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-500">Rotate in 90° increments</div>
+                        <div className={`font-medium text-xs text-center ${
+                          activeMode === 'rotate' ? 'text-indigo-700' : 'text-gray-700'
+                        }`}>
+                          Rotate
                         </div>
                       </button>
 
@@ -3217,26 +3338,23 @@ export default function Edit() {
                             }
                           }
                         }}
-                        className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
+                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
                           activeMode === 'zoom'
                             ? 'border-orange-500 bg-orange-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-orange-300 hover:shadow-sm'
                         }`}
                       >
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                           activeMode === 'zoom' ? 'bg-orange-500' : 'bg-gray-400'
                         }`}>
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10h-3m0 0V7m0 3v3" />
                           </svg>
                         </div>
-                        <div className="text-left">
-                          <div className={`font-semibold text-sm sm:text-base ${
-                            activeMode === 'zoom' ? 'text-orange-700' : 'text-gray-700'
-                          }`}>
-                            Zoom Out
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-500">Add transparent padding around image</div>
+                        <div className={`font-medium text-xs text-center ${
+                          activeMode === 'zoom' ? 'text-orange-700' : 'text-gray-700'
+                        }`}>
+                          Zoom Out
                         </div>
                       </button>
                     </div>

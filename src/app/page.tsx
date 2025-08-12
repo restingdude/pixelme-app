@@ -109,11 +109,26 @@ export default function Home() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      
+      // Try to load cached products first
+      const cachedProducts = localStorage.getItem('pixelme-products-cache');
+      if (cachedProducts) {
+        try {
+          const parsedProducts = JSON.parse(cachedProducts);
+          setProducts(parsedProducts);
+          setLoading(false);
+        } catch (error) {
+          console.warn('Failed to parse cached products:', error);
+        }
+      }
+      
       const response = await fetch('/api/shopify/products');
       const data = await response.json();
       
       if (data.success) {
         setProducts(data.products || []);
+        // Cache products for next time
+        localStorage.setItem('pixelme-products-cache', JSON.stringify(data.products || []));
       } else {
         console.error('Failed to fetch products:', data.error);
       }
@@ -334,6 +349,36 @@ export default function Home() {
     return [...new Set(sizes)];
   };
 
+
+  // Get product image for a specific color
+  const getProductImageForColor = (clothingType: string, color: string | null) => {
+    const product = products.find(p => 
+      p.title.toLowerCase().includes(clothingType) || 
+      p.handle.toLowerCase().includes(clothingType)
+    );
+
+    if (!product || !product.images?.edges) {
+      return `/clothes/${clothingType}.png`; // fallback to local image
+    }
+
+    // If no color selected, return first image
+    if (!color) {
+      return product.images.edges[0]?.node?.url || `/clothes/${clothingType}.png`;
+    }
+
+    // Try to find an image that matches the color in its alt text or filename
+    const colorImage = product.images.edges.find(edge => {
+      const altText = edge.node.altText?.toLowerCase() || '';
+      const url = edge.node.url.toLowerCase();
+      const colorLower = color.toLowerCase();
+      
+      return altText.includes(colorLower) || url.includes(colorLower);
+    });
+
+    // Return color-specific image or fallback to first image
+    return colorImage?.node?.url || product.images.edges[0]?.node?.url || `/clothes/${clothingType}.png`;
+  };
+
   // Get inventory quantity for a specific color/size combination
   const getInventoryQuantity = (color: string, size: string) => {
     if (!selectedProduct) return 0;
@@ -393,14 +438,25 @@ export default function Home() {
             <div className="flex items-center gap-2 min-w-max">
             {cachedClothing ? (
                 <div className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-dashed border-amber-600 w-16 h-16 sm:w-20 sm:h-20">
-                <Image
-                  src={`/clothes/${cachedClothing}.png`}
-                  alt={cachedClothing}
-                  width={60}
-                  height={60}
-                    className="object-contain w-12 h-12 sm:w-14 sm:h-14"
-                  priority
-                />
+                {(() => {
+                  const stepImage = getProductImageForColor(cachedClothing, cachedColor);
+                  return stepImage.startsWith('/clothes/') ? (
+                    <Image
+                      src={stepImage}
+                      alt={`${cachedClothing} ${cachedColor || ''}`}
+                      width={60}
+                      height={60}
+                      className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                      priority
+                    />
+                  ) : (
+                    <img
+                      src={stepImage}
+                      alt={`${cachedClothing} ${cachedColor || ''}`}
+                      className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                    />
+                  );
+                })()}
               </div>
             ) : (
                 <span className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-dashed border-amber-600">1</span>
@@ -620,7 +676,7 @@ export default function Home() {
                   );
 
                   const firstVariantPrice = product?.variants?.edges?.[0]?.node?.price || '29.99';
-                  const productImage = product?.images?.edges?.[0]?.node?.url;
+                  const productImage = getProductImageForColor(clothingType, selectedProduct === clothingType ? selectedColor : null);
                   const isSelected = selectedProduct === clothingType;
 
                   return (
@@ -635,20 +691,20 @@ export default function Home() {
                           : 'border-transparent'
                       } hover:border-dashed hover:border-amber-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-full max-w-sm h-64 sm:w-80 sm:h-80`}
                     >
-                      {productImage ? (
-                        <img
-                          src={productImage}
-                          alt={product?.title || clothingType}
-                          className="object-contain max-w-full h-32 sm:max-h-60 mb-4"
-                        />
-                      ) : (
+                      {productImage.startsWith('/clothes/') ? (
                         <Image
-                          src={`/clothes/${clothingType}.png`}
+                          src={productImage}
                           alt={clothingType.charAt(0).toUpperCase() + clothingType.slice(1)}
                           width={240}
                           height={240}
                           className="object-contain max-w-full h-32 sm:max-h-60 mb-4"
                           priority
+                        />
+                      ) : (
+                        <img
+                          src={productImage}
+                          alt={product?.title || clothingType}
+                          className="object-contain max-w-full h-32 sm:max-h-60 mb-4"
                         />
                       )}
                       <div className="text-center">

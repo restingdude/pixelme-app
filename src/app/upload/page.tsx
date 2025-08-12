@@ -21,6 +21,8 @@ function UploadContent() {
   const [cachedEditedImage, setCachedEditedImage] = useState<string | null>(null);
   const [cachedColorReducedImage, setCachedColorReducedImage] = useState<string | null>(null);
   const [cachedFinalImage, setCachedFinalImage] = useState<string | null>(null);
+  const [products, setProducts] = useState<any[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   
   // Rate limiting state
   const [rateLimitStatus, setRateLimitStatus] = useState<{
@@ -209,6 +211,69 @@ function UploadContent() {
     });
   };
 
+  // Get product image for a specific color
+  const getProductImageForColor = (clothingType: string, color: string | null) => {
+    const product = products.find(p => 
+      p.title.toLowerCase().includes(clothingType) || 
+      p.handle.toLowerCase().includes(clothingType)
+    );
+
+    if (!product || !product.images?.edges) {
+      return `/clothes/${clothingType}.png`; // fallback to local image
+    }
+
+    // If no color selected, return first image
+    if (!color) {
+      return product.images.edges[0]?.node?.url || `/clothes/${clothingType}.png`;
+    }
+
+    // Try to find an image that matches the color in its alt text or filename
+    const colorImage = product.images.edges.find(edge => {
+      const altText = edge.node.altText?.toLowerCase() || '';
+      const url = edge.node.url.toLowerCase();
+      const colorLower = color.toLowerCase();
+      
+      return altText.includes(colorLower) || url.includes(colorLower);
+    });
+
+    // Return color-specific image or fallback to first image
+    return colorImage?.node?.url || product.images.edges[0]?.node?.url || `/clothes/${clothingType}.png`;
+  };
+
+  // Fetch products from Shopify
+  const fetchProducts = async () => {
+    try {
+      setProductsLoading(true);
+      
+      // Try to load cached products first
+      const cachedProducts = localStorage.getItem('pixelme-products-cache');
+      if (cachedProducts) {
+        try {
+          const parsedProducts = JSON.parse(cachedProducts);
+          setProducts(parsedProducts);
+          setProductsLoading(false);
+        } catch (error) {
+          console.warn('Failed to parse cached products:', error);
+        }
+      }
+      
+      const response = await fetch('/api/shopify/products');
+      const data = await response.json();
+      
+      if (data.success) {
+        setProducts(data.products || []);
+        // Cache products for next time
+        localStorage.setItem('pixelme-products-cache', JSON.stringify(data.products || []));
+      } else {
+        console.error('Failed to fetch products:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
   // Load cached data on component mount
   useEffect(() => {
     const cachedImage = localStorage.getItem('pixelme-uploaded-image');
@@ -251,6 +316,9 @@ function UploadContent() {
     if (selectedVariantId) {
       localStorage.setItem('pixelme-selected-variant-id', selectedVariantId);
     }
+
+    // Fetch products for color-specific images
+    fetchProducts();
   }, [selectedColor, selectedSize, selectedVariantId]);
 
   const handleBack = () => {
@@ -311,9 +379,9 @@ function UploadContent() {
         console.log('📱 Image processing completed, data URL length:', imageData.length);
         setUploadedImage(imageData);
         localStorage.setItem('pixelme-uploaded-image', imageData);
-        // Automatically proceed to style selection
-        setStep('style');
-        localStorage.setItem('pixelme-current-step', 'style');
+        // Stay on upload step instead of auto-proceeding
+        setStep('upload');
+        localStorage.setItem('pixelme-current-step', 'upload');
         
       } catch (error) {
         console.error('📱 Error processing image:', error);
@@ -338,8 +406,8 @@ function UploadContent() {
           console.log('📱 Fallback upload successful, data URL length:', imageData.length);
           setUploadedImage(imageData);
           localStorage.setItem('pixelme-uploaded-image', imageData);
-          setStep('style');
-          localStorage.setItem('pixelme-current-step', 'style');
+          setStep('upload');
+          localStorage.setItem('pixelme-current-step', 'upload');
           
         } catch (fallbackError) {
           console.error('📱 Fallback upload also failed:', fallbackError);
@@ -548,14 +616,27 @@ function UploadContent() {
                     className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
                   title="Change clothing style"
                 >
-                  <Image
-                    src={`/clothes/${selectedClothing}.png`}
-                    alt={selectedClothing}
-                    width={60}
-                    height={60}
-                      className="object-contain w-12 h-12 sm:w-14 sm:h-14"
-                    priority
-                  />
+                  {productsLoading ? (
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-200 rounded animate-pulse"></div>
+                  ) : (() => {
+                    const stepImage = getProductImageForColor(selectedClothing, selectedColor);
+                    return stepImage.startsWith('/clothes/') ? (
+                      <Image
+                        src={stepImage}
+                        alt={`${selectedClothing} ${selectedColor || ''}`}
+                        width={60}
+                        height={60}
+                        className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                        priority
+                      />
+                    ) : (
+                      <img
+                        src={stepImage}
+                        alt={`${selectedClothing} ${selectedColor || ''}`}
+                        className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                      />
+                    );
+                  })()}
                 </button>
               ) : (
                   <span className="text-xs sm:text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent">1</span>
@@ -791,20 +872,32 @@ function UploadContent() {
                   />
                 </label>
               ) : step === 'upload' ? (
-                <div className="relative flex items-center justify-center w-full h-48 sm:h-64 bg-gray-100 rounded-lg">
-                  <img
-                    src={uploadedImage}
-                    alt="Uploaded photo"
-                    className="max-w-full max-h-full object-contain rounded-lg"
-                  />
+                <div className="flex flex-col items-center w-full">
+                  <div className="relative flex items-center justify-center w-full h-48 sm:h-64 bg-gray-100 rounded-lg mb-4">
+                    <img
+                      src={uploadedImage}
+                      alt="Uploaded photo"
+                      className="max-w-full max-h-full object-contain rounded-lg"
+                    />
+                    <button
+                      onClick={() => {
+                        setUploadedImage(null);
+                        localStorage.removeItem('pixelme-uploaded-image');
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  
                   <button
                     onClick={() => {
-                      setUploadedImage(null);
-                      localStorage.removeItem('pixelme-uploaded-image');
+                      setStep('style');
+                      localStorage.setItem('pixelme-current-step', 'style');
                     }}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                    className="px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
                   >
-                    ×
+                    Continue
                   </button>
                 </div>
               ) : null}

@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
                     }
                   }
                 }
-                images(first: 1) {
+                images(first: 10) {
                   edges {
                     node {
                       url

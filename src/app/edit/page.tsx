@@ -3091,29 +3091,30 @@ export default function Edit() {
                       <canvas
                         ref={canvasRef}
                         className={`absolute top-0 left-0 rounded-lg ${
+                          isFilling ? 'cursor-not-allowed' :
                           activeMode === 'remove' ? 'cursor-none' : 
                           activeMode === 'fill' ? 'cursor-none' :
                           activeMode === 'crop' ? 'cursor-crosshair' : 
                           activeMode === 'rotate' ? 'cursor-default' :
                           'cursor-default'
                         }`}
-                        onMouseDown={activeMode === 'background' || activeMode === 'rotate' ? undefined : startDrawing}
-                        onMouseMove={activeMode === 'background' || activeMode === 'rotate' ? undefined : (e) => {
+                        onMouseDown={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : startDrawing}
+                        onMouseMove={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
                           handleMouseMove(e);
                           draw(e);
                         }}
-                        onMouseUp={activeMode === 'background' || activeMode === 'rotate' ? undefined : stopDrawing}
-                        onMouseLeave={activeMode === 'background' || activeMode === 'rotate' ? undefined : handleMouseLeave}
-                        onMouseEnter={activeMode === 'background' || activeMode === 'rotate' ? undefined : handleMouseEnter}
-                        onTouchStart={activeMode === 'background' || activeMode === 'rotate' ? undefined : (e) => {
+                        onMouseUp={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : stopDrawing}
+                        onMouseLeave={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : handleMouseLeave}
+                        onMouseEnter={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : handleMouseEnter}
+                        onTouchStart={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
                           handleTouchStart();
                           startTouchDrawing(e);
                         }}
-                        onTouchMove={activeMode === 'background' || activeMode === 'rotate' ? undefined : (e) => {
+                        onTouchMove={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
                           handleTouchMove(e);
                           drawTouch(e);
                         }}
-                        onTouchEnd={activeMode === 'background' || activeMode === 'rotate' ? undefined : (e) => {
+                        onTouchEnd={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
                           handleTouchEnd();
                           stopTouchDrawing(e);
                         }}
@@ -3132,7 +3133,7 @@ export default function Edit() {
                       />
                       
                       {/* Brush Size Cursor */}
-                      {showBrushCursor && (activeMode === 'remove' || activeMode === 'fill') && (
+                      {showBrushCursor && (activeMode === 'remove' || activeMode === 'fill') && !isFilling && (
                         <div
                           className={`absolute pointer-events-none rounded-full border-2 ${
                             activeMode === 'fill' ? 'border-purple-500' : 'border-red-500'
@@ -3146,6 +3147,16 @@ export default function Edit() {
                             zIndex: 1001 // Higher than canvas to appear above crop square when in brush mode
                           }}
                         />
+                      )}
+
+                      {/* Loading Overlay */}
+                      {isFilling && (
+                        <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center z-50">
+                          <div className="bg-white rounded-lg p-6 shadow-xl flex flex-col items-center gap-4">
+                            <div className="w-12 h-12 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-gray-700 font-medium">Processing...</p>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
@@ -3162,6 +3173,7 @@ export default function Edit() {
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <button
                         onClick={() => {
+                          if (isFilling) return;
                           setActiveMode('background');
                           // Clear canvas but preserve crop area state for later use
                           if (canvasRef.current) {
@@ -3172,8 +3184,11 @@ export default function Edit() {
                           }
                           setShowBrushCursor(false);
                         }}
+                        disabled={isFilling}
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
-                          activeMode === 'background'
+                          isFilling
+                            ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                            : activeMode === 'background'
                             ? 'border-emerald-500 bg-emerald-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-sm'
                         }`}
@@ -3194,6 +3209,7 @@ export default function Edit() {
 
                       <button
                         onClick={() => {
+                          if (isFilling) return;
                           setActiveMode(activeMode === 'remove' || activeMode === 'fill' ? activeMode : 'remove');
                           // Only clear crop area if switching from crop mode
                           if (activeMode === 'crop') {
@@ -3209,8 +3225,11 @@ export default function Edit() {
                           }
                           setShowBrushCursor(false);
                         }}
+                        disabled={isFilling}
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
-                          activeMode === 'remove' || activeMode === 'fill'
+                          isFilling
+                            ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                            : activeMode === 'remove' || activeMode === 'fill'
                             ? 'border-purple-500 bg-purple-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
                         }`}
@@ -3231,6 +3250,7 @@ export default function Edit() {
 
                       <button
                         onClick={() => {
+                          if (isFilling) return;
                           setActiveMode('crop');
                           setShowBrushCursor(false);
                           
@@ -3274,8 +3294,11 @@ export default function Edit() {
                             }
                           }, 50);
                         }}
+                        disabled={isFilling}
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
-                          activeMode === 'crop'
+                          isFilling
+                            ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                            : activeMode === 'crop'
                             ? 'border-blue-500 bg-blue-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
                         }`}
@@ -3296,6 +3319,7 @@ export default function Edit() {
 
                       <button
                         onClick={() => {
+                          if (isFilling) return;
                           setActiveMode('rotate');
                           setShowBrushCursor(false);
                           // Clear canvas but preserve crop area state for later use
@@ -3306,8 +3330,11 @@ export default function Edit() {
                             }
                           }
                         }}
+                        disabled={isFilling}
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
-                          activeMode === 'rotate'
+                          isFilling
+                            ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                            : activeMode === 'rotate'
                             ? 'border-indigo-500 bg-indigo-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow-sm'
                         }`}

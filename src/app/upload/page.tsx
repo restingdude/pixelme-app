@@ -13,6 +13,7 @@ function UploadContent() {
   const selectedSize = searchParams.get('size');
   const selectedVariantId = searchParams.get('variantId');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [imageRotation, setImageRotation] = useState(0);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [step, setStep] = useState<'upload' | 'style' | 'convert'>('upload');
   const [isConverting, setIsConverting] = useState(false);
@@ -580,6 +581,7 @@ function UploadContent() {
     
     // Reset state
     setUploadedImage(null);
+    setImageRotation(0);
     setSelectedStyle(null);
     setStep('upload');
     setConversionResult(null);
@@ -595,6 +597,67 @@ function UploadContent() {
   const handleStepChange = (newStep: 'upload' | 'style' | 'convert') => {
     setStep(newStep);
     localStorage.setItem('pixelme-current-step', newStep);
+  };
+
+  const handleRotateImage = async (direction: 'left' | 'right') => {
+    if (!uploadedImage) {
+      return;
+    }
+
+    try {
+      // Update rotation angle for display purposes
+      const rotationChange = direction === 'right' ? 90 : -90;
+      const newRotation = (imageRotation + rotationChange + 360) % 360;
+      setImageRotation(newRotation);
+
+      // Load current image
+      const img = document.createElement('img');
+      img.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = uploadedImage;
+      });
+
+      // Create rotated canvas - swap dimensions for 90° rotation
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Failed to create canvas context');
+      }
+
+      // For any rotation, we need to swap width and height
+      canvas.width = img.naturalHeight;
+      canvas.height = img.naturalWidth;
+
+      // Apply incremental rotation transformation
+      ctx.save();
+      
+      if (direction === 'right') {
+        // Rotate 90° clockwise
+        ctx.translate(canvas.width, 0);
+        ctx.rotate(Math.PI / 2);
+      } else {
+        // Rotate 90° counter-clockwise  
+        ctx.translate(0, canvas.height);
+        ctx.rotate(-Math.PI / 2);
+      }
+      
+      ctx.drawImage(img, 0, 0);
+      ctx.restore();
+
+      // Use JPEG with compression to reduce file size
+      const rotatedImageUrl = canvas.toDataURL('image/jpeg', 0.8);
+      
+      setUploadedImage(rotatedImageUrl);
+      localStorage.setItem('pixelme-uploaded-image', rotatedImageUrl);
+      
+    } catch (error) {
+      console.error('Error rotating image:', error);
+      alert('Failed to rotate image. Please try again.');
+    }
   };
 
   return (
@@ -886,6 +949,7 @@ function UploadContent() {
                     <button
                       onClick={() => {
                         setUploadedImage(null);
+                        setImageRotation(0);
                         localStorage.removeItem('pixelme-uploaded-image');
                       }}
                       className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
@@ -894,15 +958,27 @@ function UploadContent() {
                     </button>
                   </div>
                   
-                  <button
-                    onClick={() => {
-                      setStep('style');
-                      localStorage.setItem('pixelme-current-step', 'style');
-                    }}
-                    className="px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
-                  >
-                    Continue
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleRotateImage('left')}
+                      className="p-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                      title="Rotate 90°"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setStep('style');
+                        localStorage.setItem('pixelme-current-step', 'style');
+                      }}
+                      className="px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
+                    >
+                      Continue
+                    </button>
+                  </div>
                 </div>
               ) : null}
             </div>

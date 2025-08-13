@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         input: {
           image: imageUpload.urls.get,
           mask: maskUpload.urls.get,
-          prompt: prompt || 'Remove objects in masked areas and fill with extended background content',
+          prompt: prompt || 'Fill in the missing space by extending foreground elements like clothing, objects, skin, hair, and other subject details. Do NOT extend or change the background. Preserve the background exactly as it is. Only extend and continue the non-background elements that are missing in the masked areas.',
           safety_checker: false,
           seed: Math.floor(Math.random() * 1000000),
           output_format: 'png',

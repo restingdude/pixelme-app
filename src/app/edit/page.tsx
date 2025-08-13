@@ -27,6 +27,7 @@ export default function Edit() {
   const [cropDragStart, setCropDragStart] = useState<{ x: number; y: number } | null>(null);
   const [imageRotation, setImageRotation] = useState<number>(0); // Rotation angle in degrees (0, 90, 180, 270)
   const [step, setStep] = useState<'edit' | 'color-reduce' | 'preview' | 'before'>('edit');
+  const [justRemovedBackground, setJustRemovedBackground] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState<string>('middle-chest');
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [hasReachedPreview, setHasReachedPreview] = useState<boolean>(false);
@@ -1472,7 +1473,7 @@ export default function Edit() {
     });
   };
 
-  const handleBackgroundRemoval = async () => {
+  const handleBackgroundRemoval = async (lessAggressive = false) => {
     const sourceImage = currentImage; // Use current edited image, not original
     if (!sourceImage) return;
 
@@ -1512,6 +1513,7 @@ export default function Edit() {
         },
         body: JSON.stringify({
           imageData: imageDataUrl,
+          lessAggressive: lessAggressive,
         }),
       });
 
@@ -1522,8 +1524,14 @@ export default function Edit() {
         const transparentImage = await addCheckeredBackground(data.imageUrl);
         setEditedImage(transparentImage);
         localStorage.setItem('pixelme-edited-image', transparentImage);
+        // Set flag to show less aggressive option only for regular removal
+        if (!lessAggressive) {
+          setJustRemovedBackground(true);
+        } else {
+          setJustRemovedBackground(false); // Hide option after less aggressive attempt
+        }
         
-        console.log('Background removal completed successfully using 851-labs/background-remover');
+        console.log(`Background removal completed successfully using 851-labs/background-remover ${lessAggressive ? '(less aggressive)' : ''}`);
       } else {
         console.error('Background removal failed:', data.error);
         alert('Background removal failed: ' + (data.error || 'Unknown error'));
@@ -1543,6 +1551,8 @@ export default function Edit() {
     // Save current image for undo
     setPreviousImage(sourceImage);
     setIsFilling(true);
+    // Clear background removal flag when performing other operations
+    setJustRemovedBackground(false);
 
     try {
       // Load image and get dimensions
@@ -1599,21 +1609,57 @@ export default function Edit() {
       const tempPixelData = tempImageData.data;
       
       // Draw white areas where user drew (areas to fill)
-      maskCtx.fillStyle = 'white';
-      for (let y = 0; y < tempCanvas.height; y++) {
-        for (let x = 0; x < tempCanvas.width; x++) {
-          const index = (y * tempCanvas.width + x) * 4;
-          const alpha = tempPixelData[index + 3];
-          
-          if (alpha > 128) { // User drew here - should be filled
-            const scaledX = x * scaleX;
-            const scaledY = y * scaleY;
-            maskCtx.fillRect(scaledX, scaledY, scaleX, scaleY);
+      // Create a new canvas to scale the user's drawn mask properly
+      const userMaskCanvas = document.createElement('canvas');
+      userMaskCanvas.width = img.naturalWidth;
+      userMaskCanvas.height = img.naturalHeight;
+      const userMaskCtx = userMaskCanvas.getContext('2d');
+      
+      if (userMaskCtx) {
+        // Scale the user's drawing to match the original image dimensions
+        userMaskCtx.imageSmoothingEnabled = false; // Keep crisp edges for mask
+        userMaskCtx.drawImage(canvasRef.current!, 0, 0, canvasSize.width, canvasSize.height, 0, 0, img.naturalWidth, img.naturalHeight);
+        
+        // Now composite the scaled user mask onto the final mask as white areas
+        maskCtx.globalCompositeOperation = 'source-over';
+        maskCtx.fillStyle = 'white';
+        
+        // Get the scaled mask data
+        const scaledMaskData = userMaskCtx.getImageData(0, 0, img.naturalWidth, img.naturalHeight);
+        const scaledPixels = scaledMaskData.data;
+        
+        // Draw white pixels where user drew
+        for (let y = 0; y < img.naturalHeight; y++) {
+          for (let x = 0; x < img.naturalWidth; x++) {
+            const index = (y * img.naturalWidth + x) * 4;
+            const alpha = scaledPixels[index + 3];
+            
+            if (alpha > 128) { // User drew here - should be filled
+              maskCtx.fillRect(x, y, 1, 1);
+            }
           }
         }
+        
+        console.log('Mask generation completed - user drawn areas converted to white on black background');
       }
 
       const maskDataUrl = maskCanvas.toDataURL('image/png');
+      
+      // Debug: Log mask info
+      console.log('Mask canvas size:', maskCanvas.width, 'x', maskCanvas.height);
+      console.log('Original canvas size:', canvasSize.width, 'x', canvasSize.height);
+      console.log('Scale factors:', scaleX, scaleY);
+      console.log('Mask data URL length:', maskDataUrl.length);
+      
+      // Debug: Create a visual representation of the mask
+      const debugMaskCanvas = document.createElement('canvas');
+      debugMaskCanvas.width = 200;
+      debugMaskCanvas.height = 200;
+      const debugCtx = debugMaskCanvas.getContext('2d');
+      if (debugCtx) {
+        debugCtx.drawImage(maskCanvas, 0, 0, 200, 200);
+        console.log('Debug mask preview (scaled to 200x200):', debugMaskCanvas.toDataURL());
+      }
       
       const response = await fetch('/api/fill', {
         method: 'POST',
@@ -1711,18 +1757,38 @@ export default function Edit() {
       const tempPixelData = tempImageData.data;
       
       // Draw white areas where user drew (areas to remove)
-      maskCtx.fillStyle = 'white';
-      for (let y = 0; y < tempCanvas.height; y++) {
-        for (let x = 0; x < tempCanvas.width; x++) {
-          const index = (y * tempCanvas.width + x) * 4;
-          const alpha = tempPixelData[index + 3];
-          
-          if (alpha > 128) { // User drew here - should be removed
-            const scaledX = x * scaleX;
-            const scaledY = y * scaleY;
-            maskCtx.fillRect(scaledX, scaledY, scaleX, scaleY);
+      // Create a new canvas to scale the user's drawn mask properly
+      const userMaskCanvas = document.createElement('canvas');
+      userMaskCanvas.width = img.naturalWidth;
+      userMaskCanvas.height = img.naturalHeight;
+      const userMaskCtx = userMaskCanvas.getContext('2d');
+      
+      if (userMaskCtx) {
+        // Scale the user's drawing to match the original image dimensions
+        userMaskCtx.imageSmoothingEnabled = false; // Keep crisp edges for mask
+        userMaskCtx.drawImage(canvasRef.current!, 0, 0, canvasSize.width, canvasSize.height, 0, 0, img.naturalWidth, img.naturalHeight);
+        
+        // Now composite the scaled user mask onto the final mask as white areas
+        maskCtx.globalCompositeOperation = 'source-over';
+        maskCtx.fillStyle = 'white';
+        
+        // Get the scaled mask data
+        const scaledMaskData = userMaskCtx.getImageData(0, 0, img.naturalWidth, img.naturalHeight);
+        const scaledPixels = scaledMaskData.data;
+        
+        // Draw white pixels where user drew
+        for (let y = 0; y < img.naturalHeight; y++) {
+          for (let x = 0; x < img.naturalWidth; x++) {
+            const index = (y * img.naturalWidth + x) * 4;
+            const alpha = scaledPixels[index + 3];
+            
+            if (alpha > 128) { // User drew here - should be removed
+              maskCtx.fillRect(x, y, 1, 1);
+            }
           }
         }
+        
+        console.log('Remove mask generation completed - user drawn areas converted to white on black background');
       }
 
       const maskDataUrl = maskCanvas.toDataURL('image/png');
@@ -3431,7 +3497,7 @@ export default function Edit() {
                           <p className="text-sm text-emerald-700">AI will automatically remove the background and make it transparent.</p>
                         </div>
                         <button 
-                          onClick={handleBackgroundRemoval}
+                          onClick={() => handleBackgroundRemoval()}
                           disabled={isFilling || !conversionResult}
                           className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
                             isFilling || !conversionResult
@@ -3448,6 +3514,32 @@ export default function Edit() {
                             'Remove Background'
                           )}
                         </button>
+
+                        {/* Less Aggressive Option */}
+                        {justRemovedBackground && (
+                          <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.314 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                              </svg>
+                              <h6 className="font-semibold text-amber-800">Removed too much?</h6>
+                            </div>
+                            <p className="text-sm text-amber-700 mb-3">
+                              If the background removal was too aggressive and removed parts of your subject, try a gentler approach.
+                            </p>
+                            <button 
+                              onClick={() => handleBackgroundRemoval(true)}
+                              disabled={isFilling}
+                              className={`w-full px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+                                isFilling
+                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                  : 'bg-amber-600 text-white hover:bg-amber-700'
+                              }`}
+                            >
+                              {isFilling ? 'Processing...' : 'Try Less Aggressive Removal'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 

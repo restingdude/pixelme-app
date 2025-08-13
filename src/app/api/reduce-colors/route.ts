@@ -32,33 +32,36 @@ export async function POST(request: NextRequest) {
     console.log('Processing color reduction for image data length:', imageData.length);
     console.log('Image data format:', imageData.substring(0, 50) + '...');
 
-    // Embroidery-style conversion prompt optimized for color preservation and digitization
-    const prompt = `Transform this into EMBROIDERY PATCH STYLE with ULTRA-THICK BLACK BORDERS:
+    // Embroidery-style conversion prompt focused on color preservation
+    const prompt = `Create an embroidery patch style version with these STRICT requirements:
 
-1. CRITICAL COLOR PRESERVATION - EXACTLY maintain these specific colors:
-   - SKIN TONES: Keep the exact skin color from original (pale, medium, dark, olive, etc.) - do NOT change skin tone at all
-   - HAIR COLORS: Preserve exact hair color (blonde, brown, black, red, gray, etc.) - maintain the specific shade
-   - CLOTHING COLORS: Keep exact clothing colors (red shirt stays red, blue jeans stay blue, etc.)
-   - EYE COLORS: Maintain original eye colors (brown, blue, green, hazel, etc.)
-   - ALL OTHER COLORS: Preserve the original color family for every element
+ABSOLUTE COLOR PRESERVATION (MOST IMPORTANT):
+- WHITE must stay WHITE (never orange, yellow, or any other color)
+- LIGHT BROWN must stay LIGHT BROWN (never blue, purple, or any other color)  
+- EVERY original color must maintain its exact hue family
+- If something is red in original, it MUST be red in result
+- If something is blue in original, it MUST be blue in result
+- ZERO color shifting or color changes allowed
 
-2. SMART COLOR REDUCTION to maximum 15 thread colors:
-   - Group similar shades within each color family (light blue + dark blue = one blue thread)
-   - Keep one representative color per major element (one skin tone, one hair color, one shirt color, etc.)
-   - Maintain color relationships and contrast between different elements
+STYLE REQUIREMENTS:
+1. Add EXTREMELY THICK BLACK OUTLINES around ALL shapes and characters - outlines should be MASSIVE and BOLD like drawn with a thick black marker, similar to cartoon coloring books or iron-on patches with heavy black stitching
+2. Flatten areas to solid colors (remove gradients and shading)
+3. Reduce to maximum 15 distinct colors while preserving original hues
+4. Make colors vibrant like embroidery thread but keep same color families
+5. CRITICAL: Keep all transparent/clear background areas completely transparent - never add any background color or fill transparent areas
 
-3. FLAT COLOR AREAS - Remove gradients and shading, fill each area with solid flat colors matching original hues
+TRANSPARENCY PRESERVATION (ESSENTIAL):
+- Transparent backgrounds MUST stay completely transparent
+- Do not add any background color, patterns, or fills to transparent areas
+- Preserve the alpha channel exactly as it is in the original
+- Only process visible subject elements, never the transparent background
 
-4. MASSIVE BLACK OUTLINES - Create ULTRA-THICK BLACK BORDERS around EVERY shape and element. The black outlines should be the DOMINANT feature - like iron-on patches or embroidered badges with heavy black stitching around every edge. Make outlines so thick they look like they were drawn with a fat marker.
+OUTLINE EMPHASIS: The black outlines are the most important visual feature - they should be so thick and prominent that they dominate the image like a bold cartoon or embroidery patch. Think thick marker lines, not thin pen lines.
 
-5. EMBROIDERY THREAD SIMULATION - Make colors look like embroidery thread: vibrant, saturated, but true to original colors
+CRITICAL: This is color quantization, NOT color transformation. Keep all original colors exactly as they are, just reduce the number of variations and add EXTREMELY thick black outlines.`;
 
-6. PRESERVE TRANSPARENCY - Keep transparent backgrounds completely transparent
-
-CRITICAL: This must look like a colorful embroidery patch where someone could easily identify the original colors of skin, hair, clothes, etc. Never change the basic color identity of any element - a red shirt must stay red, brown hair must stay brown, etc.`;
-
-    // Negative prompt to avoid thin outlines and color changes
-    const negativePrompt = `thin outlines, fine lines, delicate borders, subtle edges, minimal outlines, pencil lines, hairline borders, light strokes, faded edges, color changes, skin color changes, hair color changes, clothing color changes, monochrome, black and white, desaturated colors, wrong colors, color shifting`;
+    // Negative prompt to prevent color changes, ensure thick outlines, and preserve transparency
+    const negativePrompt = `color changes, color shifting, white to orange, white to yellow, brown to blue, brown to purple, red to blue, blue to red, wrong colors, different colors, altered hues, color transformation, recoloring, color replacement, hue shifting, tint changes, saturation changes that alter color family, color inversion, complementary colors, opposite colors, thin outlines, fine outlines, hairline outlines, delicate outlines, subtle outlines, minimal outlines, thin lines, fine lines, subtle borders, pencil lines, pen lines, light strokes, faded outlines, weak borders, gradients, shading, soft edges, background filling, background colors, background patterns, solid background, filled background, opaque background, removing transparency, adding background, background replacement`;
 
     // Use FLUX Kontext Pro for high-quality color reduction
     const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions', {
@@ -74,10 +77,10 @@ CRITICAL: This must look like a colorful embroidery patch where someone could ea
           negative_prompt: negativePrompt,
           output_format: "png",
           output_quality: 95,
-          // Aggressive parameters for maximum outline thickness
-          guidance_scale: 12.0,  // Much higher for strict prompt adherence
-          num_inference_steps: 35,  // More steps for better quality
-          strength: 0.95  // Very high strength for dramatic changes
+          // Conservative parameters to preserve original colors
+          guidance_scale: 8.0,  // Lower guidance for less dramatic changes
+          num_inference_steps: 30,  // Sufficient steps for quality
+          strength: 0.65  // Lower strength to preserve original colors while adding outlines
         }
       }),
     });

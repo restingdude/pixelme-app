@@ -166,21 +166,25 @@ function UploadContent() {
               // Rotate 90° CW (portrait mode, camera rotated left)
               canvas.width = height;
               canvas.height = width;
-              ctx.setTransform(0, 1, -1, 0, height, 0);
+              ctx.rotate(Math.PI / 2);
+              ctx.translate(0, -height);
               ctx.drawImage(img, 0, 0);
               break;
             case 7:
               // Rotate 90° CW + flip horizontal
               canvas.width = height;
               canvas.height = width;
-              ctx.setTransform(0, -1, -1, 0, height, width);
+              ctx.rotate(Math.PI / 2);
+              ctx.scale(-1, 1);
+              ctx.translate(-height, -width);
               ctx.drawImage(img, 0, 0);
               break;
             case 8:
               // Rotate 90° CCW (portrait mode, camera rotated right)
               canvas.width = height;
               canvas.height = width;
-              ctx.setTransform(0, -1, 1, 0, 0, width);
+              ctx.rotate(-Math.PI / 2);
+              ctx.translate(-width, 0);
               ctx.drawImage(img, 0, 0);
               break;
             default:

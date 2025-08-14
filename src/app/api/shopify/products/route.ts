@@ -62,6 +62,10 @@ export async function GET(request: NextRequest) {
                     name
                     value
                   }
+                  image {
+                    url
+                    altText
+                  }
                 }
               }
             }
@@ -114,6 +118,10 @@ export async function GET(request: NextRequest) {
                       selectedOptions {
                         name
                         value
+                      }
+                      image {
+                        url
+                        altText
                       }
                     }
                   }

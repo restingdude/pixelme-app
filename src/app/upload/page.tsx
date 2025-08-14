@@ -232,17 +232,102 @@ function UploadContent() {
       return product.images.edges[0]?.node?.url || `/clothes/${clothingType}.png`;
     }
 
-    // Try to find an image that matches the color in its alt text or filename
-    const colorImage = product.images.edges.find((edge: any) => {
+    // Try to find an image that matches the color in its alt text, filename, or by color-specific mapping
+    const colorLower = color.toLowerCase();
+    console.log(`🎨 Looking for images matching color: ${color} (${colorLower})`);
+    console.log(`📷 Available images:`, product.images.edges.map(edge => ({
+      url: edge.node.url,
+      altText: edge.node.altText,
+      filename: edge.node.url.split('/').pop()
+    })));
+    
+    // Enhanced color matching - try multiple variations and patterns
+    const colorImage = product.images.edges.find(edge => {
       const altText = edge.node.altText?.toLowerCase() || '';
       const url = edge.node.url.toLowerCase();
-      const colorLower = color.toLowerCase();
+      const filename = url.split('/').pop() || '';
       
-      return altText.includes(colorLower) || url.includes(colorLower);
+      console.log(`🔍 Checking image: ${filename}`);
+      console.log(`   - altText: "${altText}"`);
+      console.log(`   - url: "${url}"`);
+      
+      // Check if alt text or URL contains the color name as a standalone word
+      // Use word boundaries to avoid partial matches like "white" in "white background"
+      const colorRegex = new RegExp(`\\b${colorLower}\\b`, 'i');
+      const filenameColorRegex = new RegExp(colorLower, 'i');
+      
+      // For filename, we want the color to be at the start (like "BlackHoodie.png")
+      // For alt text, we want it as a standalone word describing the product color
+      const filenameMatch = filenameColorRegex.test(filename) && filename.toLowerCase().startsWith(colorLower);
+      const altTextMatch = colorRegex.test(altText) && altText.includes(`${colorLower} hoodie`);
+      
+      if (filenameMatch || altTextMatch) {
+        console.log(`✅ Direct match found for ${colorLower} - filename: ${filenameMatch}, altText: ${altTextMatch}`);
+        return true;
+      }
+      
+      // Check for color variations (e.g., "Black" -> "black", "blk")
+      const colorVariations = {
+        'black': ['black', 'blk'],
+        'white': ['white', 'wht'],
+        'navy': ['navy', 'nvy'],
+        'grey': ['grey', 'gray', 'gry'],
+        'gray': ['grey', 'gray', 'gry'],
+        'red': ['red'],
+        'blue': ['blue', 'blu'],
+        'green': ['green', 'grn'],
+        'yellow': ['yellow', 'ylw'],
+        'orange': ['orange', 'org'],
+        'purple': ['purple', 'prpl'],
+        'pink': ['pink'],
+        'brown': ['brown', 'brn'],
+        'maroon': ['maroon', 'mrn'],
+        'charcoal': ['charcoal', 'char'],
+        'heather': ['heather', 'hthr'],
+        'beige': ['beige', 'cream', 'tan']
+      };
+      
+      const variations = colorVariations[colorLower] || [colorLower];
+      const hasVariationMatch = variations.some(variation => {
+        const variationRegex = new RegExp(`\\b${variation}\\b`, 'i');
+        const filenameVariationMatch = filename.toLowerCase().startsWith(variation);
+        const altTextVariationMatch = variationRegex.test(altText) && altText.includes(`${variation} hoodie`);
+        
+        return filenameVariationMatch || altTextVariationMatch;
+      });
+      
+      if (hasVariationMatch) {
+        console.log(`✅ Color variation match found with: ${variations.join(', ')}`);
+      }
+      
+      return hasVariationMatch;
     });
 
-    // Return color-specific image or fallback to first image
-    return colorImage?.node?.url || product.images.edges[0]?.node?.url || `/clothes/${clothingType}.png`;
+    // If we found a color-specific image, use it
+    if (colorImage?.node?.url) {
+      return colorImage.node.url;
+    }
+
+    // If no color-specific image found, check if there are images organized by variant
+    console.log(`🔄 No color-specific image found, checking variants for color: ${color}`);
+    
+    // Find the variant that matches the selected color (pick any size, just for color)
+    const variant = product.variants.edges.find(edge => {
+      const options = edge.node.selectedOptions;
+      if (!options || !Array.isArray(options)) return false;
+      const colorOption = options.find(opt => opt.name === 'Color');
+      return colorOption?.value === color;
+    });
+
+    if (variant?.node?.image?.url) {
+      console.log(`✅ Using variant-specific image: ${variant.node.image.url}`);
+      return variant.node.image.url;
+    }
+
+    // Return first available Shopify image or fallback
+    const fallbackImage = product.images.edges[0]?.node?.url || `/clothes/${clothingType}.png`;
+    console.log(`⚠️ Using fallback image: ${fallbackImage}`);
+    return fallbackImage;
   };
 
   // Fetch products from Shopify

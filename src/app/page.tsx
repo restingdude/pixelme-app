@@ -405,7 +405,7 @@ export default function Home() {
       }
       
       // Check for color variations (e.g., "Black" -> "black", "blk")
-      const colorVariations = {
+      const colorVariations: { [key: string]: string[] } = {
         'black': ['black', 'blk'],
         'white': ['white', 'wht'],
         'navy': ['navy', 'nvy'],

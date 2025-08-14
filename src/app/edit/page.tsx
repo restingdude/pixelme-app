@@ -142,14 +142,14 @@ export default function Edit() {
     // Try to find an image that matches the color in its alt text, filename, or by color-specific mapping
     const colorLower = color.toLowerCase();
     console.log(`🎨 Looking for images matching color: ${color} (${colorLower})`);
-    console.log(`📷 Available images:`, product.images.edges.map(edge => ({
+    console.log(`📷 Available images:`, product.images.edges.map((edge: any) => ({
       url: edge.node.url,
       altText: edge.node.altText,
       filename: edge.node.url.split('/').pop()
     })));
     
     // Enhanced color matching - try multiple variations and patterns
-    const colorImage = product.images.edges.find(edge => {
+    const colorImage = product.images.edges.find((edge: any) => {
       const altText = edge.node.altText?.toLowerCase() || '';
       const url = edge.node.url.toLowerCase();
       const filename = url.split('/').pop() || '';
@@ -174,7 +174,7 @@ export default function Edit() {
       }
       
       // Check for color variations (e.g., "Black" -> "black", "blk")
-      const colorVariations = {
+      const colorVariations: { [key: string]: string[] } = {
         'black': ['black', 'blk'],
         'white': ['white', 'wht'],
         'navy': ['navy', 'nvy'],
@@ -219,7 +219,7 @@ export default function Edit() {
     console.log(`🔄 No color-specific image found, checking variants for color: ${color}`);
     
     // Find the variant that matches the selected color (pick any size, just for color)
-    const variant = product.variants.edges.find(edge => {
+    const variant = product.variants.edges.find((edge: any) => {
       const options = edge.node.selectedOptions;
       if (!options || !Array.isArray(options)) return false;
       const colorOption = options.find(opt => opt.name === 'Color');

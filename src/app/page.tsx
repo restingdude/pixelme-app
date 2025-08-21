@@ -58,7 +58,7 @@ export default function Home() {
               <img
                 src="/clothes/hoodie.png"
                 alt="Hoodie"
-                className="h-auto w-[180vw] sm:w-[160vw] md:w-[140vw] lg:w-[120vw] xl:w-[100vw] max-w-[1200px] opacity-15 sm:opacity-20"
+                className="h-auto w-[180vw] sm:w-[160vw] md:w-[140vw] lg:w-[120vw] xl:w-[100vw] max-w-[1200px] opacity-45 sm:opacity-50"
               />
               
               {/* Style Overlay - Consistent Ratio */}
@@ -68,7 +68,7 @@ export default function Home() {
                     <img
                       src={styles.find(s => s.id === hoveredStyle)?.image || ''}
                       alt="Style Preview"
-                      className="w-full h-full object-contain transition-opacity duration-300 opacity-60 sm:opacity-70"
+                      className="w-full h-full object-contain transition-opacity duration-300 opacity-85 sm:opacity-90"
                     />
                   </div>
                 </div>

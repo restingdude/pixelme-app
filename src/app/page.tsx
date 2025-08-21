@@ -9,11 +9,22 @@ export default function Home() {
   const router = useRouter();
   const [cachedClothing, setCachedClothing] = useState<string | null>(null);
   const [hoveredStyle, setHoveredStyle] = useState<string | null>(null);
+  const [scrollY, setScrollY] = useState(0);
 
   // Load cached data on component mount
   useEffect(() => {
     const clothing = localStorage.getItem('pixelme-selected-clothing');
     setCachedClothing(clothing);
+  }, []);
+
+  // Handle scroll for hoodie parallax effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const handleGetStarted = () => {
@@ -54,7 +65,12 @@ export default function Home() {
         {/* Background Hoodie - Always Visible, Responsive */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 flex items-start justify-center">
-            <div className="relative translate-x-8 sm:translate-x-16 md:translate-x-32 lg:translate-x-48 xl:translate-x-56 -translate-y-32">
+            <div 
+              className="relative translate-x-8 sm:translate-x-16 md:translate-x-32 lg:translate-x-48 xl:translate-x-56 transition-transform duration-200"
+              style={{
+                transform: `translateY(${-128 + scrollY * 0.8}px)`
+              }}
+            >
               <img
                 src="/clothes/hoodie.png"
                 alt="Hoodie"

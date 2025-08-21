@@ -33,8 +33,11 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-6">
-        <div className="w-40">
+      <div className="flex items-center justify-center p-6 relative">
+        <div className="absolute right-6">
+          <CartIcon />
+        </div>
+        <div>
           <Image
             src="/logo.png"
             alt="PixelMe"
@@ -44,7 +47,6 @@ export default function Home() {
             priority
           />
         </div>
-        <CartIcon />
       </div>
 
       {/* Main Content - Responsive Layout */}

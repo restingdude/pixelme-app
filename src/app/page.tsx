@@ -23,11 +23,11 @@ export default function Home() {
   };
 
   const styles = [
-    { id: 'style1', name: 'Classic Cartoon', image: '/homepage/style1.png' },
-    { id: 'style2', name: 'Animated Comedy', image: '/homepage/style2.png' },
-    { id: 'style3', name: 'Anime Fantasy', image: '/homepage/style3.png' },
-    { id: 'style4', name: 'Paper Animation', image: '/homepage/style4.png' },
-    { id: 'style5', name: 'Action Anime', image: '/homepage/style5.png' },
+    { id: 'style1', name: 'Classic Cartoon', image: '/Homepage/style1.png' },
+    { id: 'style2', name: 'Animated Comedy', image: '/Homepage/style2.png' },
+    { id: 'style3', name: 'Anime Fantasy', image: '/Homepage/style3.png' },
+    { id: 'style4', name: 'Paper Animation', image: '/Homepage/style4.png' },
+    { id: 'style5', name: 'Action Anime', image: '/Homepage/style5.png' },
   ];
 
   return (
@@ -52,24 +52,20 @@ export default function Home() {
         {/* Background Hoodie - Much Larger */}
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
           <div className="relative translate-x-56">
-            <Image
+            <img
               src="/clothes/hoodie.png"
               alt="Hoodie"
-              width={1600}
-              height={1600}
               className="w-auto h-[120vh] max-h-none opacity-20"
-              priority
             />
             
             {/* Style Overlay */}
             {hoveredStyle && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative w-64 h-64 lg:w-80 lg:h-80">
-                  <Image
+                <div className="relative w-48 h-48 lg:w-56 lg:h-56">
+                  <img
                     src={styles.find(s => s.id === hoveredStyle)?.image || ''}
                     alt="Style Preview"
-                    fill
-                    className="object-contain transition-opacity duration-300 opacity-60"
+                    className="w-full h-full object-contain transition-opacity duration-300 opacity-60"
                   />
                 </div>
               </div>
@@ -106,24 +102,23 @@ export default function Home() {
                 {/* Style Selection Buttons */}
                 <div className="space-y-4">
                   <h3 className="text-xl font-semibold text-gray-900 drop-shadow-sm">Choose Your Style</h3>
-                  <div className="grid grid-cols-5 gap-3">
+                  <div className="grid grid-cols-5 gap-2">
                     {styles.map((style) => (
                       <button
                         key={style.id}
                         onMouseEnter={() => setHoveredStyle(style.id)}
                         onMouseLeave={() => setHoveredStyle(null)}
-                        className={`p-3 rounded-lg border-2 transition-all duration-200 bg-white/90 backdrop-blur-sm ${
+                        className={`p-2 rounded-lg border-2 transition-all duration-200 bg-white/90 backdrop-blur-sm ${
                           hoveredStyle === style.id
                             ? 'border-purple-500 bg-purple-50/90'
                             : 'border-gray-200 hover:border-purple-300'
                         }`}
                       >
                         <div className="aspect-square relative">
-                          <Image
+                          <img
                             src={style.image}
                             alt={style.name}
-                            fill
-                            className="object-cover rounded"
+                            className="w-full h-full object-cover rounded"
                           />
                         </div>
                         <p className="text-xs mt-2 font-medium text-gray-700">{style.name}</p>

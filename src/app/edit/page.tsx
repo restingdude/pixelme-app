@@ -3735,7 +3735,7 @@ export default function Edit() {
                                 );
                                 
                                 const finalImage = finalCanvas.toDataURL('image/png');
-                                setCurrentImage(finalImage);
+                                setEditedImage(finalImage);
                                 
                                 // Reset zoom level to 100% since we've baked the padding into the image
                                 setZoomLevel(100);
@@ -3777,7 +3777,7 @@ export default function Edit() {
                                 );
                                 
                                 const finalImage = finalCanvas.toDataURL('image/png');
-                                setCurrentImage(finalImage);
+                                setEditedImage(finalImage);
                                 
                                 setZoomLevel(100);
                                 localStorage.setItem('pixelme-zoom-level', '100');

@@ -66,6 +66,7 @@ export default function Create() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   
   // Refs for auto-scrolling
   const colorSectionRef = useRef<HTMLDivElement>(null);
@@ -227,7 +228,12 @@ export default function Create() {
     router.push(`/upload?clothing=${selectedProduct}&color=${selectedColor}&size=${size}&variantId=${encodeURIComponent(variant.node.id)}`);
   };
 
+  const confirmClear = () => {
+    setShowClearConfirmation(true);
+  };
+
   const handleClear = async () => {
+    setShowClearConfirmation(false);
     // Check if cart has items before clearing it
     const cartId = localStorage.getItem('pixelme-cart-id');
     let shouldPreserveCart = false;
@@ -743,7 +749,7 @@ export default function Create() {
           {/* Cart and Clear Buttons */}
           <div className="flex items-center gap-3 lg:ml-auto">
             <button
-              onClick={handleClear}
+              onClick={confirmClear}
               className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
               title="Clear all cached data"
             >
@@ -933,6 +939,29 @@ export default function Create() {
       <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-50">
         <CartIcon />
       </div>
+
+      {/* Clear Confirmation Modal */}
+      {showClearConfirmation && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-20 flex items-center justify-center z-50 p-4" onClick={() => setShowClearConfirmation(false)}>
+          <div className="bg-white border border-gray-200 shadow-lg rounded-lg p-4 max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm text-gray-900 mb-4 text-center">Clear all progress?</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => setShowClearConfirmation(false)}
+                className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 hover:border hover:border-gray-300 rounded transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClear}
+                className="px-3 py-1.5 text-xs text-red-600 hover:text-red-800 hover:border hover:border-red-300 rounded transition-all"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

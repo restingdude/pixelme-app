@@ -42,6 +42,7 @@ export default function Edit() {
   const [isPriceLoading, setIsPriceLoading] = useState<boolean>(false);
   const [isCheckingOut, setIsCheckingOut] = useState<boolean>(false);
   const [products, setProducts] = useState<any[]>([]);
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const [productsLoading, setProductsLoading] = useState(true);
   
   // Custom presets state
@@ -662,7 +663,12 @@ export default function Edit() {
     router.push('/create');
   };
 
+  const confirmClear = () => {
+    setShowClearConfirmation(true);
+  };
+
   const handleClear = async () => {
+    setShowClearConfirmation(false);
     // Check if cart has items before clearing it
     const cartId = localStorage.getItem('pixelme-cart-id');
     let shouldPreserveCart = false;
@@ -2282,7 +2288,7 @@ export default function Edit() {
               
               {/* Clear Button */}
               <button
-                onClick={handleClear}
+                onClick={confirmClear}
                 className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center flex-shrink-0"
                 title="Clear all and start over"
               >
@@ -3175,7 +3181,7 @@ export default function Edit() {
             
             {/* Clear Button */}
             <button
-              onClick={handleClear}
+              onClick={confirmClear}
               className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center flex-shrink-0"
               title="Clear all cached data and start over"
             >
@@ -3230,8 +3236,763 @@ export default function Edit() {
                 <p className="text-gray-600">Edit your <span className="font-semibold text-amber-600">{selectedStyle}</span> image with powerful AI tools</p>
               </div>
 
+              {/* Tools Section - Mobile Only (Above Image) */}
+              <div className="lg:hidden w-full max-w-xl mb-6">
+                <h4 className="text-lg font-semibold text-gray-800 mb-4 text-center">Tools</h4>
+                
+                {/* Tool Selection Grid */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <button
+                    onClick={() => {
+                      if (isFilling) return;
+                      setActiveMode('background');
+                      if (canvasRef.current) {
+                        const ctx = canvasRef.current.getContext('2d');
+                        if (ctx) {
+                          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                        }
+                      }
+                      setShowBrushCursor(false);
+                    }}
+                    disabled={isFilling}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
+                      isFilling
+                        ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                        : activeMode === 'background'
+                        ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-emerald-300 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      activeMode === 'background' ? 'bg-emerald-500' : 'bg-gray-400'
+                    }`}>
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className={`font-medium text-xs text-center ${
+                      activeMode === 'background' ? 'text-emerald-700' : 'text-gray-700'
+                    }`}>
+                      Remove Background
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (isFilling) return;
+                      setActiveMode(activeMode === 'remove' || activeMode === 'fill' ? activeMode : 'remove');
+                      if (activeMode === 'crop') {
+                        clearMask();
+                      } else {
+                        if (canvasRef.current) {
+                          const ctx = canvasRef.current.getContext('2d');
+                          if (ctx) {
+                            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                          }
+                        }
+                      }
+                      setShowBrushCursor(false);
+                    }}
+                    disabled={isFilling}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
+                      isFilling
+                        ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                        : activeMode === 'remove' || activeMode === 'fill'
+                        ? 'border-purple-500 bg-purple-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
+                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      activeMode === 'remove' || activeMode === 'fill' ? 'bg-purple-500' : 'bg-gray-400'
+                    }`}>
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </div>
+                    <div className={`font-medium text-xs text-center ${
+                      activeMode === 'remove' || activeMode === 'fill' ? 'text-purple-700' : 'text-gray-700'
+                    }`}>
+                      Erase / Fill
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (isFilling) return;
+                      setActiveMode('crop');
+                      setShowBrushCursor(false);
+                      
+                      // Reset zoom to 100% for crop tool
+                      if (zoomLevel !== 100) {
+                        setZoomLevel(100);
+                        localStorage.setItem('pixelme-zoom-level', '100');
+                      }
+                      
+                      // Create default crop area if none exists
+                      setTimeout(() => {
+                        if (!cropArea && canvasRef.current) {
+                          const canvas = canvasRef.current;
+                          const defaultWidth = Math.min(300, canvas.width * 0.6);
+                          const defaultHeight = Math.min(300, canvas.height * 0.6);
+                          const centerX = canvas.width / 2;
+                          const centerY = canvas.height / 2;
+                          
+                          const defaultCropArea = {
+                            x: centerX - defaultWidth / 2,
+                            y: centerY - defaultHeight / 2,
+                            width: defaultWidth,
+                            height: defaultHeight
+                          };
+                          
+                          setCropArea(defaultCropArea);
+                          
+                          // Draw the default crop box
+                          const ctx = canvas.getContext('2d');
+                          if (ctx) {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            drawCropBox(ctx, defaultCropArea);
+                          }
+                        } else if (cropArea && canvasRef.current && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
+                          // Redraw existing crop area
+                          const ctx = canvasRef.current.getContext('2d');
+                          if (ctx) {
+                            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                            drawCropBox(ctx, cropArea);
+                          }
+                        }
+                      }, 50);
+                    }}
+                    disabled={isFilling}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
+                      isFilling
+                        ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                        : activeMode === 'crop' || activeMode === 'rotate'
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      activeMode === 'crop' || activeMode === 'rotate' ? 'bg-blue-500' : 'bg-gray-400'
+                    }`}>
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div className={`font-medium text-xs text-center ${
+                      activeMode === 'crop' || activeMode === 'rotate' ? 'text-blue-700' : 'text-gray-700'
+                    }`}>
+                      Crop / Rotate
+                    </div>
+                  </button>
+
+
+                  <button
+                    onClick={() => {
+                      setActiveMode('zoom');
+                      setShowBrushCursor(false);
+                      // Clear canvas but preserve crop area state for later use
+                      if (canvasRef.current) {
+                        const ctx = canvasRef.current.getContext('2d');
+                        if (ctx) {
+                          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                        }
+                      }
+                    }}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
+                      activeMode === 'zoom'
+                        ? 'border-orange-500 bg-orange-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-orange-300 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      activeMode === 'zoom' ? 'bg-orange-500' : 'bg-gray-400'
+                    }`}>
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10h-3m0 0V7m0 3v3" />
+                      </svg>
+                    </div>
+                    <div className={`font-medium text-xs text-center ${
+                      activeMode === 'zoom' ? 'text-orange-700' : 'text-gray-700'
+                    }`}>
+                      Zoom Out
+                    </div>
+                  </button>
+                </div>
+                
+                {/* Tool Options - Mobile Only (Above Image) */}
+                <div className="lg:hidden w-full max-w-xl">
+                  {/* Erase/Fill Sub-mode Toggle */}
+                  {(activeMode === 'remove' || activeMode === 'fill') && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
+                        <button 
+                          onClick={() => {
+                            setActiveMode('remove');
+                            clearMask();
+                          }}
+                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
+                            activeMode === 'remove'
+                              ? 'bg-white text-red-600 shadow-sm'
+                              : 'text-gray-600 hover:text-red-600'
+                          }`}
+                        >
+                          Erase
+                        </button>
+                        <button
+                          onClick={() => {
+                            setActiveMode('fill');
+                            clearMask();
+                          }}
+                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
+                            activeMode === 'fill'
+                              ? 'bg-white text-purple-600 shadow-sm'
+                              : 'text-gray-600 hover:text-purple-600'
+                          }`}
+                        >
+                          Fill
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Erase Tool Options */}
+                  {activeMode === 'remove' && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg mb-4">
+                        <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
+                        <input
+                          type="range"
+                          min="5"
+                          max="50"
+                          value={brushSize}
+                          onChange={(e) => setBrushSize(Number(e.target.value))}
+                          className="flex-1"
+                        />
+                        <span className="text-sm text-gray-600 w-8">{brushSize}</span>
+                      </div>
+                      <div className="flex gap-2 mb-4">
+                        <button 
+                          onClick={clearMask}
+                          className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
+                        >
+                          Clear Selection
+                        </button>
+                      </div>
+                      <button 
+                        onClick={handleGenerativeFill}
+                        disabled={isFilling || !conversionResult || !hasSelection}
+                        className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                          isFilling || !conversionResult || !hasSelection
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            : 'bg-red-600 text-white hover:bg-red-700 shadow-lg hover:shadow-xl'
+                        }`}
+                      >
+                        {isFilling ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Removing Objects...
+                          </div>
+                        ) : hasSelection ? (
+                          'Remove Selected Areas'
+                        ) : (
+                          'Select Areas to Remove'
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Fill Tool Options */}
+                  {activeMode === 'fill' && (
+                    <div className="mb-4">
+                      <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 mb-4">
+                        <p className="text-sm text-purple-700 mb-3">Paint over areas to remove and fill with AI</p>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">AI Fill Prompt:</label>
+                        <textarea
+                          value={aiFillPrompt}
+                          onChange={(e) => setAiFillPrompt(e.target.value)}
+                          placeholder="Remove all objects and content within the masked areas..."
+                          className="w-full h-24 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm text-black placeholder-gray-400"
+                        />
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          <button
+                            onClick={() => setAiFillPrompt('')}
+                            className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
+                          >
+                            Clear
+                          </button>
+                          <button
+                            onClick={() => setAiFillPrompt('Add beautiful flowers and plants to fill the selected areas')}
+                            className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
+                          >
+                            Add Flowers
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg mb-4">
+                        <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
+                        <input
+                          type="range"
+                          min="5"
+                          max="50"
+                          value={brushSize}
+                          onChange={(e) => setBrushSize(Number(e.target.value))}
+                          className="flex-1"
+                        />
+                        <span className="text-sm text-gray-600 w-8">{brushSize}</span>
+                      </div>
+                      <div className="flex gap-2 mb-4">
+                        <button 
+                          onClick={clearMask}
+                          className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
+                        >
+                          Clear Selection
+                        </button>
+                      </div>
+                      <button 
+                        onClick={handleAIFill}
+                        disabled={isFilling || !conversionResult || !hasSelection}
+                        className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                          isFilling || !conversionResult || !hasSelection
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            : 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg hover:shadow-xl'
+                        }`}
+                      >
+                        {isFilling ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Removing & Filling...
+                          </div>
+                        ) : hasSelection ? (
+                          'Remove & Fill Selected Areas'
+                        ) : (
+                          'Select Areas to Fill'
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Background Removal Options */}
+                  {activeMode === 'background' && (
+                    <div className="mb-4">
+                      <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 mb-4">
+                        <p className="text-sm text-emerald-700">AI will automatically remove the background and make it transparent.</p>
+                      </div>
+                      <button
+                        onClick={() => handleBackgroundRemoval()}
+                        disabled={isFilling || !conversionResult}
+                        className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                          isFilling || !conversionResult
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg hover:shadow-xl'
+                        }`}
+                      >
+                        {isFilling ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Removing Background...
+                          </div>
+                        ) : (
+                          'Remove Background'
+                        )}
+                      </button>
+
+                      {/* Less Aggressive Option - Only show after first attempt */}
+                      {justRemovedBackground && (
+                        <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                            <p className="text-sm font-medium text-amber-800">Not satisfied with the result?</p>
+                          </div>
+                          <p className="text-sm text-amber-700 mb-3">Try a less aggressive approach that preserves more details around edges.</p>
+                          <button
+                            onClick={() => handleBackgroundRemoval(true)}
+                            disabled={isFilling}
+                            className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                              isFilling
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg'
+                            }`}
+                          >
+                            {isFilling ? 'Processing...' : 'Try Less Aggressive Removal'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
+                  {/* Zoom Controls */}
+                  {activeMode === 'zoom' && (
+                    <div className="mb-4">
+                      <div className="p-4 bg-orange-50 rounded-lg border border-orange-200 mb-4">
+                        <p className="text-sm text-orange-700">Add transparent padding around your image. Each time you save, the padding becomes permanent and you can add more.</p>
+                      </div>
+                      
+                      {/* Zoom Controls */}
+                      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-sm font-semibold text-gray-700">Zoom Level:</label>
+                          <span className="text-sm text-gray-600 font-medium">{zoomLevel}%</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => {
+                              const newZoom = Math.max(50, zoomLevel - 10);
+                              setZoomLevel(newZoom);
+                              localStorage.setItem('pixelme-zoom-level', newZoom.toString());
+                            }}
+                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 font-medium"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="range"
+                            min="50"
+                            max="100"
+                            value={Math.min(100, Math.max(50, zoomLevel))}
+                            onChange={(e) => {
+                              const newZoom = parseInt(e.target.value);
+                              setZoomLevel(newZoom);
+                              localStorage.setItem('pixelme-zoom-level', newZoom.toString());
+                            }}
+                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            style={{
+                              background: `linear-gradient(to right, #f97316 0%, #f97316 ${((Math.min(100, Math.max(50, zoomLevel)) - 50) / 50) * 100}%, #e5e7eb ${((Math.min(100, Math.max(50, zoomLevel)) - 50) / 50) * 100}%, #e5e7eb 100%)`
+                            }}
+                          />
+                          <button
+                            onClick={() => {
+                              const newZoom = Math.min(100, zoomLevel + 10);
+                              setZoomLevel(newZoom);
+                              localStorage.setItem('pixelme-zoom-level', newZoom.toString());
+                            }}
+                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 font-medium"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">
+                          {zoomLevel < 100 ? (
+                            <>📤 Zoomed out - Ready to add {100 - zoomLevel}% padding</>
+                          ) : (
+                            <>📐 100% - No additional padding</>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <button 
+                        onClick={async () => {
+                          if (!currentImage) return;
+                          
+                          // Save current image for undo
+                          setPreviousImage(currentImage);
+                          setIsFilling(true);
+                          
+                          try {
+                            // First, remove background from current image
+                            console.log('Step 1: Removing background before adding padding...');
+                            
+                            const response = await fetch('/api/replicate/background-removal', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ imageUrl: currentImage }),
+                            });
+                            
+                            const data = await response.json();
+                            
+                            if (data.success && data.imageUrl) {
+                              console.log('Step 2: Background removal successful, adding padding...');
+                              
+                              const bgRemovedImg = document.createElement('img');
+                              bgRemovedImg.crossOrigin = 'anonymous';
+                              bgRemovedImg.onload = () => {
+                                const originalWidth = bgRemovedImg.naturalWidth;
+                                const originalHeight = bgRemovedImg.naturalHeight;
+                                
+                                // Calculate padding based on zoom level
+                                const paddingFactor = (100 - zoomLevel) / 100;
+                                const paddingX = originalWidth * paddingFactor;
+                                const paddingY = originalHeight * paddingFactor;
+                                
+                                const finalCanvas = document.createElement('canvas');
+                                const finalCtx = finalCanvas.getContext('2d');
+                                if (!finalCtx) return;
+                                
+                                finalCanvas.width = originalWidth + paddingX * 2;
+                                finalCanvas.height = originalHeight + paddingY * 2;
+                                
+                                // Clear canvas with transparent background
+                                finalCtx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
+                                
+                                // Draw the background-removed image in the center
+                                finalCtx.drawImage(
+                                  bgRemovedImg,
+                                  paddingX,
+                                  paddingY,
+                                  originalWidth,
+                                  originalHeight
+                                );
+                                
+                                const finalImage = finalCanvas.toDataURL('image/png');
+                                setCurrentImage(finalImage);
+                                
+                                // Reset zoom level to 100% since we've baked the padding into the image
+                                setZoomLevel(100);
+                                localStorage.setItem('pixelme-zoom-level', '100');
+                                
+                                setIsFilling(false);
+                                console.log('Zoom out with background removal completed successfully');
+                              };
+                              bgRemovedImg.src = data.imageUrl;
+                            } else {
+                              console.error('Background removal failed, falling back to regular padding');
+                              // Fallback to regular padding without background removal
+                              const imgElement = document.createElement('img');
+                              imgElement.crossOrigin = 'anonymous';
+                              imgElement.onload = () => {
+                                const originalWidth = imgElement.naturalWidth;
+                                const originalHeight = imgElement.naturalHeight;
+                                
+                                const paddingFactor = (100 - zoomLevel) / 100;
+                                const paddingX = originalWidth * paddingFactor;
+                                const paddingY = originalHeight * paddingFactor;
+                                
+                                const finalCanvas = document.createElement('canvas');
+                                const finalCtx = finalCanvas.getContext('2d');
+                                if (!finalCtx) return;
+                                
+                                finalCanvas.width = originalWidth + paddingX * 2;
+                                finalCanvas.height = originalHeight + paddingY * 2;
+                                
+                                finalCtx.fillStyle = 'white';
+                                finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+                                
+                                finalCtx.drawImage(
+                                  imgElement,
+                                  paddingX,
+                                  paddingY,
+                                  originalWidth,
+                                  originalHeight
+                                );
+                                
+                                const finalImage = finalCanvas.toDataURL('image/png');
+                                setCurrentImage(finalImage);
+                                
+                                setZoomLevel(100);
+                                localStorage.setItem('pixelme-zoom-level', '100');
+                                
+                                setIsFilling(false);
+                              };
+                              imgElement.src = currentImage;
+                            }
+                          } catch (error) {
+                            console.error('Zoom out with background removal error:', error);
+                            alert('Failed to process image');
+                            setIsFilling(false);
+                          }
+                        }}
+                        disabled={isFilling || !conversionResult || zoomLevel >= 100}
+                        className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                          isFilling || !conversionResult || zoomLevel >= 100
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            : 'bg-orange-600 text-white hover:bg-orange-700 shadow-lg hover:shadow-xl'
+                        }`}
+                      >
+                        {isFilling ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Adding Padding...
+                          </div>
+                        ) : zoomLevel >= 100 ? (
+                          'Zoom out to add padding'
+                        ) : (
+                          'Add Transparent Padding'
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+
+                  {/* Crop & Rotate Tools - Mobile Only */}
+                  {(activeMode === 'crop' || activeMode === 'rotate') && (
+                    <div className="lg:hidden mb-4">
+                      {/* Tab Toggle */}
+                      <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1 mb-4">
+                        <button 
+                          onClick={() => {
+                            setActiveMode('crop');
+                            setShowBrushCursor(false);
+                            
+                            // Reset zoom to 100% for crop tool
+                            if (zoomLevel !== 100) {
+                              setZoomLevel(100);
+                              localStorage.setItem('pixelme-zoom-level', '100');
+                            }
+                            
+                            // Create default crop area if none exists
+                            setTimeout(() => {
+                              if (!cropArea && canvasRef.current) {
+                                const canvas = canvasRef.current;
+                                // Create a crop box in the center, 50% of canvas size
+                                const centerX = canvas.width * 0.25;  // 25% from left
+                                const centerY = canvas.height * 0.25; // 25% from top
+                                const width = canvas.width * 0.5;     // 50% width
+                                const height = canvas.height * 0.5;   // 50% height
+                                
+                                const newCropArea = {
+                                  x: centerX,
+                                  y: centerY,
+                                  width: width,
+                                  height: height
+                                };
+                                setCropArea(newCropArea);
+                                
+                                // Draw the crop box
+                                const ctx = canvas.getContext('2d');
+                                if (ctx) {
+                                  drawCropBox(ctx, newCropArea);
+                                }
+                              } else if (canvasRef.current && cropArea && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
+                                // Redraw existing crop area
+                                const ctx = canvasRef.current.getContext('2d');
+                                if (ctx) {
+                                  ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                                  drawCropBox(ctx, cropArea);
+                                }
+                              }
+                            }, 50);
+                          }}
+                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
+                            activeMode === 'crop'
+                              ? 'bg-white text-blue-600 shadow-sm'
+                              : 'text-gray-600 hover:text-blue-600'
+                          }`}
+                        >
+                          Crop
+                        </button>
+                        <button
+                          onClick={() => {
+                            setActiveMode('rotate');
+                            setShowBrushCursor(false);
+                            // Clear canvas but preserve crop area state for later use
+                            if (canvasRef.current) {
+                              const ctx = canvasRef.current.getContext('2d');
+                              if (ctx) {
+                                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                              }
+                            }
+                          }}
+                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
+                            activeMode === 'rotate'
+                              ? 'bg-white text-indigo-600 shadow-sm'
+                              : 'text-gray-600 hover:text-indigo-600'
+                          }`}
+                        >
+                          Rotate
+                        </button>
+                      </div>
+
+                      {/* Crop Controls */}
+                      {activeMode === 'crop' && (
+                        <div>
+                          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-4">
+                            <p className="text-sm text-blue-700">Use the crop box to select the area you want to keep. Drag handles to resize or drag inside to move.</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <button
+                              onClick={resetCropArea}
+                              className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors duration-200"
+                            >
+                              Reset Crop Area
+                            </button>
+                            <button
+                              onClick={handleCropImage}
+                              disabled={isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 5 || Math.abs(cropArea.height) < 5}
+                              className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                                isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 5 || Math.abs(cropArea.height) < 5
+                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
+                              }`}
+                            >
+                              {isFilling ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  Cropping...
+                                </div>
+                              ) : (
+                                'Crop Image'
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Rotate Controls */}
+                      {activeMode === 'rotate' && (
+                        <div>
+                          <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200 mb-4">
+                            <p className="text-sm text-indigo-700">Rotate your image in 90-degree increments. The rotation will be applied to the entire image.</p>
+                          </div>
+                          
+                          {/* Rotation Controls */}
+                          <div className="space-y-3">
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => handleRotateImage('left')}
+                                disabled={isFilling}
+                                className="flex-1 px-3 py-2 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8V4l3 3m-6 0l3-3m-3 3v4m7.586 5L16 12l-2 2m0-2l2-2m-2 2h-4m-2 7a9 9 0 110-18 9 9 0 010 18z" />
+                                </svg>
+                                90° Left
+                              </button>
+                              <button 
+                                onClick={() => handleRotateImage('right')}
+                                disabled={isFilling}
+                                className="flex-1 px-3 py-2 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                90° Right
+                              </button>
+                            </div>
+                            
+                            {imageRotation !== 0 && (
+                              <div className="p-3 bg-indigo-100 rounded-lg border border-indigo-200">
+                                <div className="text-sm text-indigo-700 text-center font-medium">
+                                  Current rotation: {imageRotation}°
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Undo Button - Mobile Only (Above Image) */}
+              <div className="lg:hidden w-full max-w-xl mb-6">
+                <button
+                  onClick={handleUndo}
+                  disabled={!previousImage}
+                  className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    previousImage
+                      ? 'bg-amber-500 text-white shadow-md hover:bg-amber-600 hover:shadow-lg'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  ↶ Undo
+                </button>
+              </div>
+
               {/* Main Layout: Image + Sidebar */}
-              <div className="flex flex-col lg:flex-row gap-8 w-full max-w-6xl items-start">
+              <div className="flex flex-col lg:flex-row gap-8 w-full max-w-xl lg:max-w-6xl items-start">
                 
                 {/* Left Side - Image Display */}
                 <div className="flex-1 flex flex-col items-center">
@@ -3335,12 +4096,44 @@ export default function Edit() {
                     </div>
                   )}
                 </div>
+                
+                {/* Action Buttons - Mobile Only (Below Image) */}
+                <div className="lg:hidden w-full max-w-xl mt-6">
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => {
+                        if (!currentImage) return;
+                        
+                        // Save current edited image and move to color reduction step
+                        setEditedImage(currentImage);
+                        localStorage.setItem('pixelme-edited-image', currentImage);
+                        setStep('color-reduce');
+                        localStorage.setItem('pixelme-current-step', 'color-reduce');
+                      }}
+                      disabled={!currentImage || isFilling}
+                      className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                        currentImage && !isFilling
+                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md hover:from-purple-700 hover:to-blue-700 hover:shadow-lg'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {isFilling ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Processing...
+                        </div>
+                      ) : (
+                        '✓ Save & Continue'
+                      )}
+                    </button>
+                  </div>
+                </div>
 
                 {/* Right Side - Control Sidebar */}
-                <div className="w-full lg:w-80 lg:min-w-80 flex-shrink-0 bg-white rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-6 h-fit min-h-[600px]">
+                <div className="hidden lg:block lg:w-80 lg:min-w-80 flex-shrink-0 bg-white rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-6 h-fit min-h-[600px]">
                   
-                  {/* Tools Section */}
-                  <div className="mb-6">
+                  {/* Tools Section - Desktop Only */}
+                  <div className="hidden lg:block mb-6">
                     <h4 className="text-lg font-semibold text-gray-800 mb-4">Tools</h4>
                     
                     {/* Tool Selection Grid */}
@@ -3472,60 +4265,25 @@ export default function Edit() {
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
                           isFilling
                             ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
-                            : activeMode === 'crop'
+                            : activeMode === 'crop' || activeMode === 'rotate'
                             ? 'border-blue-500 bg-blue-50 shadow-md'
                             : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
                         }`}
                       >
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          activeMode === 'crop' ? 'bg-blue-500' : 'bg-gray-400'
+                          activeMode === 'crop' || activeMode === 'rotate' ? 'bg-blue-500' : 'bg-gray-400'
                         }`}>
                           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
                         <div className={`font-medium text-xs text-center ${
-                          activeMode === 'crop' ? 'text-blue-700' : 'text-gray-700'
+                          activeMode === 'crop' || activeMode === 'rotate' ? 'text-blue-700' : 'text-gray-700'
                         }`}>
-                          Crop
+                          Crop / Rotate
                         </div>
                       </button>
 
-                      <button
-                        onClick={() => {
-                          if (isFilling) return;
-                          setActiveMode('rotate');
-                          setShowBrushCursor(false);
-                          // Clear canvas but preserve crop area state for later use
-                          if (canvasRef.current) {
-                            const ctx = canvasRef.current.getContext('2d');
-                            if (ctx) {
-                              ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-                            }
-                          }
-                        }}
-                        disabled={isFilling}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
-                          isFilling
-                            ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
-                            : activeMode === 'rotate'
-                            ? 'border-indigo-500 bg-indigo-50 shadow-md'
-                            : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow-sm'
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          activeMode === 'rotate' ? 'bg-indigo-500' : 'bg-gray-400'
-                        }`}>
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                        </div>
-                        <div className={`font-medium text-xs text-center ${
-                          activeMode === 'rotate' ? 'text-indigo-700' : 'text-gray-700'
-                        }`}>
-                          Rotate
-                        </div>
-                      </button>
 
                       <button
                         onClick={() => {
@@ -3597,9 +4355,9 @@ export default function Edit() {
 
                   {/* Tool-specific Controls */}
                   <div className="mb-6 w-full">
-                    {/* Background Removal Tool */}
+                    {/* Background Removal Tool - Desktop Only */}
                     {activeMode === 'background' && (
-                      <div>
+                      <div className="hidden lg:block">
                         <h5 className="font-semibold text-gray-800 mb-3">Background Removal</h5>
                         <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 mb-4">
                           <p className="text-sm text-emerald-700">AI will automatically remove the background and make it transparent.</p>
@@ -3651,9 +4409,9 @@ export default function Edit() {
                       </div>
                     )}
 
-                    {/* Erase Tool */}
+                    {/* Erase Tool - Desktop Only */}
                     {activeMode === 'remove' && (
-                      <div>
+                      <div className="hidden lg:block">
                         <h5 className="font-semibold text-gray-800 mb-3">Erase Tool</h5>
                         <div className="space-y-4">
                           <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
@@ -3700,9 +4458,9 @@ export default function Edit() {
                       </div>
                     )}
 
-                    {/* Fill Tool */}
+                    {/* Fill Tool - Desktop Only */}
                     {activeMode === 'fill' && (
-                      <div>
+                      <div className="hidden lg:block">
                         <h5 className="font-semibold text-gray-800 mb-3">AI Fill Tool</h5>
                         <div className="space-y-4">
                           <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
@@ -3773,96 +4531,11 @@ export default function Edit() {
                       </div>
                     )}
 
-                    {/* Crop Tool */}
-                    {activeMode === 'crop' && (
-                      <div>
-                        <h5 className="font-semibold text-gray-800 mb-3">Crop Tool</h5>
-                        <div className="space-y-4">
-                          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <p className="text-sm text-blue-700">Use the crop box to select the area you want to keep. Drag handles to resize or drag inside to move.</p>
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={resetCropArea}
-                              className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
-                            >
-                              Reset Crop Area
-                            </button>
-                          </div>
-                          <button 
-                            onClick={handleCropImage}
-                            disabled={isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 5 || Math.abs(cropArea.height) < 5}
-                            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                                                              isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 5 || Math.abs(cropArea.height) < 5
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
-                            }`}
-                          >
-                            {isFilling ? (
-                              <div className="flex items-center justify-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Cropping...
-                              </div>
-                            ) : (
-                              'Crop Image'
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Rotate Tool */}
-                    {activeMode === 'rotate' && (
-                      <div>
-                        <h5 className="font-semibold text-gray-800 mb-3">Rotate Tool</h5>
-                        <div className="space-y-4">
-                          <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                            <p className="text-sm text-indigo-700">Rotate your image in 90-degree increments. The rotation will be applied to the entire image.</p>
-                          </div>
-                          
-                          {/* Rotation Controls */}
-                          <div className="space-y-3">
-                            <div className="flex gap-2">
-                              <button 
-                                onClick={() => handleRotateImage('left')}
-                                disabled={isFilling}
-                                className="flex-1 px-3 py-2 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8V4l3 3m-6 0l3-3m-3 3v4m7.586 5L16 12l-2 2m0-2l2-2m-2 2h-4m-2 7a9 9 0 110-18 9 9 0 010 18z" />
-                                </svg>
-                                90° Left
-                              </button>
-                              <button 
-                                onClick={() => handleRotateImage('right')}
-                                disabled={isFilling}
-                                className="flex-1 px-3 py-2 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                90° Right
-                              </button>
-                            </div>
-                            
-                            {imageRotation !== 0 && (
-                              <div className="p-3 bg-indigo-100 rounded-lg border border-indigo-200">
-                                <div className="text-sm text-indigo-700 text-center font-medium">
-                                  Current rotation: {imageRotation}°
-                                </div>
-                              </div>
-                            )}
-                          </div>
 
 
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Zoom Out Tool */}
+                    {/* Zoom Out Tool - Desktop Only */}
                     {activeMode === 'zoom' && (
-                      <div>
+                      <div className="hidden lg:block">
                         <h5 className="font-semibold text-gray-800 mb-3">Zoom Out Tool</h5>
                         <div className="space-y-4">
                           <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
@@ -4072,8 +4745,170 @@ export default function Edit() {
                     )}
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="border-t border-gray-200 pt-6">
+                  {/* Crop & Rotate Tools - Desktop Only */}
+                  {(activeMode === 'crop' || activeMode === 'rotate') && (
+                    <div className="hidden lg:block mb-6">
+                      <h5 className="font-semibold text-gray-800 mb-3">Crop & Rotate Tools</h5>
+                      {/* Tab Toggle */}
+                      <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1 mb-4">
+                        <button 
+                          onClick={() => {
+                            setActiveMode('crop');
+                            setShowBrushCursor(false);
+                            
+                            // Reset zoom to 100% for crop tool
+                            if (zoomLevel !== 100) {
+                              setZoomLevel(100);
+                              localStorage.setItem('pixelme-zoom-level', '100');
+                            }
+                            
+                            // Create default crop area if none exists
+                            setTimeout(() => {
+                              if (!cropArea && canvasRef.current) {
+                                const canvas = canvasRef.current;
+                                const defaultWidth = Math.min(300, canvas.width * 0.6);
+                                const defaultHeight = Math.min(300, canvas.height * 0.6);
+                                const centerX = canvas.width / 2;
+                                const centerY = canvas.height / 2;
+                                
+                                const defaultCropArea = {
+                                  x: centerX - defaultWidth / 2,
+                                  y: centerY - defaultHeight / 2,
+                                  width: defaultWidth,
+                                  height: defaultHeight
+                                };
+                                
+                                setCropArea(defaultCropArea);
+                                
+                                // Draw the default crop box
+                                const ctx = canvas.getContext('2d');
+                                if (ctx) {
+                                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                  drawCropBox(ctx, defaultCropArea);
+                                }
+                              } else if (cropArea && canvasRef.current && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
+                                // Redraw existing crop area
+                                const ctx = canvasRef.current.getContext('2d');
+                                if (ctx) {
+                                  ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                                  drawCropBox(ctx, cropArea);
+                                }
+                              }
+                            }, 50);
+                          }}
+                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
+                            activeMode === 'crop'
+                              ? 'bg-white text-blue-600 shadow-sm'
+                              : 'text-gray-600 hover:text-blue-600'
+                          }`}
+                        >
+                          Crop
+                        </button>
+                        <button
+                          onClick={() => {
+                            setActiveMode('rotate');
+                            setShowBrushCursor(false);
+                            // Clear canvas but preserve crop area state for later use
+                            if (canvasRef.current) {
+                              const ctx = canvasRef.current.getContext('2d');
+                              if (ctx) {
+                                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                              }
+                            }
+                          }}
+                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
+                            activeMode === 'rotate'
+                              ? 'bg-white text-indigo-600 shadow-sm'
+                              : 'text-gray-600 hover:text-indigo-600'
+                          }`}
+                        >
+                          Rotate
+                        </button>
+                      </div>
+
+                      {/* Crop Controls */}
+                      {activeMode === 'crop' && (
+                        <div>
+                          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-4">
+                            <p className="text-sm text-blue-700">Use the crop box to select the area you want to keep. Drag handles to resize or drag inside to move.</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <button
+                              onClick={resetCropArea}
+                              className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-colors duration-200"
+                            >
+                              Reset Crop Area
+                            </button>
+                            <button
+                              onClick={handleCropImage}
+                              disabled={isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 5 || Math.abs(cropArea.height) < 5}
+                              className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                                isFilling || !conversionResult || !cropArea || Math.abs(cropArea.width) < 5 || Math.abs(cropArea.height) < 5
+                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl'
+                              }`}
+                            >
+                              {isFilling ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  Cropping...
+                                </div>
+                              ) : (
+                                'Crop Image'
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Rotate Controls */}
+                      {activeMode === 'rotate' && (
+                        <div>
+                          <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200 mb-4">
+                            <p className="text-sm text-indigo-700">Rotate your image in 90-degree increments. The rotation will be applied to the entire image.</p>
+                          </div>
+                          
+                          {/* Rotation Controls */}
+                          <div className="space-y-3">
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => handleRotateImage('left')}
+                                disabled={isFilling}
+                                className="flex-1 px-3 py-2 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8V4l3 3m-6 0l3-3m-3 3v4m7.586 5L16 12l-2 2m0-2l2-2m-2 2h-4m-2 7a9 9 0 110-18 9 9 0 010 18z" />
+                                </svg>
+                                90° Left
+                              </button>
+                              <button 
+                                onClick={() => handleRotateImage('right')}
+                                disabled={isFilling}
+                                className="flex-1 px-3 py-2 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                90° Right
+                              </button>
+                            </div>
+                            
+                            {imageRotation !== 0 && (
+                              <div className="p-3 bg-indigo-100 rounded-lg border border-indigo-200">
+                                <div className="text-sm text-indigo-700 text-center font-medium">
+                                  Current rotation: {imageRotation}°
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action Buttons - Desktop Only (In Sidebar) */}
+                  <div className="hidden lg:block border-t border-gray-200 pt-6">
                     <div className="space-y-3">
                       <button
                         onClick={handleUndo}
@@ -4243,6 +5078,29 @@ export default function Edit() {
       <div className="fixed bottom-6 right-6 z-50">
         <CartIcon />
       </div>
+
+      {/* Clear Confirmation Modal */}
+      {showClearConfirmation && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-20 flex items-center justify-center z-50 p-4" onClick={() => setShowClearConfirmation(false)}>
+          <div className="bg-white border border-gray-200 shadow-lg rounded-lg p-4 max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm text-gray-900 mb-4 text-center">Clear all progress?</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => setShowClearConfirmation(false)}
+                className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 hover:border hover:border-gray-300 rounded transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClear}
+                className="px-3 py-1.5 text-xs text-red-600 hover:text-red-800 hover:border hover:border-red-300 rounded transition-all"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

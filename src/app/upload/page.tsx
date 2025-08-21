@@ -23,6 +23,7 @@ function UploadContent() {
   const [cachedColorReducedImage, setCachedColorReducedImage] = useState<string | null>(null);
   const [cachedFinalImage, setCachedFinalImage] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const [productsLoading, setProductsLoading] = useState(true);
   
   // Rate limiting state
@@ -620,7 +621,12 @@ function UploadContent() {
     }
   };
 
+  const confirmClear = () => {
+    setShowClearConfirmation(true);
+  };
+
   const handleClear = async () => {
+    setShowClearConfirmation(false);
     // Check if cart has items before clearing it
     const cartId = localStorage.getItem('pixelme-cart-id');
     let shouldPreserveCart = false;
@@ -997,7 +1003,7 @@ function UploadContent() {
             
             {/* Clear Button */}
             <button
-              onClick={handleClear}
+              onClick={confirmClear}
               className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center flex-shrink-0"
               title="Clear all and start over"
             >
@@ -1291,6 +1297,29 @@ function UploadContent() {
       <div className="fixed top-6 right-6 z-50">
         <CartIcon />
       </div>
+
+      {/* Clear Confirmation Modal */}
+      {showClearConfirmation && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-20 flex items-center justify-center z-50 p-4" onClick={() => setShowClearConfirmation(false)}>
+          <div className="bg-white border border-gray-200 shadow-lg rounded-lg p-4 max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm text-gray-900 mb-4 text-center">Clear all progress?</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => setShowClearConfirmation(false)}
+                className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 hover:border hover:border-gray-300 rounded transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClear}
+                className="px-3 py-1.5 text-xs text-red-600 hover:text-red-800 hover:border hover:border-red-300 rounded transition-all"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -659,7 +659,7 @@ export default function Edit() {
   };
 
   const handleGoHome = () => {
-    router.push('/');
+    router.push('/create');
   };
 
   const handleClear = async () => {
@@ -2052,6 +2052,16 @@ export default function Edit() {
           <div className="w-full flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
             <div className="flex items-center gap-2 pb-2 lg:pb-0 min-w-0 flex-shrink-0">
               <div className="flex items-center gap-2 min-w-max">
+                {/* Step 0 - Welcome */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => router.push('/')}
+                    className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent transition-all duration-200 cursor-pointer"
+                    title="Go back to welcome screen"
+                  >
+                    📋
+                  </button>
+                </div>
                 {/* Step indicators */}
                 {selectedClothing && (
                   <div className="flex items-center gap-2">
@@ -2525,6 +2535,9 @@ export default function Edit() {
                 <p className="text-sm text-blue-700">
                   Your image will be sent to our design team and printed with <span className="font-medium">10cm width or height by default</span> (whichever is larger). Our team will ensure optimal sizing and quality for your custom design.
                 </p>
+                <p className="text-sm text-blue-700 mt-2">
+                  <span className="font-medium">Important:</span> We will only be embroidering people or animals from your image. Any backgrounds will be removed during the design process.
+                </p>
               </div>
 
               {/* Action buttons */}
@@ -2983,6 +2996,16 @@ export default function Edit() {
         <div className="w-full flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 min-w-0 flex-shrink-0">
             <div className="flex items-center gap-2 min-w-max">
+              {/* Step 0 - Welcome */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => router.push('/')}
+                  className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent transition-all duration-200 cursor-pointer"
+                  title="Go back to welcome screen"
+                >
+                  📋
+                </button>
+              </div>
               {/* Step 1 - Clothing Selection */}
               <div className="flex items-center gap-2">
                 <button

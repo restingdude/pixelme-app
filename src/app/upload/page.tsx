@@ -425,7 +425,7 @@ function UploadContent() {
     if (selectedVariantId) {
       localStorage.setItem('pixelme-selected-variant-id', selectedVariantId);
     }
-    router.push('/');
+    router.push('/create');
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -760,6 +760,16 @@ function UploadContent() {
         <div className="w-full flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 min-w-0">
             <div className="flex items-center gap-2 min-w-max">
+            {/* Step 0 - Welcome */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => router.push('/')}
+                className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent transition-all duration-200 cursor-pointer"
+                title="Go back to welcome screen"
+              >
+                📋
+              </button>
+            </div>
             {/* Step 1 - Clothing Selection */}
             <div className="flex items-center gap-2">
               {selectedClothing ? (

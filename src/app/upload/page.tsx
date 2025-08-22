@@ -1213,7 +1213,7 @@ function UploadContent() {
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row items-start gap-8 w-full">
+        <div className="flex flex-col lg:flex-row items-start gap-4 sm:gap-6 lg:gap-8 w-full">
           <div className="flex-1 flex flex-col items-center w-full">
             <div className="w-full max-w-md">
               {!uploadedImage ? (
@@ -1288,71 +1288,90 @@ function UploadContent() {
             </div>
             
             {step === 'style' && uploadedImage && (
-              <div className="flex flex-col items-center w-full">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 mb-4 w-full max-w-4xl px-4">
+              <div className="flex flex-col items-center w-full overflow-x-hidden">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2 text-center">Choose Your Style</h3>
+                <p className="text-sm text-gray-600 mb-4 text-center">Select a cartoon style for your image</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-4 w-full max-w-5xl px-2 sm:px-0">
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Yellow Cartoon' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Yellow Cartoon' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
                     onClick={() => handleStyleSelect('Yellow Cartoon')}
                   >
-                    <Image
-                      src="/styles/simpsons.png"
-                      alt="Yellow Cartoon Style"
-                      width={120}
-                      height={120}
-                      className="object-contain rounded-lg w-full h-auto"
-                    />
+                    <div className="relative w-full h-full">
+                      <Image
+                        src="/styles/simpsons.png"
+                        alt="Yellow Cartoon Style"
+                        fill
+                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
+                        className="object-contain rounded-md p-1"
+                        priority
+                      />
+                    </div>
+                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Yellow Cartoon</span>
                   </button>
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Animated Comedy' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Animated Comedy' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
                     onClick={() => handleStyleSelect('Animated Comedy')}
                   >
-                    <Image
-                      src="/styles/familyguy.png"
-                      alt="Animated Comedy Style"
-                      width={120}
-                      height={120}
-                      className="object-contain rounded-lg w-full h-auto"
-                    />
+                    <div className="relative w-full h-full">
+                      <Image
+                        src="/styles/familyguy.png"
+                        alt="Animated Comedy Style"
+                        fill
+                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
+                        className="object-contain rounded-md p-1"
+                        priority
+                      />
+                    </div>
+                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Animated Comedy</span>
                   </button>
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Paper Animation' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Paper Animation' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
                     onClick={() => handleStyleSelect('Paper Animation')}
                   >
-                    <Image
-                      src="/styles/southpark.png"
-                      alt="Paper Animation Style"
-                      width={120}
-                      height={120}
-                      className="object-contain rounded-lg w-full h-auto"
-                    />
+                    <div className="relative w-full h-full">
+                      <Image
+                        src="/styles/southpark.png"
+                        alt="Paper Animation Style"
+                        fill
+                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
+                        className="object-contain rounded-md p-1"
+                        priority
+                      />
+                    </div>
+                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Paper Animation</span>
                   </button>
-
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Anime Fantasy' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Anime Fantasy' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
                     onClick={() => handleStyleSelect('Anime Fantasy')}
                   >
-                    <Image
-                      src="/styles/ghibli.png"
-                      alt="Anime Fantasy Style"
-                      width={120}
-                      height={120}
-                      className="object-contain rounded-lg w-full h-auto"
-                    />
+                    <div className="relative w-full h-full">
+                      <Image
+                        src="/styles/ghibli.png"
+                        alt="Anime Fantasy Style"
+                        fill
+                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
+                        className="object-contain rounded-md p-1"
+                        priority
+                      />
+                    </div>
+                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Anime Fantasy</span>
                   </button>
                   <button
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 ${selectedStyle === 'Action Anime' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Action Anime' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
                     onClick={() => handleStyleSelect('Action Anime')}
                   >
-                    <Image
-                      src="/styles/dragonball.png"
-                      alt="Action Anime Style"
-                      width={120}
-                      height={120}
-                      className="object-contain rounded-lg w-full h-auto"
-                    />
+                    <div className="relative w-full h-full">
+                      <Image
+                        src="/styles/dragonball.png"
+                        alt="Action Anime Style"
+                        fill
+                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
+                        className="object-contain rounded-md p-1"
+                        priority
+                      />
+                    </div>
+                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Action Anime</span>
                   </button>
-
-
                 </div>
               </div>
             )}

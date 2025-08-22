@@ -25,6 +25,12 @@ function UploadContent() {
   const [products, setProducts] = useState<any[]>([]);
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [generationHistory, setGenerationHistory] = useState<Array<{
+    id: string;
+    imageUrl: string;
+    timestamp: number;
+    style: string;
+  }>>([]);
   
   // Rate limiting state
   const [rateLimitStatus, setRateLimitStatus] = useState<{
@@ -375,6 +381,30 @@ function UploadContent() {
     const cachedColorReducedImage = localStorage.getItem('pixelme-color-reduced-image');
     const cachedFinalImage = localStorage.getItem('pixelme-final-image');
     
+    // Load generation history and clean expired entries
+    const loadGenerationHistory = () => {
+      try {
+        const historyStr = localStorage.getItem('pixelme-generation-history');
+        if (historyStr) {
+          const history = JSON.parse(historyStr);
+          const oneHour = 60 * 60 * 1000;
+          const now = Date.now();
+          // Filter out expired entries (older than 1 hour)
+          const validHistory = history.filter((item: any) => 
+            (now - item.timestamp) < oneHour
+          );
+          setGenerationHistory(validHistory);
+          // Update localStorage with cleaned history
+          if (validHistory.length !== history.length) {
+            localStorage.setItem('pixelme-generation-history', JSON.stringify(validHistory));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load generation history:', e);
+      }
+    };
+    loadGenerationHistory();
+    
     if (cachedImage) {
       setUploadedImage(cachedImage);
     }
@@ -440,18 +470,90 @@ function UploadContent() {
       });
       
       try {
+        // Check file size for Safari compatibility (recommend < 2MB for data URLs)
+        const maxSizeForDataURL = 2 * 1024 * 1024; // 2MB
+        const useCompression = file.size > maxSizeForDataURL;
+        
+        if (useCompression) {
+          console.log('📱 Large file detected, will compress for Safari compatibility');
+        }
+        
         // Get EXIF orientation
         const orientation = await getOrientation(file);
         console.log('📱 EXIF orientation result:', orientation);
         
-        // Correct image orientation if needed
+        // Process image with compression for Safari
         let imageData: string;
-        if (orientation !== 1) {
-          console.log('📱 Applying orientation correction...');
-          imageData = await correctImageOrientation(file, orientation);
-          console.log('📱 Orientation correction completed successfully');
+        
+        if (orientation !== 1 || useCompression) {
+          // Create image element to load the file
+          const img = document.createElement('img');
+          const objectURL = URL.createObjectURL(file);
+          
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = objectURL;
+          });
+          
+          // Create canvas for processing
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            throw new Error('Canvas context not available');
+          }
+          
+          // Calculate dimensions (max 1024px for Safari compatibility)
+          const maxDimension = 1024;
+          let { width, height } = img;
+          
+          if (width > maxDimension || height > maxDimension) {
+            const scale = Math.min(maxDimension / width, maxDimension / height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+            console.log(`📱 Resizing image from ${img.width}x${img.height} to ${width}x${height} for Safari`);
+          }
+          
+          // Apply orientation correction
+          switch (orientation) {
+            case 6: // 90° CW
+              canvas.width = height;
+              canvas.height = width;
+              ctx.rotate(Math.PI / 2);
+              ctx.translate(0, -height);
+              break;
+            case 8: // 90° CCW
+              canvas.width = height;
+              canvas.height = width;
+              ctx.rotate(-Math.PI / 2);
+              ctx.translate(-width, 0);
+              break;
+            case 3: // 180°
+              canvas.width = width;
+              canvas.height = height;
+              ctx.rotate(Math.PI);
+              ctx.translate(-width, -height);
+              break;
+            default:
+              canvas.width = width;
+              canvas.height = height;
+              break;
+          }
+          
+          // Draw and compress image
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Use lower quality for larger files to ensure Safari compatibility
+          const quality = useCompression ? 0.7 : 0.85;
+          imageData = canvas.toDataURL('image/jpeg', quality);
+          
+          URL.revokeObjectURL(objectURL);
+          console.log(`📱 Image processed: ${imageData.length} bytes (quality: ${quality})`);
+          
         } else {
-          console.log('📱 No orientation correction needed');
+          // Small file, no orientation correction needed - direct read
+          console.log('📱 Small file, using direct read');
           imageData = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -467,43 +569,29 @@ function UploadContent() {
           });
         }
         
+        // Check if data URL is still too large for Safari localStorage
+        if (imageData.length > 1024 * 1024) {
+          console.warn('📱 Warning: Image may be too large for Safari localStorage');
+        }
+        
         console.log('📱 Image processing completed, data URL length:', imageData.length);
         setUploadedImage(imageData);
-        localStorage.setItem('pixelme-uploaded-image', imageData);
+        
+        // Try to store in localStorage with error handling for Safari
+        try {
+          localStorage.setItem('pixelme-uploaded-image', imageData);
+        } catch (storageError) {
+          console.error('📱 localStorage failed (Safari limit?), continuing without cache:', storageError);
+          // Continue without localStorage - image is still in state
+        }
+        
         // Stay on upload step instead of auto-proceeding
         setStep('upload');
         localStorage.setItem('pixelme-current-step', 'upload');
         
       } catch (error) {
         console.error('📱 Error processing image:', error);
-        
-        // Fallback to normal upload without orientation correction
-        console.log('📱 Falling back to normal upload without orientation correction');
-        try {
-          const imageData = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              const result = e.target?.result as string;
-              if (result) {
-                resolve(result);
-              } else {
-                reject(new Error('Failed to read file in fallback'));
-              }
-            };
-            reader.onerror = () => reject(new Error('Fallback file reading failed'));
-            reader.readAsDataURL(file);
-          });
-          
-          console.log('📱 Fallback upload successful, data URL length:', imageData.length);
-          setUploadedImage(imageData);
-          localStorage.setItem('pixelme-uploaded-image', imageData);
-          setStep('upload');
-          localStorage.setItem('pixelme-current-step', 'upload');
-          
-        } catch (fallbackError) {
-          console.error('📱 Fallback upload also failed:', fallbackError);
-          alert('Failed to upload image. Please try again with a different image.');
-        }
+        alert('Failed to upload image. Please try a smaller image or different format.');
       }
     }
   };
@@ -554,6 +642,31 @@ function UploadContent() {
     }
   }, [rateLimitStatus?.timeUntilReset]);
 
+  // Clean up expired generation history every minute
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const oneHour = 60 * 60 * 1000;
+      const now = Date.now();
+      
+      setGenerationHistory(prev => {
+        const validHistory = prev.filter(item => (now - item.timestamp) < oneHour);
+        
+        // Update localStorage if we removed any items
+        if (validHistory.length !== prev.length) {
+          try {
+            localStorage.setItem('pixelme-generation-history', JSON.stringify(validHistory));
+          } catch (e) {
+            console.warn('Could not update generation history in localStorage');
+          }
+        }
+        
+        return validHistory;
+      });
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
+
   const handleStyleSelect = (style: string) => {
     setSelectedStyle(style);
     setStep('convert');
@@ -571,8 +684,27 @@ function UploadContent() {
     setCachedEditedImage(null);
     
     // Ensure we're using the original uploaded image, not any edited version
-    const originalUploadedImage = localStorage.getItem('pixelme-uploaded-image');
-    const imageToConvert = originalUploadedImage || uploadedImage;
+    // Try localStorage first, but fall back to state (Safari may fail localStorage)
+    let imageToConvert = uploadedImage;
+    try {
+      const cachedImage = localStorage.getItem('pixelme-uploaded-image');
+      if (cachedImage) {
+        imageToConvert = cachedImage;
+      }
+    } catch (e) {
+      console.warn('📱 Could not read from localStorage (Safari?), using state');
+    }
+
+    // Check if image data is valid before sending
+    if (!imageToConvert || !imageToConvert.startsWith('data:image/')) {
+      setConversionError('Invalid image data. Please re-upload your image.');
+      return;
+    }
+
+    // Warn user if image is very large (Safari issue)
+    if (imageToConvert.length > 2 * 1024 * 1024) {
+      console.warn('📱 Large image detected, may have issues on Safari/iOS');
+    }
 
     setIsConverting(true);
     setConversionError(null);
@@ -599,14 +731,37 @@ function UploadContent() {
       if (response.ok && data.success) {
         const result = data.imageUrl || data.description; // Handle both image URL and demo descriptions
         setConversionResult(result);
-        // Cache the conversion result
-        localStorage.setItem('pixelme-conversion-result', result);
+        
+        // Add to generation history
+        if (result.startsWith('http')) {
+          const newGeneration = {
+            id: `gen-${Date.now()}`,
+            imageUrl: result,
+            timestamp: Date.now(),
+            style: selectedStyle
+          };
+          
+          // Update history (keep max 10 items for storage limits)
+          const updatedHistory = [newGeneration, ...generationHistory].slice(0, 10);
+          setGenerationHistory(updatedHistory);
+          
+          // Try to cache but don't fail if Safari blocks it
+          try {
+            localStorage.setItem('pixelme-conversion-result', result);
+            localStorage.setItem('pixelme-generation-history', JSON.stringify(updatedHistory));
+          } catch (e) {
+            console.warn('📱 Could not cache conversion result (Safari?)');
+          }
+        }
+        
         // Refresh rate limit status after successful conversion
         fetchRateLimitStatus();
       } else {
         // Handle rate limit errors specially
         if (response.status === 429 && data.rateLimitExceeded) {
           setConversionError(`⏰ ${data.error}`);
+        } else if (response.status === 400 && data.error.includes('Invalid image')) {
+          setConversionError('Image upload failed. Please try re-uploading your photo.');
         } else {
           setConversionError(data.error || 'Conversion failed');
         }
@@ -615,7 +770,12 @@ function UploadContent() {
       }
     } catch (error) {
       console.error('Conversion error:', error);
-      setConversionError('Failed to connect to conversion service');
+      // Check if it's a network/size issue (common on Safari with large payloads)
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        setConversionError('Network error. Your image may be too large. Try uploading a smaller photo.');
+      } else {
+        setConversionError('Failed to connect to conversion service. Please try again.');
+      }
     } finally {
       setIsConverting(false);
     }
@@ -661,6 +821,7 @@ function UploadContent() {
     localStorage.removeItem('pixelme-final-image'); // Final processed image
     localStorage.removeItem('pixelme-selected-position'); // Image positioning presets
     localStorage.removeItem('pixelme-zoom-level'); // Zoom level settings
+    localStorage.removeItem('pixelme-generation-history'); // Clear generation history
     
     // Only clear cart if it's empty
     if (!shouldPreserveCart) {
@@ -680,6 +841,7 @@ function UploadContent() {
     setCachedEditedImage(null);
     setCachedColorReducedImage(null);
     setCachedFinalImage(null);
+    setGenerationHistory([]);
     
     // Go back to homepage
     router.push('/');
@@ -688,6 +850,16 @@ function UploadContent() {
   const handleStepChange = (newStep: 'upload' | 'style' | 'convert') => {
     setStep(newStep);
     localStorage.setItem('pixelme-current-step', newStep);
+  };
+
+  const handleSelectHistoryImage = (imageUrl: string) => {
+    setConversionResult(imageUrl);
+    // Update cached result
+    try {
+      localStorage.setItem('pixelme-conversion-result', imageUrl);
+    } catch (e) {
+      console.warn('Could not cache selected image');
+    }
   };
 
   const handleRotateImage = async (direction: 'left' | 'right') => {
@@ -719,9 +891,20 @@ function UploadContent() {
         throw new Error('Failed to create canvas context');
       }
 
-      // For any rotation, we need to swap width and height
-      canvas.width = img.naturalHeight;
-      canvas.height = img.naturalWidth;
+      // Limit dimensions for Safari compatibility
+      const maxDimension = 1024;
+      let width = img.naturalHeight;
+      let height = img.naturalWidth;
+      
+      if (width > maxDimension || height > maxDimension) {
+        const scale = Math.min(maxDimension / width, maxDimension / height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+        console.log(`📱 Resizing rotated image to ${width}x${height} for Safari`);
+      }
+
+      canvas.width = width;
+      canvas.height = height;
 
       // Apply incremental rotation transformation
       ctx.save();
@@ -730,20 +913,32 @@ function UploadContent() {
         // Rotate 90° clockwise
         ctx.translate(canvas.width, 0);
         ctx.rotate(Math.PI / 2);
+        ctx.scale(width / img.naturalHeight, height / img.naturalWidth);
       } else {
         // Rotate 90° counter-clockwise  
         ctx.translate(0, canvas.height);
         ctx.rotate(-Math.PI / 2);
+        ctx.scale(width / img.naturalHeight, height / img.naturalWidth);
       }
       
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
       ctx.restore();
 
-      // Use JPEG with compression to reduce file size
-      const rotatedImageUrl = canvas.toDataURL('image/jpeg', 0.8);
+      // Use JPEG with compression to reduce file size for Safari
+      const quality = 0.75; // Lower quality for better Safari compatibility
+      const rotatedImageUrl = canvas.toDataURL('image/jpeg', quality);
+      
+      console.log(`📱 Rotated image size: ${rotatedImageUrl.length} bytes`);
       
       setUploadedImage(rotatedImageUrl);
-      localStorage.setItem('pixelme-uploaded-image', rotatedImageUrl);
+      
+      // Try to store with error handling for Safari
+      try {
+        localStorage.setItem('pixelme-uploaded-image', rotatedImageUrl);
+      } catch (storageError) {
+        console.error('📱 localStorage failed after rotation (Safari limit?):', storageError);
+        // Continue without localStorage
+      }
       
     } catch (error) {
       console.error('Error rotating image:', error);
@@ -1022,23 +1217,31 @@ function UploadContent() {
           <div className="flex-1 flex flex-col items-center w-full">
             <div className="w-full max-w-md">
               {!uploadedImage ? (
-                <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                      <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                    </svg>
-                    <p className="mb-2 text-sm text-gray-500">
-                      <span className="font-semibold">Click to upload</span> or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500">PNG, JPG or JPEG</p>
-                  </div>
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                    onChange={handleImageUpload}
-                  />
-                </label>
+                <div className="w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                      </svg>
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">PNG, JPG or JPEG</p>
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                  {/* Safari/iOS tip */}
+                  {typeof navigator !== 'undefined' && /iPhone|iPad|iPod/.test(navigator.userAgent) && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                      📱 <strong>iOS Tip:</strong> For best results, use photos under 2MB or take a new photo directly.
+                    </div>
+                  )}
+                </div>
               ) : step === 'upload' ? (
                 <div className="flex flex-col items-center w-full">
                   <div className="relative flex items-center justify-center w-full h-48 sm:h-64 bg-gray-100 rounded-lg mb-4">
@@ -1155,10 +1358,12 @@ function UploadContent() {
             )}
 
             {step === 'convert' && selectedStyle && (
-              <div className="flex flex-col items-center w-full mt-6">
-                <div className="text-center mb-6">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">Ready to Convert</h3>
-                  <p className="text-gray-600">Transform your photo into <span className="font-semibold text-amber-600">{selectedStyle}</span> style</p>
+              <div className="flex gap-6 w-full mt-6">
+                {/* Main conversion area */}
+                <div className="flex-1 flex flex-col items-center">
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Ready to Convert</h3>
+                    <p className="text-gray-600">Transform your photo into <span className="font-semibold text-amber-600">{selectedStyle}</span> style</p>
                   
                   {/* Rate Limit Status */}
                   {rateLimitStatus && (
@@ -1242,51 +1447,150 @@ function UploadContent() {
                   </div>
                 )}
 
-                {conversionResult && (
-                  <div className="mt-4 flex flex-col items-center w-full max-w-2xl">
-                    {conversionResult.startsWith('http') ? (
-                      <div className="flex flex-col items-center w-full">
-                        {/* Editing tip */}
-                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg max-w-md">
-                          <p className="text-sm text-blue-700">
-                            💡 Don't worry if any details are wrong, you'll be able to edit it using our fill tool.
-                          </p>
+                  {conversionResult && (
+                    <div className="mt-4 flex flex-col items-center w-full">
+                      {conversionResult.startsWith('http') ? (
+                        <div className="flex flex-col items-center w-full">
+                          {/* Editing tip */}
+                          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg max-w-md">
+                            <p className="text-sm text-blue-700">
+                              💡 Don't worry if any details are wrong, you'll be able to edit it using our fill tool.
+                            </p>
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex gap-4 mb-6">
+                            <button 
+                              onClick={() => {
+                                // handleConvert will clear edited data when starting new conversion
+                                handleConvert();
+                              }}
+                              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200 font-semibold"
+                            >
+                              Generate New
+                            </button>
+                            <button 
+                              onClick={() => {
+                                // Don't clear edited data when continuing to edit - preserve user's work
+                                localStorage.setItem('pixelme-current-step', 'edit');
+                                router.push('/edit');
+                              }}
+                              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
+                            >
+                              Continue to Edit →
+                            </button>
+                          </div>
+                          
+                          <img 
+                            src={conversionResult} 
+                            alt={`${selectedStyle} conversion`}
+                            className="max-w-md h-auto rounded-lg shadow-lg"
+                          />
                         </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex gap-4 mb-6">
-                          <button 
-                            onClick={() => {
-                              // handleConvert will clear edited data when starting new conversion
-                              handleConvert();
-                            }}
-                            className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200 font-semibold"
-                          >
-                            Generate New
-                          </button>
-                          <button 
-                            onClick={() => {
-                              // Don't clear edited data when continuing to edit - preserve user's work
-                              localStorage.setItem('pixelme-current-step', 'edit');
-                              router.push('/edit');
-                            }}
-                            className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
-                          >
-                            Continue to Edit →
-                          </button>
-                        </div>
-                        
-                        <img 
-                          src={conversionResult} 
-                          alt={`${selectedStyle} conversion`}
-                          className="max-w-md h-auto rounded-lg shadow-lg"
-                        />
+                      ) : (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{conversionResult}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Generation History Sidebar - Desktop */}
+                {generationHistory.filter(h => h.imageUrl !== conversionResult).length > 0 && (
+                  <div className="w-80 flex-shrink-0 hidden lg:block">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center justify-between">
+                        <span>Previous Generations</span>
+                        <span className="text-xs text-gray-500 font-normal">(1 hour history)</span>
+                      </h4>
+                      <div className="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar">
+                        {generationHistory.map((item) => {
+                          const minutesAgo = Math.floor((Date.now() - item.timestamp) / 60000);
+                          const timeText = minutesAgo === 0 ? 'Just now' : 
+                                         minutesAgo === 1 ? '1 minute ago' : 
+                                         `${minutesAgo} minutes ago`;
+                          const isSelected = conversionResult === item.imageUrl;
+                          
+                          return (
+                            <div 
+                              key={item.id}
+                              className={`relative cursor-pointer transition-all duration-200 ${
+                                isSelected 
+                                  ? 'ring-2 ring-amber-600 rounded-lg' 
+                                  : 'hover:opacity-90'
+                              }`}
+                              onClick={() => handleSelectHistoryImage(item.imageUrl)}
+                            >
+                              <img 
+                                src={item.imageUrl} 
+                                alt={`${item.style} generation`}
+                                className="w-full h-auto rounded-lg shadow-sm"
+                              />
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 rounded-b-lg">
+                                <p className="text-xs text-white font-medium">{item.style}</p>
+                                <p className="text-xs text-white/80">{timeText}</p>
+                              </div>
+                              {isSelected && (
+                                <div className="absolute top-2 right-2 bg-amber-600 text-white rounded-full p-1">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ) : (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{conversionResult}</p>
-                    )}
+                    </div>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {/* Generation History - Mobile (Horizontal Scroll) */}
+            {step === 'convert' && generationHistory.filter(h => h.imageUrl !== conversionResult).length > 0 && (
+              <div className="lg:hidden w-full mt-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                    Previous Generations <span className="text-xs text-gray-500 font-normal">(swipe to browse)</span>
+                  </h4>
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {generationHistory.map((item) => {
+                      const minutesAgo = Math.floor((Date.now() - item.timestamp) / 60000);
+                      const timeText = minutesAgo === 0 ? 'Just now' : 
+                                     minutesAgo === 1 ? '1 min ago' : 
+                                     `${minutesAgo} min ago`;
+                      const isSelected = conversionResult === item.imageUrl;
+                      
+                      return (
+                        <div 
+                          key={item.id}
+                          className={`relative flex-shrink-0 w-32 cursor-pointer transition-all duration-200 ${
+                            isSelected 
+                              ? 'ring-2 ring-amber-600 rounded-lg' 
+                              : 'hover:opacity-90'
+                          }`}
+                          onClick={() => handleSelectHistoryImage(item.imageUrl)}
+                        >
+                          <img 
+                            src={item.imageUrl} 
+                            alt={`${item.style} generation`}
+                            className="w-full h-32 object-cover rounded-lg shadow-sm"
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1 rounded-b-lg">
+                            <p className="text-xs text-white truncate">{timeText}</p>
+                          </div>
+                          {isSelected && (
+                            <div className="absolute top-1 right-1 bg-amber-600 text-white rounded-full p-0.5">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </div>

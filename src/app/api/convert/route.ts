@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimitStore, cleanupExpiredEntries } from '../../../lib/rateLimitStore';
 
 export async function POST(request: NextRequest) {
+  let shouldDecrementOnError = false;
+  let clientIP = '';
+  
   try {
     // Get client IP address
-    const clientIP = request.headers.get('x-forwarded-for') || 
+    clientIP = request.headers.get('x-forwarded-for') || 
                     request.headers.get('x-real-ip') || 
                     '127.0.0.1';
 
@@ -21,8 +24,8 @@ export async function POST(request: NextRequest) {
     if (clientData) {
       // Check if the hour has passed
       if (now > clientData.resetTime) {
-        // Reset the counter
-        rateLimitStore.set(clientIP, { count: 1, resetTime: now + oneHour });
+        // Reset the counter - DON'T INCREMENT YET
+        rateLimitStore.set(clientIP, { count: 0, resetTime: now + oneHour });
       } else {
         // Check if limit exceeded
         if (clientData.count >= maxGenerations) {
@@ -36,12 +39,11 @@ export async function POST(request: NextRequest) {
             { status: 429 }
           );
         }
-        // Increment counter
-        rateLimitStore.set(clientIP, { count: clientData.count + 1, resetTime: clientData.resetTime });
+        // DON'T INCREMENT YET - will do after successful generation
       }
     } else {
-      // First generation for this IP
-      rateLimitStore.set(clientIP, { count: 1, resetTime: now + oneHour });
+      // First generation for this IP - initialize with 0
+      rateLimitStore.set(clientIP, { count: 0, resetTime: now + oneHour });
     }
 
     const { imageData, style, clothing } = await request.json();
@@ -52,6 +54,28 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Check if imageData is valid (Safari sometimes sends corrupted data)
+    if (!imageData.startsWith('data:image/')) {
+      console.error('Invalid image data format received');
+      // Don't consume credit for invalid data
+      return NextResponse.json(
+        { error: 'Invalid image format. Please try uploading the image again.' },
+        { status: 400 }
+      );
+    }
+
+    // Log data size for debugging Safari issues
+    console.log(`📱 Received image data size: ${imageData.length} bytes`);
+    
+    // Warn if image is very large (might cause issues on mobile)
+    if (imageData.length > 3 * 1024 * 1024) {
+      console.warn('⚠️ Large image received, may cause issues on mobile devices');
+    }
+    
+    // Log current rate limit status before processing
+    const currentStatus = rateLimitStore.get(clientIP);
+    console.log(`📊 Rate limit status for ${clientIP}: ${currentStatus ? `${currentStatus.count}/5 used` : 'new user'}`);
 
     const replicateApiKey = process.env.REPLICATE_API_TOKEN;
 
@@ -77,7 +101,7 @@ export async function POST(request: NextRequest) {
           return 'Convert this person into Family Guy cartoon style: oval elongated head, large white oval eyes with black pupils, slightly exaggerated facial features, Seth MacFarlane animation style, flat 2D cartoon appearance exactly like the TV show. NO OUTLINES OR BORDERS - create clean edges without any black outlines, thick lines, or cartoon borders. CRITICAL GENDER PRESERVATION: First carefully analyze if this person appears to be male or female by examining facial structure, jawline, eyebrows, and overall features. FOR MALES: maintain masculine jawline, broader facial structure, thicker neck, and male-typical Family Guy proportions exactly like Peter Griffin, Glenn Quagmire, or Joe Swanson. FOR FEMALES: maintain feminine facial features, softer jawline, more delicate facial structure, and female-typical Family Guy proportions exactly like Lois Griffin, Meg Griffin, or Bonnie Swanson. CRITICAL: CAREFULLY EXAMINE THE HAIR COLOR IN THE ORIGINAL IMAGE - even if the person is far away or small in the frame, look closely at their hair area to determine the true hair color. PRESERVE EXACT HAIR COLOR - if blonde hair, keep it blonde; if brown hair, keep it brown; if black hair, keep it black; if red/ginger hair, keep it red; if gray/white hair, keep it gray/white. Do not guess or assume hair color - analyze the actual hair pixels in the image regardless of distance or lighting. PRESERVE EXACT HAIR STYLE AND TEXTURE - curly stays curly, straight stays straight, long stays long, short stays short. PRESERVE EXACT NATURAL SKIN TONE - if pale skin, keep it pale; if medium skin, keep it medium; if dark skin, keep it dark; maintain all ethnic skin characteristics. PRESERVE from original image: same facial expression, same clothing colors and style, same ethnicity characteristics, and KEEP THE ORIGINAL BACKGROUND completely unchanged. Maintain same age and gender.';
 
         case 'Action Anime':
-          return 'Convert this person into Dragon Ball Z anime style exactly like characters from the TV show: powerful muscular build with defined physique, large angular anime eyes with sharp detailed iris, strong confident facial expression, vibrant saturated colors, dynamic cell-shaded anime artwork exactly like Akira Toriyama art style. NO OUTLINES OR BORDERS - create clean edges without any black outlines, thick lines, or cartoon borders. CRITICAL GENDER PRESERVATION: First carefully analyze if this person appears to be male or female by examining facial structure, jawline, eyebrows, body proportions, and overall features. FOR MALES: powerful warrior style with broad muscular shoulders, strong angular jawline, thick masculine eyebrows, confident expression, extremely spiky gravity-defying hair that points upward and outward exactly like Goku, Vegeta, or Gohan - hair should be dramatically spiky and voluminous. FOR FEMALES: strong fighter style but with feminine grace, athletic build, softer facial features but still strong, flowing dynamic hair with some spikes but more elegant exactly like Bulma, Android 18, or Videl - hair flows beautifully but with anime energy. CRITICAL: CAREFULLY EXAMINE THE HAIR COLOR IN THE ORIGINAL IMAGE - even if the person is far away or small in the frame, look closely at their hair area to determine the true hair color. PRESERVE EXACT HAIR COLOR - if blonde hair, keep it blonde; if brown hair, keep it brown; if black hair, keep it black; if red/ginger hair, keep it red; if gray/white hair, keep it gray/white. Do not guess or assume hair color - analyze the actual hair pixels in the image regardless of distance or lighting. DRAGON BALL HAIR TRANSFORMATION: Transform hair into iconic DBZ style - males get extremely spiky upward-pointing hair, females get flowing dynamic hair with elegant spikes, all hair should have anime highlights and sharp definition. PRESERVE EXACT NATURAL SKIN TONE - if pale skin, keep it pale; if medium skin, keep it medium; if dark skin, keep it dark; maintain all ethnic skin characteristics with vibrant DBZ anime rendering. PRESERVE from original image: same facial expression, same clothing colors and style, same ethnicity characteristics, and KEEP THE ORIGINAL BACKGROUND completely unchanged. Maintain same age and gender.';
+          return 'Convert into Dragon Ball Z anime style. If subject is a dog, cat, or other pet: keep as anime pet with natural fur, no spiky hair. If subject is male human: give extremely spiky upward hair like Goku. If subject is female human: give flowing dynamic hair like Bulma. Use vibrant colors, cell-shaded DBZ art style, angular anime eyes. Keep original background unchanged. Preserve original hair/fur color.';
 
 
 
@@ -112,6 +136,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Replicate API error:', errorData);
+      // Don't consume credit for API errors
       return NextResponse.json(
         { error: 'Failed to process image with Replicate API' },
         { status: response.status }
@@ -132,6 +157,8 @@ export async function POST(request: NextRequest) {
       });
       
       if (!pollResponse.ok) {
+        // Don't consume credit for polling errors
+        console.error('Failed to poll prediction status');
         throw new Error('Failed to poll prediction status');
       }
       
@@ -140,6 +167,7 @@ export async function POST(request: NextRequest) {
 
     if (result.status === 'failed') {
       console.error('Replicate prediction failed:', result.error);
+      // Don't consume credit for failed generation
       return NextResponse.json(
         { error: 'Image conversion failed' },
         { status: 500 }
@@ -160,10 +188,30 @@ export async function POST(request: NextRequest) {
     console.log('Generated URL:', generatedImageUrl);
 
     if (!generatedImageUrl) {
+      // Don't consume credit if no image was generated
       return NextResponse.json(
         { error: 'No image generated' },
         { status: 500 }
       );
+    }
+
+    // SUCCESS! Now consume the credit
+    const currentTime = Date.now();
+    const oneHourMs = 60 * 60 * 1000;
+    const currentClientData = rateLimitStore.get(clientIP);
+    
+    if (currentClientData) {
+      // Check if we need to reset (hour passed)
+      if (currentTime > currentClientData.resetTime) {
+        rateLimitStore.set(clientIP, { count: 1, resetTime: currentTime + oneHourMs });
+      } else {
+        // Increment the counter only on success
+        rateLimitStore.set(clientIP, { count: currentClientData.count + 1, resetTime: currentClientData.resetTime });
+      }
+      console.log(`✅ Generation successful for ${clientIP}, credits used: ${currentClientData.count + 1}`);
+    } else {
+      // Shouldn't happen, but handle it
+      rateLimitStore.set(clientIP, { count: 1, resetTime: currentTime + oneHourMs });
     }
 
     // 🔄 TEMPORARY URL - Only save to permanent storage when order is paid
@@ -176,6 +224,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Conversion error:', error);
+    // Don't consume credit for errors
     return NextResponse.json(
       { error: 'Internal server error during conversion' },
       { status: 500 }

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const params = new URLSearchParams({
       limit,
       status,
-      fields: 'id,order_number,name,email,created_at,updated_at,total_price,currency,financial_status,fulfillment_status,customer,line_items,shipping_address,billing_address,note'
+      fields: 'id,order_number,name,email,created_at,updated_at,total_price,currency,financial_status,fulfillment_status,customer,line_items,shipping_address,billing_address,note,tags'
     });
 
     if (financialStatus) params.append('financial_status', financialStatus);
@@ -65,6 +65,43 @@ export async function GET(request: NextRequest) {
         };
       });
 
+      // Determine digitization status based on tags
+      const tags = order.tags || '';
+      let digitizationStatus: 'pending' | 'shared' | 'pending_approval' | 'assigned' | 'in_progress' | 'completed' | 'completed_paid' | 'completed_unpaid' = 'pending';
+      let digitizerName = null;
+      
+      // First extract digitizer name if present (format: "digitizer:Name")
+      const digitizerMatch = tags.match(/digitizer:([^,]+)/);
+      if (digitizerMatch) {
+        digitizerName = digitizerMatch[1].trim();
+      }
+      
+      if (tags.includes('digitizer-pending-approval')) {
+        digitizationStatus = 'pending_approval';
+      } else if (tags.includes('digitizer-approved') || tags.includes('digitizer-assigned')) {
+        digitizationStatus = 'assigned';
+      } else if (tags.includes('digitizer-in-progress')) {
+        digitizationStatus = 'in_progress';
+      } else if (tags.includes('digitizer-completed-paid')) {
+        digitizationStatus = 'completed_paid';
+      } else if (tags.includes('digitizer-completed-unpaid')) {
+        digitizationStatus = 'completed_unpaid';
+      } else if (tags.includes('digitizer-completed')) {
+        digitizationStatus = 'completed_unpaid'; // fallback for old completed status
+      } else if (tags.includes('digitizer-pending')) {
+        digitizationStatus = 'pending_approval';
+      }
+      // If digitizerName exists but no specific status, keep status as 'pending' but with digitizer name
+
+      // Extract payment amount for completed paid orders
+      let paymentAmount = null;
+      if (digitizationStatus === 'completed_paid' && order.note) {
+        const paymentMatch = order.note.match(/Payment processed: \$(\d+(?:\.\d{2})?)/);
+        if (paymentMatch) {
+          paymentAmount = paymentMatch[1];
+        }
+      }
+
       return {
         id: order.id,
         orderNumber: order.order_number,
@@ -85,10 +122,14 @@ export async function GET(request: NextRequest) {
         shippingAddress: order.shipping_address,
         billingAddress: order.billing_address,
         note: order.note,
+        tags: tags,
         isPixelMeOrder: customItems.length > 0,
         pixelMeItems: pixelMeData,
         totalItems: order.line_items?.length || 0,
-        customItemsCount: customItems.length
+        customItemsCount: customItems.length,
+        digitizationStatus: customItems.length > 0 ? digitizationStatus : undefined,
+        digitizerName: digitizerName,
+        paymentAmount: paymentAmount
       };
     }) || [];
 

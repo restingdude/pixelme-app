@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import CartIcon from '../../components/CartIcon';
+import AdminAuth from '../../components/AdminAuth';
 
 interface Product {
   id: string;
@@ -33,12 +34,59 @@ interface Product {
   };
 }
 
+interface Order {
+  id: number;
+  orderNumber: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  totalPrice: string;
+  currency: string;
+  financialStatus: string;
+  fulfillmentStatus: string;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  tags?: string;
+  isPixelMeOrder: boolean;
+  pixelMeItems: Array<{
+    title: string;
+    customDesignUrl: string;
+    style: string;
+    position: string;
+    clothingType: string;
+  }>;
+  customItemsCount: number;
+  totalItems: number;
+  digitizationStatus?: 'pending' | 'shared' | 'pending_approval' | 'assigned' | 'in_progress' | 'completed_unpaid' | 'completed_paid';
+  digitizerToken?: string;
+  digitizerName?: string;
+  paymentAmount?: string;
+}
+
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [showPositionModal, setShowPositionModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
   const [selectedProductForPositioning, setSelectedProductForPositioning] = useState<Product | null>(null);
   const [positionSettings, setPositionSettings] = useState<{[productId: string]: {x: number, y: number, size: number}}>({});
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedOrderForStatus, setSelectedOrderForStatus] = useState<Order | null>(null);
+  const [digitizerNameInput, setDigitizerNameInput] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [showPaymentInput, setShowPaymentInput] = useState(false);
+  const [showFileReviewModal, setShowFileReviewModal] = useState(false);
+  const [selectedOrderForReview, setSelectedOrderForReview] = useState<Order | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [modificationMessage, setModificationMessage] = useState('');
+  const [showModifyInput, setShowModifyInput] = useState(false);
   const [customPresets, setCustomPresets] = useState<{[key: string]: {name: string, x: number, y: number, size: number}}>({});
   const [presetsLoading, setPresetsLoading] = useState(true);
   const [presetsSaving, setPresetsSaving] = useState(false);
@@ -62,9 +110,10 @@ export default function AdminPage() {
     description: ''
   });
 
-  // Fetch products on load (presets loaded when modal opens)
+  // Fetch products and orders on load (presets loaded when modal opens)
   useEffect(() => {
     fetchProducts();
+    fetchOrders();
   }, []);
 
   const fetchProducts = async () => {
@@ -83,6 +132,24 @@ export default function AdminPage() {
       setMessage('Error fetching products: ' + error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      const response = await fetch('/api/shopify/orders?limit=10&status=any');
+      const data = await response.json();
+      
+      if (data.success) {
+        setOrders(data.orders || []);
+      } else {
+        console.error('Failed to fetch orders:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setOrdersLoading(false);
     }
   };
 
@@ -738,8 +805,363 @@ export default function AdminPage() {
     return matchesSearch && matchesStatus;
   });
 
+  // Helper functions for orders
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'paid': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'refunded': return 'bg-red-100 text-red-800';
+      case 'fulfilled': return 'bg-blue-100 text-blue-800';
+      case 'unfulfilled': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-AU', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const openOrderDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setShowOrderDetailsModal(true);
+  };
+
+  const closeOrderDetails = () => {
+    setSelectedOrder(null);
+    setShowOrderDetailsModal(false);
+  };
+
+  const shareWithDigitizer = async (order: Order) => {
+    try {
+      // Generate a unique token for the digitizer link
+      const token = btoa(`${order.id}-${Date.now()}`).replace(/[^a-zA-Z0-9]/g, '');
+      
+      // Create the digitizer link
+      const digitizerLink = `${window.location.origin}/digitizer/${token}`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(digitizerLink);
+
+      alert(`Digitizer link copied to clipboard!\n\n${digitizerLink}`);
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      alert('Failed to copy link to clipboard');
+    }
+  };
+
+  const openStatusModal = (order: Order) => {
+    setSelectedOrderForStatus(order);
+    setDigitizerNameInput(order.digitizerName || '');
+    setShowStatusModal(true);
+  };
+
+  const closeStatusModal = () => {
+    setSelectedOrderForStatus(null);
+    setShowStatusModal(false);
+    setDigitizerNameInput('');
+    setPaymentAmount('');
+    setShowPaymentInput(false);
+  };
+
+  const openFileReviewModal = async (order: Order) => {
+    setSelectedOrderForReview(order);
+    setShowFileReviewModal(true);
+    setReviewLoading(true);
+    
+    try {
+      console.log('📁 Fetching uploaded files for order:', order.id);
+      
+      // Fetch uploaded files for this order using the new file management API
+      const response = await fetch(`/api/orders/${order.id}/files/manage`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setUploadedFiles(data.files || []);
+        console.log('📁 Successfully loaded', data.files?.length || 0, 'files');
+      } else {
+        console.error('Failed to fetch files:', data.error);
+        setUploadedFiles([]);
+      }
+    } catch (error) {
+      console.error('Error fetching uploaded files:', error);
+      setUploadedFiles([]);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const closeFileReviewModal = () => {
+    setSelectedOrderForReview(null);
+    setShowFileReviewModal(false);
+    setUploadedFiles([]);
+    setModificationMessage('');
+    setShowModifyInput(false);
+  };
+
+
+  const updateDigitizationStatus = async (newStatus: 'pending' | 'assigned' | 'pending_approval' | 'completed_unpaid' | 'completed_paid') => {
+    if (!selectedOrderForStatus) return;
+
+    try {
+      let tags: string;
+      let orderNote: string;
+      const digitizerName = digitizerNameInput.trim() || 'Unknown';
+
+      switch (newStatus) {
+        case 'pending':
+          tags = digitizerName !== 'Unknown' && digitizerName !== '' ? `digitizer:${digitizerName}` : '';
+          orderNote = digitizerName !== 'Unknown' && digitizerName !== '' 
+            ? `Digitization status reset to pending - Assigned to ${digitizerName}` 
+            : 'Digitization status reset to pending';
+          break;
+        case 'assigned':
+          tags = `digitizer-approved, digitizer:${digitizerName}`;
+          orderNote = `Digitizer ${digitizerName} approved for this job`;
+          break;
+        case 'pending_approval':
+          tags = `digitizer-pending-approval, digitizer:${digitizerName}`;
+          orderNote = `Digitization files uploaded by ${digitizerName} - Pending admin approval`;
+          break;
+        case 'completed_unpaid':
+          tags = `digitizer-completed-unpaid, digitizer:${digitizerName}`;
+          orderNote = `Digitization completed by ${digitizerName} - Payment pending`;
+          break;
+        case 'completed_paid':
+          if (!paymentAmount.trim()) {
+            alert('Payment amount is required for paid status');
+            return;
+          }
+          tags = `digitizer-completed-paid, digitizer:${digitizerName}`;
+          orderNote = `Digitization completed by ${digitizerName} - Payment processed: $${paymentAmount.trim()}`;
+          break;
+        default:
+          return;
+      }
+
+      const response = await fetch('/api/shopify/orders/update-digitizer-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: selectedOrderForStatus.id,
+          status: newStatus,
+          digitizerName: digitizerName,
+          customTags: tags,
+          customNote: orderNote
+        })
+      });
+
+      if (response.ok) {
+        closeStatusModal();
+        fetchOrders(); // Refresh the orders list
+      } else {
+        alert('Failed to update status. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Failed to update status. Please try again.');
+    }
+  };
+
+  const approveDigitization = async () => {
+    if (!selectedOrderForReview) return;
+    
+    try {
+      const digitizerName = selectedOrderForReview.digitizerName || 'Unknown';
+      
+      const response = await fetch('/api/shopify/orders/update-digitizer-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: selectedOrderForReview.id,
+          status: 'completed_unpaid',
+          digitizerName: digitizerName,
+          customTags: `digitizer-completed-unpaid, digitizer:${digitizerName}`,
+          customNote: `Digitization approved and completed by ${digitizerName} - Payment pending`
+        })
+      });
+
+      if (response.ok) {
+        closeFileReviewModal();
+        fetchOrders(); // Refresh the orders list
+        alert('Digitization approved successfully!');
+      } else {
+        alert('Failed to approve digitization. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error approving digitization:', error);
+      alert('Failed to approve digitization. Please try again.');
+    }
+  };
+
+  const requestModifications = async () => {
+    if (!selectedOrderForReview || !modificationMessage.trim()) return;
+    
+    try {
+      const digitizerName = selectedOrderForReview.digitizerName || 'Unknown';
+      
+      console.log('📤 Sending modification request:', {
+        orderId: selectedOrderForReview.id,
+        status: 'assigned',
+        digitizerName: digitizerName,
+        customTags: `digitizer-modifications, digitizer:${digitizerName}`,
+        customNote: `Modifications requested by admin: ${modificationMessage.trim()}\n\nPlease make the requested changes and upload new files.`,
+        modificationMessage: modificationMessage.trim()
+      });
+      
+      const response = await fetch('/api/shopify/orders/update-digitizer-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: selectedOrderForReview.id,
+          status: 'assigned',
+          digitizerName: digitizerName,
+          customTags: `digitizer-modifications, digitizer:${digitizerName}`,
+          customNote: `Modifications requested by admin: ${modificationMessage.trim()}\n\nPlease make the requested changes and upload new files.`,
+          modificationMessage: modificationMessage.trim()
+        })
+      });
+
+      if (response.ok) {
+        closeFileReviewModal();
+        fetchOrders(); // Refresh the orders list
+        alert('Modification request sent successfully!');
+      } else {
+        alert('Failed to send modification request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error requesting modifications:', error);
+      alert('Failed to send modification request. Please try again.');
+    }
+  };
+
+  const deleteFile = async (fileName: string, blobPath: string) => {
+    if (!selectedOrderForReview) return;
+    
+    if (!confirm(`Are you sure you want to delete "${fileName}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      console.log('🗑️ Deleting file:', fileName);
+      
+      const response = await fetch(`/api/orders/${selectedOrderForReview.id}/files/manage`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName: fileName,
+          blobPath: blobPath
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('✅ File deleted successfully');
+        
+        // Remove the file from the current list
+        setUploadedFiles(files => files.filter(f => f.blobId !== blobPath));
+        
+        alert(`File "${fileName}" deleted successfully!`);
+      } else {
+        console.error('Failed to delete file:', data.error);
+        alert(`Failed to delete file: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      alert('Failed to delete file. Please try again.');
+    }
+  };
+
+  const getDigitizationStatusBadge = (status?: string, digitizerName?: string, order?: Order) => {
+    const handleStatusClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (order) {
+        openStatusModal(order);
+      }
+    };
+
+    switch (status) {
+      case 'shared':
+        return (
+          <button onClick={handleStatusClick} className="hover:bg-blue-200 rounded-full transition-colors">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Shared</span>
+          </button>
+        );
+      case 'pending_approval':
+        return (
+          <button onClick={handleStatusClick} className="hover:bg-amber-200 rounded-full transition-colors text-left">
+            <div className="flex flex-col">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Pending Approval</span>
+              {digitizerName && <span className="text-xs text-gray-500 mt-1 px-2">by {digitizerName}</span>}
+            </div>
+          </button>
+        );
+      case 'assigned':
+        return (
+          <button onClick={handleStatusClick} className="hover:bg-purple-200 rounded-full transition-colors text-left">
+            <div className="flex flex-col">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Assigned</span>
+              {digitizerName && <span className="text-xs text-gray-500 mt-1 px-2">by {digitizerName}</span>}
+            </div>
+          </button>
+        );
+      case 'pending_approval':
+        return (
+          <button onClick={handleStatusClick} className="hover:bg-amber-200 rounded-full transition-colors text-left">
+            <div className="flex flex-col">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Pending Approval</span>
+              {digitizerName && <span className="text-xs text-gray-500 mt-1 px-2">by {digitizerName}</span>}
+            </div>
+          </button>
+        );
+      case 'completed_unpaid':
+        return (
+          <button onClick={handleStatusClick} className="hover:bg-green-200 rounded-full transition-colors text-left">
+            <div className="flex flex-col">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed - Unpaid</span>
+              {digitizerName && <span className="text-xs text-gray-500 mt-1 px-2">by {digitizerName}</span>}
+            </div>
+          </button>
+        );
+      case 'completed_paid':
+        return (
+          <button onClick={handleStatusClick} className="hover:bg-blue-200 rounded-full transition-colors text-left">
+            <div className="flex flex-col">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Completed - Paid</span>
+              {digitizerName && <span className="text-xs text-gray-500 mt-1 px-2">by {digitizerName}{order?.paymentAmount && ` $${order.paymentAmount}`}</span>}
+            </div>
+          </button>
+        );
+      default:
+        return (
+          <button onClick={handleStatusClick} className="hover:bg-yellow-200 rounded-full transition-colors text-left">
+            <div className="flex flex-col">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pending</span>
+              {digitizerName && <span className="text-xs text-gray-500 mt-1 px-2">by {digitizerName}</span>}
+            </div>
+          </button>
+        );
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-gray-50">
+    <AdminAuth>
+      {({ handleLogout }) => (
+      <main className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -779,10 +1201,14 @@ export default function AdminPage() {
                 {loading ? 'Loading...' : 'Refresh'}
               </button>
               <button
-                onClick={() => setShowCreateForm(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium text-sm"
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium text-sm flex items-center gap-2"
+                title="Logout"
               >
-                Add product
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
               </button>
             </div>
           </div>
@@ -869,13 +1295,7 @@ export default function AdminPage() {
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-              <p className="text-gray-500 mb-6">Get started by creating your first product.</p>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium"
-              >
-                Add product
-              </button>
+              <p className="text-gray-500">No products available to display.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1005,6 +1425,213 @@ export default function AdminPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+
+        {/* Orders Section */}
+        <div className="mt-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  Recent Orders ({orders.length})
+                </h2>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={fetchOrders}
+                    disabled={ordersLoading}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    {ordersLoading ? 'Loading...' : 'Refresh'}
+                  </button>
+                  <button
+                    onClick={() => window.open('/admin/orders', '_blank')}
+                    className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 font-medium text-sm"
+                  >
+                    View All Orders
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {ordersLoading ? (
+              <div className="p-12 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading orders...</p>
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="p-12 text-center text-gray-500">
+                <div className="mb-4">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
+                <p className="text-gray-500">Orders will appear here once customers make purchases.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Order
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Items
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Digitized
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {orders.map((order) => (
+                      <tr key={order.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-medium text-gray-900">
+                              #{order.orderNumber}
+                            </div>
+                            {order.isPixelMeOrder && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                PixelMe
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500">{order.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {order.customer?.firstName} {order.customer?.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500">{order.email}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(order.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.financialStatus)}`}>
+                              {order.financialStatus}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.fulfillmentStatus)}`}>
+                              {order.fulfillmentStatus || 'unfulfilled'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          ${parseFloat(order.totalPrice).toFixed(2)} {order.currency}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {order.totalItems} item{order.totalItems !== 1 ? 's' : ''}
+                          </div>
+                          {order.isPixelMeOrder && (
+                            <div className="text-xs text-purple-600 font-medium">
+                              {order.customItemsCount} custom
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {order.isPixelMeOrder ? (
+                            getDigitizationStatusBadge(order.digitizationStatus, order.digitizerName, order)
+                          ) : (
+                            <span className="text-gray-400 text-sm">N/A</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {order.isPixelMeOrder && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => openOrderDetails(order)}
+                                className="px-2 py-1 text-xs text-purple-700 hover:bg-purple-50 rounded transition-colors"
+                                title="View Details"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => openFileReviewModal(order)}
+                                className="px-2 py-1 text-xs text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                                title="View Files"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => shareWithDigitizer(order)}
+                                className="px-2 py-1 text-xs text-green-700 hover:bg-green-50 rounded transition-colors"
+                                title="Share"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* PixelMe Orders Summary */}
+          {orders.filter(o => o.isPixelMeOrder).length > 0 && (
+            <div className="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-purple-900 mb-4">
+                🎨 PixelMe Orders Summary
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-lg p-4">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {orders.filter(o => o.isPixelMeOrder).length}
+                  </div>
+                  <div className="text-sm text-gray-600">Custom Orders</div>
+                </div>
+                <div className="bg-white rounded-lg p-4">
+                  <div className="text-2xl font-bold text-green-600">
+                    ${orders
+                      .filter(o => o.isPixelMeOrder && o.financialStatus === 'paid')
+                      .reduce((sum, o) => sum + parseFloat(o.totalPrice), 0)
+                      .toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-600">Revenue</div>
+                </div>
+                <div className="bg-white rounded-lg p-4">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {orders
+                      .filter(o => o.isPixelMeOrder)
+                      .reduce((sum, o) => sum + o.customItemsCount, 0)}
+                  </div>
+                  <div className="text-sm text-gray-600">Custom Designs</div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1523,10 +2150,452 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Floating Cart Button */}
-      <div className="fixed top-6 right-6 z-50">
+      {/* Custom Design Details Modal */}
+      {showOrderDetailsModal && selectedOrder && selectedOrder.isPixelMeOrder && (
+        <div 
+          className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={closeOrderDetails}
+        >
+          <div 
+            className={`bg-white rounded-lg shadow-xl w-fit max-w-5xl max-h-[80vh] overflow-hidden ${
+              selectedOrder.pixelMeItems.length === 1 ? 'min-w-96 max-w-lg' :
+              selectedOrder.pixelMeItems.length === 2 ? 'min-w-[48rem] max-w-4xl' :
+              'min-w-[60rem] max-w-5xl'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Custom Design Details - #{selectedOrder.orderNumber}</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedOrder.customer?.firstName} {selectedOrder.customer?.lastName} • {formatDate(selectedOrder.createdAt)}
+                </p>
+              </div>
+              <button
+                onClick={closeOrderDetails}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6 max-h-[calc(80vh-120px)] overflow-y-auto">
+              <div className={`grid gap-4 ${
+                selectedOrder.pixelMeItems.length === 1 ? 'grid-cols-1' :
+                selectedOrder.pixelMeItems.length === 2 ? 'grid-cols-2' :
+                selectedOrder.pixelMeItems.length > 6 ? 'grid-cols-4' :
+                'grid-cols-3'
+              }`}>
+                    {selectedOrder.pixelMeItems.map((item, index) => (
+                      <div key={index} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        {item.customDesignUrl && (
+                          <div className="relative aspect-square bg-gray-50">
+                            <img 
+                              src={item.customDesignUrl}
+                              alt={`Custom design for ${item.title}`}
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                e.currentTarget.src = '/logo.png';
+                                e.currentTarget.onerror = null;
+                              }}
+                            />
+                            <a 
+                              href={item.customDesignUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
+                              title="Open full size"
+                            >
+                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          </div>
+                        )}
+                        
+                        <div className="p-4 space-y-3">
+                          <h5 className="font-medium text-gray-900">{item.title}</h5>
+                          
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Style:</span>
+                              <span className="font-medium text-gray-900">{item.style || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Clothing Type:</span>
+                              <span className="font-medium text-gray-900">{item.clothingType || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Position:</span>
+                              <span className="font-medium text-gray-900">{item.position || 'Default'}</span>
+                            </div>
+                          </div>
+                          
+                          {item.customDesignUrl && (
+                            <div className="pt-3 border-t border-gray-100">
+                              <p className="text-xs text-gray-500 mb-1">Design URL:</p>
+                              <a 
+                                href={item.customDesignUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-purple-600 hover:text-purple-700 break-all"
+                              >
+                                {item.customDesignUrl}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Change Modal */}
+      {showStatusModal && selectedOrderForStatus && (
+        <div 
+          className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"
+          onClick={closeStatusModal}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Change Digitization Status</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Order #{selectedOrderForStatus.orderNumber} - {selectedOrderForStatus.customer?.firstName} {selectedOrderForStatus.customer?.lastName}
+              </p>
+            </div>
+            
+            <div className="p-6">
+              {/* Digitizer Name Input */}
+              <div className="mb-6">
+                <label htmlFor="digitizerName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Digitizer Name
+                </label>
+                <input
+                  type="text"
+                  id="digitizerName"
+                  value={digitizerNameInput}
+                  onChange={(e) => setDigitizerNameInput(e.target.value)}
+                  placeholder="Enter digitizer name..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-black"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This name will be associated with the selected status
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  onClick={() => updateDigitizationStatus('pending')}
+                  className="flex flex-col items-center p-4 border-2 border-yellow-200 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors"
+                >
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 mb-2">
+                    Pending
+                  </span>
+                  <p className="text-xs text-center text-gray-600">Reset to pending status</p>
+                </button>
+
+                <button
+                  onClick={() => updateDigitizationStatus('assigned')}
+                  className="flex flex-col items-center p-4 border-2 border-purple-200 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                >
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 mb-2">
+                    Assigned
+                  </span>
+                  <p className="text-xs text-center text-gray-600">Job assigned to digitizer</p>
+                </button>
+
+                <button
+                  onClick={() => updateDigitizationStatus('pending_approval')}
+                  className="flex flex-col items-center p-4 border-2 border-amber-200 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+                >
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800 mb-2">
+                    Pending Approval
+                  </span>
+                  <p className="text-xs text-center text-gray-600">Files uploaded, waiting for approval</p>
+                </button>
+
+                <button
+                  onClick={() => updateDigitizationStatus('completed_unpaid')}
+                  className="flex flex-col items-center p-4 border-2 border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                >
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 mb-2">
+                    Completed - Unpaid
+                  </span>
+                  <p className="text-xs text-center text-gray-600">Work complete, payment pending</p>
+                </button>
+
+                <button
+                  onClick={() => setShowPaymentInput(!showPaymentInput)}
+                  className="flex flex-col items-center p-4 border-2 border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 mb-2">
+                    Completed - Paid
+                  </span>
+                  <p className="text-xs text-center text-gray-600">Work complete, payment processed</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Payment Input Section */}
+            {showPaymentInput && (
+              <div className="px-6 py-4 border-t border-gray-200 bg-blue-50">
+                <h3 className="text-md font-medium text-gray-900 mb-3">Payment Details</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Payment Amount *
+                    </label>
+                    <div className="flex items-center">
+                      <span className="text-gray-500 mr-1">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => updateDigitizationStatus('completed_paid')}
+                      disabled={!paymentAmount.trim()}
+                      className={`px-4 py-2 rounded-lg font-medium ${
+                        paymentAmount.trim()
+                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Confirm Payment
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowPaymentInput(false);
+                        setPaymentAmount('');
+                      }}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={closeStatusModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Review Modal */}
+      {showFileReviewModal && selectedOrderForReview && (
+        <div 
+          className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"
+          onClick={closeFileReviewModal}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">View Uploaded Files</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Order #{selectedOrderForReview.orderNumber} - {selectedOrderForReview.customer?.firstName} {selectedOrderForReview.customer?.lastName}
+              </p>
+              <p className="text-sm text-gray-500">
+                Digitizer: {selectedOrderForReview.digitizerName}
+              </p>
+            </div>
+            
+            <div className="p-6">
+              {reviewLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+                  <p className="ml-3 text-gray-600">Loading uploaded files...</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Files Section */}
+                  <div>
+                    <h4 className="text-md font-medium text-gray-900 mb-4">Uploaded Files</h4>
+                    {uploadedFiles.length === 0 ? (
+                      <div className="bg-gray-50 rounded-lg p-6 text-center">
+                        <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p className="text-gray-500 mb-2">No files available for preview</p>
+                        <p className="text-sm text-gray-400">Files may be stored in an external system</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                            <div className="flex items-center justify-between mb-3">
+                              <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                              <p className="text-xs text-gray-500 ml-2">{file.size}</p>
+                            </div>
+                            {/* File preview */}
+                            <div className="bg-gray-100 rounded-lg h-40 flex items-center justify-center mb-3 cursor-pointer hover:bg-gray-200 transition-colors">
+                              {file.type?.startsWith('image/') ? (
+                                <img 
+                                  src={file.url} 
+                                  alt={file.name}
+                                  className="max-w-full max-h-full object-contain rounded"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `
+                                        <div class="text-center">
+                                          <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                          </svg>
+                                          <p class="text-xs text-gray-500">Image preview failed</p>
+                                        </div>
+                                      `;
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <div className="text-center">
+                                  <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  <p className="text-xs text-gray-500">{file.type || 'Unknown type'}</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
+                              <button 
+                                onClick={() => window.open(file.url, '_blank')}
+                                className="flex-1 text-xs text-blue-600 hover:text-blue-700 font-medium py-1"
+                                title="Download file"
+                              >
+                                Download
+                              </button>
+                              <button 
+                                onClick={() => window.open(file.url, '_blank')}
+                                className="flex-1 text-xs text-gray-600 hover:text-gray-700 font-medium py-1"
+                                title="View full size"
+                              >
+                                View
+                              </button>
+                              <button 
+                                onClick={() => deleteFile(file.name, file.blobId)}
+                                className="flex-1 text-xs text-red-600 hover:text-red-700 font-medium py-1"
+                                title="Delete file"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Approve/Modify Section for Pending Approval */}
+                  {selectedOrderForReview.digitizationStatus === 'pending_approval' && (
+                    <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                      <h4 className="text-md font-medium text-gray-900 mb-3">Review Action Required</h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        The digitizer has uploaded files and is waiting for your approval. Please review the files above and choose an action.
+                      </p>
+                      
+                      {showModifyInput ? (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Modification Request Message
+                            </label>
+                            <textarea
+                              value={modificationMessage}
+                              onChange={(e) => setModificationMessage(e.target.value)}
+                              placeholder="Please describe what needs to be modified..."
+                              rows={3}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-black resize-none"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={requestModifications}
+                              disabled={!modificationMessage.trim()}
+                              className={`px-4 py-2 rounded-lg font-medium ${
+                                modificationMessage.trim()
+                                  ? 'bg-orange-600 text-white hover:bg-orange-700'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                            >
+                              Send Modification Request
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowModifyInput(false);
+                                setModificationMessage('');
+                              }}
+                              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={approveDigitization}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                          >
+                            Approve Digitization
+                          </button>
+                          <button
+                            onClick={() => setShowModifyInput(true)}
+                            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium"
+                          >
+                            Request Modifications
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={closeFileReviewModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Cart Button - Hidden on admin panel */}
+      {/* <div className="fixed top-6 right-6 z-50">
         <CartIcon />
-      </div>
+      </div> */}
     </main>
+      )}
+    </AdminAuth>
   );
 } 

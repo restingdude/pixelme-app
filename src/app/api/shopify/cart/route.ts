@@ -276,13 +276,13 @@ async function createCart(data: any) {
     // Add properties if they exist (Shopify line item properties)
     if (properties && properties.length > 0) {
       // Convert properties array to key-value object for Shopify
-      const sellingPlanId = properties.find(p => p.key === 'selling_plan_id')?.value;
+      const sellingPlanId = properties.find((p: any) => p.key === 'selling_plan_id')?.value;
       if (sellingPlanId) {
         lineItem.sellingPlanId = sellingPlanId;
       }
       
       // For other properties, we'll include them as attributes with property prefix
-      properties.forEach(prop => {
+      properties.forEach((prop: any) => {
         if (prop.key !== 'selling_plan_id') {
           lineItem.attributes.push({
             key: `property_${prop.key}`,
@@ -488,7 +488,7 @@ async function addToCart(data: any) {
   // Add properties if they exist (Shopify line item properties)
   if (properties && properties.length > 0) {
     // For properties, we'll include them as attributes with property prefix
-    properties.forEach(prop => {
+    properties.forEach((prop: any) => {
       lineItem.attributes.push({
         key: `property_${prop.key}`,
         value: prop.value

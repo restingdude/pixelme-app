@@ -15,6 +15,9 @@ function UploadContent() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [imageRotation, setImageRotation] = useState(0);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [peopleCount, setPeopleCount] = useState<number>(1);
+  const [imageSize, setImageSize] = useState<string>('7cm');
+  const [genders, setGenders] = useState<string[]>(['']);
   const [step, setStep] = useState<'upload' | 'style' | 'convert'>('upload');
   const [isConverting, setIsConverting] = useState(false);
   const [conversionResult, setConversionResult] = useState<string | null>(null);
@@ -375,6 +378,9 @@ function UploadContent() {
   useEffect(() => {
     const cachedImage = localStorage.getItem('pixelme-uploaded-image');
     const cachedStyle = localStorage.getItem('pixelme-selected-style');
+    const cachedPeopleCount = localStorage.getItem('pixelme-people-count');
+    const cachedImageSize = localStorage.getItem('pixelme-image-size');
+    const cachedGenders = localStorage.getItem('pixelme-genders');
     const cachedStep = localStorage.getItem('pixelme-current-step');
     const cachedConversionResult = localStorage.getItem('pixelme-conversion-result');
     const cachedEditedImage = localStorage.getItem('pixelme-edited-image');
@@ -410,6 +416,24 @@ function UploadContent() {
     }
     if (cachedStyle) {
       setSelectedStyle(cachedStyle);
+    }
+    if (cachedPeopleCount) {
+      const count = parseInt(cachedPeopleCount);
+      setPeopleCount(count);
+      // Initialize genders array if not cached
+      if (!cachedGenders) {
+        setGenders(new Array(count).fill(''));
+      }
+    }
+    if (cachedImageSize) {
+      setImageSize(cachedImageSize);
+    }
+    if (cachedGenders) {
+      try {
+        setGenders(JSON.parse(cachedGenders));
+      } catch (e) {
+        console.warn('Failed to parse cached genders');
+      }
     }
     if (cachedStep && ['upload', 'style', 'convert'].includes(cachedStep)) {
       setStep(cachedStep as 'upload' | 'style' | 'convert');
@@ -669,9 +693,47 @@ function UploadContent() {
 
   const handleStyleSelect = (style: string) => {
     setSelectedStyle(style);
-    setStep('convert');
     localStorage.setItem('pixelme-selected-style', style);
-    localStorage.setItem('pixelme-current-step', 'convert');
+    // Don't auto-advance to convert, stay on style to select people count
+  };
+
+  const handlePeopleCountSelect = (count: number) => {
+    setPeopleCount(count);
+    
+    // Set image size based on people count
+    let size = '7cm';
+    if (count === 2) size = '10cm';
+    else if (count === 3) size = '13cm';
+    else if (count === 4) size = '16cm';
+    else if (count >= 5) size = '19cm';
+    
+    setImageSize(size);
+    localStorage.setItem('pixelme-people-count', count.toString());
+    localStorage.setItem('pixelme-image-size', size);
+    
+    // Initialize genders array with empty values
+    setGenders(new Array(count).fill(''));
+    
+    // Don't advance to convert yet - wait for gender selection
+  };
+
+  const handleGenderSelect = (personIndex: number, gender: string) => {
+    const newGenders = [...genders];
+    newGenders[personIndex] = gender;
+    setGenders(newGenders);
+    localStorage.setItem('pixelme-genders', JSON.stringify(newGenders));
+    
+    // Check if all genders are selected
+    const allSelected = newGenders.every(g => g !== '' && g !== null && g !== undefined);
+    console.log('Gender selection:', { newGenders, allSelected, peopleCount });
+    
+    if (allSelected && newGenders.length === peopleCount) {
+      // Add a small delay to show the completion message before transitioning
+      setTimeout(() => {
+        setStep('convert');
+        localStorage.setItem('pixelme-current-step', 'convert');
+      }, 1500); // 1.5 second delay
+    }
   };
 
   const handleConvert = async () => {
@@ -723,6 +785,9 @@ function UploadContent() {
           color: selectedColor,
           size: selectedSize,
           variantId: selectedVariantId,
+          peopleCount: peopleCount,
+          imageSize: imageSize,
+          genders: genders,
         }),
       });
 
@@ -810,6 +875,9 @@ function UploadContent() {
     // Clear all editing session data
     localStorage.removeItem('pixelme-uploaded-image');
     localStorage.removeItem('pixelme-selected-style');
+    localStorage.removeItem('pixelme-people-count');
+    localStorage.removeItem('pixelme-image-size');
+    localStorage.removeItem('pixelme-genders');
     localStorage.removeItem('pixelme-current-step');
     localStorage.removeItem('pixelme-selected-clothing');
     localStorage.removeItem('pixelme-selected-color');
@@ -835,6 +903,9 @@ function UploadContent() {
     setUploadedImage(null);
     setImageRotation(0);
     setSelectedStyle(null);
+    setPeopleCount(1);
+    setImageSize('7cm');
+    setGenders(['']);
     setStep('upload');
     setConversionResult(null);
     setConversionError(null);
@@ -1289,90 +1360,200 @@ function UploadContent() {
             
             {step === 'style' && uploadedImage && (
               <div className="flex flex-col items-center w-full overflow-x-hidden">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2 text-center">Choose Your Style</h3>
-                <p className="text-sm text-gray-600 mb-4 text-center">Select a cartoon style for your image</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-4 w-full max-w-5xl px-2 sm:px-0">
+                {/* Style selection */}
+                <div className="w-full">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Style & Details</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 w-full max-w-4xl mx-auto mb-6 px-2">
                   <button
-                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Yellow Cartoon' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square w-full max-w-[140px] mx-auto p-1 sm:p-2 rounded-lg transition-all duration-200 hover:scale-105 ${selectedStyle === 'Yellow Cartoon' ? 'ring-2 ring-amber-500 bg-amber-50' : 'hover:shadow-md'}`}
                     onClick={() => handleStyleSelect('Yellow Cartoon')}
+                    title="Simpsons Style"
                   >
-                    <div className="relative w-full h-full">
-                      <Image
-                        src="/styles/simpsons.png"
-                        alt="Yellow Cartoon Style"
-                        fill
-                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
-                        className="object-contain rounded-md p-1"
-                        priority
-                      />
-                    </div>
-                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Yellow Cartoon</span>
+                    <Image
+                      src="/styles/simpsons.png"
+                      alt="Simpsons Style"
+                      fill
+                      className="object-contain rounded-lg"
+                      priority
+                    />
                   </button>
                   <button
-                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Animated Comedy' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square w-full max-w-[140px] mx-auto p-1 sm:p-2 rounded-lg transition-all duration-200 hover:scale-105 ${selectedStyle === 'Animated Comedy' ? 'ring-2 ring-amber-500 bg-amber-50' : 'hover:shadow-md'}`}
                     onClick={() => handleStyleSelect('Animated Comedy')}
+                    title="Family Guy Style"
                   >
-                    <div className="relative w-full h-full">
-                      <Image
-                        src="/styles/familyguy.png"
-                        alt="Animated Comedy Style"
-                        fill
-                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
-                        className="object-contain rounded-md p-1"
-                        priority
-                      />
-                    </div>
-                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Animated Comedy</span>
+                    <Image
+                      src="/styles/familyguy.png"
+                      alt="Family Guy Style"
+                      fill
+                      className="object-contain rounded-lg"
+                      priority
+                    />
                   </button>
                   <button
-                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Paper Animation' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square w-full max-w-[140px] mx-auto p-1 sm:p-2 rounded-lg transition-all duration-200 hover:scale-105 ${selectedStyle === 'Paper Animation' ? 'ring-2 ring-amber-500 bg-amber-50' : 'hover:shadow-md'}`}
                     onClick={() => handleStyleSelect('Paper Animation')}
+                    title="South Park Style"
                   >
-                    <div className="relative w-full h-full">
-                      <Image
-                        src="/styles/southpark.png"
-                        alt="Paper Animation Style"
-                        fill
-                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
-                        className="object-contain rounded-md p-1"
-                        priority
-                      />
-                    </div>
-                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Paper Animation</span>
+                    <Image
+                      src="/styles/southpark.png"
+                      alt="South Park Style"
+                      fill
+                      className="object-contain rounded-lg"
+                      priority
+                    />
                   </button>
                   <button
-                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Anime Fantasy' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square w-full max-w-[140px] mx-auto p-1 sm:p-2 rounded-lg transition-all duration-200 hover:scale-105 ${selectedStyle === 'Anime Fantasy' ? 'ring-2 ring-amber-500 bg-amber-50' : 'hover:shadow-md'}`}
                     onClick={() => handleStyleSelect('Anime Fantasy')}
+                    title="Studio Ghibli Style"
                   >
-                    <div className="relative w-full h-full">
-                      <Image
-                        src="/styles/ghibli.png"
-                        alt="Anime Fantasy Style"
-                        fill
-                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
-                        className="object-contain rounded-md p-1"
-                        priority
-                      />
-                    </div>
-                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Anime Fantasy</span>
+                    <Image
+                      src="/styles/ghibli.png"
+                      alt="Studio Ghibli Style"
+                      fill
+                      className="object-contain rounded-lg"
+                      priority
+                    />
                   </button>
                   <button
-                    className={`relative aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-dashed hover:border-amber-600 max-w-[150px] sm:max-w-[180px] lg:max-w-none mx-auto w-full ${selectedStyle === 'Action Anime' ? 'border-amber-600 border-dashed ring-2 ring-amber-300' : 'border-transparent'}`}
+                    className={`relative aspect-square w-full max-w-[140px] mx-auto p-1 sm:p-2 rounded-lg transition-all duration-200 hover:scale-105 ${selectedStyle === 'Action Anime' ? 'ring-2 ring-amber-500 bg-amber-50' : 'hover:shadow-md'}`}
                     onClick={() => handleStyleSelect('Action Anime')}
+                    title="Dragon Ball Style"
                   >
-                    <div className="relative w-full h-full">
-                      <Image
-                        src="/styles/dragonball.png"
-                        alt="Action Anime Style"
-                        fill
-                        sizes="(max-width: 640px) 150px, (max-width: 1024px) 180px, 200px"
-                        className="object-contain rounded-md p-1"
-                        priority
-                      />
-                    </div>
-                    <span className="absolute bottom-1 left-1 right-1 text-[10px] sm:text-xs text-center font-medium text-gray-800 bg-white/90 backdrop-blur-sm rounded px-1 py-0.5">Action Anime</span>
+                    <Image
+                      src="/styles/dragonball.png"
+                      alt="Dragon Ball Style"
+                      fill
+                      className="object-contain rounded-lg"
+                      priority
+                    />
                   </button>
+                    </div>
                 </div>
+
+                {/* People count selection */}
+                {selectedStyle && (
+                  <div className="w-full max-w-lg mx-auto mb-4">
+                    <div className="mb-3 text-center">
+                      <p className="text-sm text-black font-medium mb-1">How many subjects in your photo?</p>
+                      <p className="text-xs text-gray-600 mb-2">Choose carefully - more subjects = larger size for better embroidery quality</p>
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-3">
+                        <p className="text-xs text-amber-800">
+                          ⚠️ <strong>Important:</strong> If size is too small, design will have lower quality
+                        </p>
+                      </div>
+                    </div>
+                    {/* People count selector */}
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-4">
+                        <button
+                          onClick={() => {
+                            const newCount = Math.max(1, peopleCount - 1);
+                            handlePeopleCountSelect(newCount);
+                          }}
+                          className="w-12 h-12 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center text-xl font-bold text-black"
+                        >
+                          −
+                        </button>
+                        
+                        <div className="flex flex-col items-center min-w-[120px]">
+                          <div className="text-2xl font-bold text-black">
+                            {peopleCount} {peopleCount === 1 ? 'subject' : 'subjects'}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {(() => {
+                              if (peopleCount === 1) return '7cm size';
+                              if (peopleCount === 2) return '10cm size';
+                              if (peopleCount === 3) return '13cm size';
+                              if (peopleCount === 4) return '16cm size';
+                              if (peopleCount >= 5) return '19cm size';
+                            })()}
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => {
+                            const newCount = Math.min(8, peopleCount + 1);
+                            handlePeopleCountSelect(newCount);
+                          }}
+                          className="w-12 h-12 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center text-xl font-bold text-black"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-3">Use +/− buttons to select 1-8 subjects</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gender selection */}
+                {peopleCount && (
+                  <div className="w-full max-w-lg mx-auto">
+                    <div className="mb-3 text-center">
+                      <p className="text-sm text-black font-medium mb-1">Select type for each subject</p>
+                      <p className="text-xs text-gray-600">👈 From left to right in your photo 👉</p>
+                    </div>
+                    <div className="grid gap-3">
+                      {Array.from({ length: peopleCount }, (_, index) => (
+                        <div key={index} className="flex items-center gap-2 bg-white p-3 rounded-lg shadow-sm">
+                          <span className="text-sm font-medium text-black min-w-[80px]">
+                            {peopleCount === 1 ? 'Subject' : 
+                             peopleCount === 2 ? (index === 0 ? 'Left' : 'Right') :
+                             peopleCount === 3 ? (index === 0 ? 'Left' : index === 1 ? 'Center' : 'Right') :
+                             (index === 0 ? 'Left' : index === peopleCount - 1 ? 'Right' : `#${index + 1}`)}:
+                          </span>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleGenderSelect(index, 'male')}
+                              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-all duration-200 hover:scale-105 ${
+                                genders[index] === 'male' ? 'ring-2 ring-blue-500 bg-blue-50 text-blue-700' : 'bg-gray-50 hover:shadow-md text-black'
+                              }`}
+                            >
+                              <span>👨</span>
+                              <span>Male</span>
+                            </button>
+                            <button
+                              onClick={() => handleGenderSelect(index, 'female')}
+                              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-all duration-200 hover:scale-105 ${
+                                genders[index] === 'female' ? 'ring-2 ring-pink-500 bg-pink-50 text-pink-700' : 'bg-gray-50 hover:shadow-md text-black'
+                              }`}
+                            >
+                              <span>👩</span>
+                              <span>Female</span>
+                            </button>
+                            <button
+                              onClick={() => handleGenderSelect(index, 'animal')}
+                              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-all duration-200 hover:scale-105 ${
+                                genders[index] === 'animal' ? 'ring-2 ring-green-500 bg-green-50 text-green-700' : 'bg-gray-50 hover:shadow-md text-black'
+                              }`}
+                            >
+                              <span>🐾</span>
+                              <span>Animal</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Compact progress */}
+                      <div className="mt-3">
+                        <div className="w-full bg-gray-100 rounded-full h-1.5">
+                          <div 
+                            className="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
+                            style={{ 
+                              width: `${(genders.filter(g => g !== '' && g !== null && g !== undefined).length / peopleCount) * 100}%` 
+                            }}
+                          ></div>
+                        </div>
+                        {genders.length === peopleCount && genders.every(g => g !== '' && g !== null && g !== undefined) && (
+                          <p className="text-green-700 text-xs mt-2 text-center font-medium">
+                            ✓ Complete! Proceeding...
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

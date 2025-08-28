@@ -44,6 +44,9 @@ export default function Edit() {
   const [products, setProducts] = useState<any[]>([]);
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [peopleCount, setPeopleCount] = useState<number>(1);
+  const [imageSize, setImageSize] = useState<string>('7cm');
+  const [selectedImageSize, setSelectedImageSize] = useState<string>('7cm');
   
   // Custom presets state
   const [customPresets, setCustomPresets] = useState<{[key: string]: {name: string, x: number, y: number, size: number}}>({});
@@ -290,16 +293,35 @@ export default function Edit() {
       setSelectedSize(cachedSize);
     }
 
-    // Load saved variant ID
+    // Load saved variant ID and price
     const cachedVariantId = localStorage.getItem('pixelme-selected-variant-id');
+    const cachedVariantPrice = localStorage.getItem('pixelme-variant-price');
     if (cachedVariantId) {
       setSelectedVariantId(cachedVariantId);
+    }
+    if (cachedVariantPrice) {
+      setVariantPrice(cachedVariantPrice);
+      console.log('💾 Loaded cached variant price:', cachedVariantPrice);
     }
 
     // Load saved color and size selections
     const savedColor = localStorage.getItem('pixelme-selected-color');
     if (savedColor) {
       setSelectedColor(savedColor);
+    }
+
+    // Load saved people count and image size
+    const savedPeopleCount = localStorage.getItem('pixelme-people-count');
+    const savedImageSize = localStorage.getItem('pixelme-image-size');
+    const savedSelectedImageSize = localStorage.getItem('pixelme-selected-image-size');
+    if (savedPeopleCount) {
+      setPeopleCount(parseInt(savedPeopleCount));
+    }
+    if (savedImageSize) {
+      setImageSize(savedImageSize);
+    }
+    if (savedSelectedImageSize) {
+      setSelectedImageSize(savedSelectedImageSize);
     }
 
     // Load saved rotation
@@ -325,47 +347,95 @@ export default function Edit() {
     }
   }, [step]);
 
-  // Fetch variant price when variant ID is available
+  // Get variant price from products data based on selected size and color
   useEffect(() => {
-    const fetchVariantPrice = async () => {
-      if (!selectedVariantId || !selectedClothing) {
-        setVariantPrice(null);
-        return;
-      }
-
-      setIsPriceLoading(true);
-      try {
-        // Extract the numeric part from the Shopify variant ID
-        const numericVariantId = selectedVariantId.replace('gid://shopify/ProductVariant/', '');
+    console.log('💰 Price lookup attempt:', {
+      selectedClothing,
+      selectedSize,
+      selectedColor,
+      productsCount: products.length,
+      productsLoading
+    });
+    
+    if (!selectedClothing || !selectedSize || !selectedColor || products.length === 0) {
+      console.log('❌ Missing required data for price lookup');
+      setVariantPrice(null);
+      return;
+    }
+    
+    setIsPriceLoading(true);
+    try {
+      // Find the product that matches our clothing type
+      const matchingProduct = products.find(product => 
+        product.title?.toLowerCase().includes(selectedClothing?.toLowerCase())
+      );
+      
+      console.log('🔍 Product search:', {
+        searchingFor: selectedClothing,
+        allProducts: products.map(p => p.title),
+        matchingProduct: matchingProduct?.title
+      });
+      
+      if (matchingProduct && matchingProduct.variants?.edges) {
+        // Find the variant that matches our size and color selection
+        console.log('🔍 Available variants:', matchingProduct.variants.edges.map((edge: any) => ({
+          id: edge.node.id,
+          price: edge.node.price,
+          options: edge.node.selectedOptions
+        })));
         
-        // Fetch all products to find the one with our variant
-        const response = await fetch('/api/shopify/products');
-        const data = await response.json();
+        const matchingVariant = matchingProduct.variants.edges.find((edge: any) => {
+          const variant = edge.node;
+          const options = variant.selectedOptions || [];
+          
+          // Check if this variant matches both our selected size and color
+          const hasMatchingSize = options.some((option: any) => 
+            option.name === 'Size' && option.value === selectedSize
+          );
+          const hasMatchingColor = options.some((option: any) => 
+            option.name === 'Color' && option.value === selectedColor
+          );
+          
+          console.log(`🔍 Checking variant ${variant.id}:`, {
+            options,
+            hasMatchingSize,
+            hasMatchingColor,
+            lookingForSize: selectedSize,
+            lookingForColor: selectedColor
+          });
+          
+          return hasMatchingSize && hasMatchingColor;
+        });
         
-        if (data.success && data.products) {
-          // Find the product that contains our variant
-          for (const product of data.products) {
-            const variant = product.variants?.edges?.find((edge: any) => 
-              edge.node.id === selectedVariantId || 
-              edge.node.id.includes(numericVariantId)
-            );
-            
-            if (variant) {
-              setVariantPrice(variant.node.price);
-              break;
-            }
-          }
+        if (matchingVariant) {
+          setVariantPrice(matchingVariant.node.price);
+          setSelectedVariantId(matchingVariant.node.id);
+          
+          // Save variant ID and price to localStorage for checkout
+          localStorage.setItem('pixelme-selected-variant-id', matchingVariant.node.id);
+          localStorage.setItem('pixelme-variant-price', matchingVariant.node.price);
+          
+          console.log('✅ Found variant price:', {
+            variantId: matchingVariant.node.id,
+            price: matchingVariant.node.price,
+            size: selectedSize,
+            color: selectedColor
+          });
+        } else {
+          console.warn('❌ No matching variant found for:', { selectedSize, selectedColor, selectedClothing });
+          setVariantPrice(null);
         }
-      } catch (error) {
-        console.error('Error fetching variant price:', error);
-        setVariantPrice(null); // Clear price on error
-      } finally {
-        setIsPriceLoading(false);
+      } else {
+        console.warn('❌ No matching product found for:', selectedClothing);
+        setVariantPrice(null);
       }
-    };
-
-    fetchVariantPrice();
-  }, [selectedVariantId, selectedClothing]);
+    } catch (error) {
+      console.error('Error getting variant price:', error);
+      setVariantPrice(null);
+    } finally {
+      setIsPriceLoading(false);
+    }
+  }, [selectedClothing, selectedSize, selectedColor, products]);
 
   // Load custom presets when clothing type changes
   useEffect(() => {
@@ -1564,7 +1634,7 @@ export default function Edit() {
     });
   };
 
-  const handleBackgroundRemoval = async (lessAggressive = false) => {
+  const handleBackgroundRemoval = async (aggressiveness = 'normal') => {
     const sourceImage = currentImage; // Use current edited image, not original
     if (!sourceImage) return;
 
@@ -1604,7 +1674,7 @@ export default function Edit() {
         },
         body: JSON.stringify({
           imageData: imageDataUrl,
-          lessAggressive: lessAggressive,
+          aggressiveness: aggressiveness,
         }),
       });
 
@@ -1615,14 +1685,14 @@ export default function Edit() {
         const transparentImage = await addCheckeredBackground(data.imageUrl);
         setEditedImage(transparentImage);
         localStorage.setItem('pixelme-edited-image', transparentImage);
-        // Set flag to show less aggressive option only for regular removal
-        if (!lessAggressive) {
+        // Set flag to show alternative options only for normal removal
+        if (aggressiveness === 'normal') {
           setJustRemovedBackground(true);
         } else {
-          setJustRemovedBackground(false); // Hide option after less aggressive attempt
+          setJustRemovedBackground(false); // Hide options after aggressive/less-aggressive attempts
         }
         
-        console.log(`Background removal completed successfully using 851-labs/background-remover ${lessAggressive ? '(less aggressive)' : ''}`);
+        console.log(`Background removal completed successfully using 851-labs/background-remover (${aggressiveness})`);
       } else {
         console.error('Background removal failed:', data.error);
         alert('Background removal failed: ' + (data.error || 'Unknown error'));
@@ -2028,6 +2098,28 @@ export default function Edit() {
     return 50;
   };
 
+  // Get design size based on subject count for preview
+  const getDesignSizeForSubjects = (subjectCount: number) => {
+    // Base size mapping: 1=7cm, 2=10cm, 3=13cm, 4=16cm, 5+=19cm
+    // Convert cm to pixels (smaller scale for better preview - roughly 5px per cm)
+    let sizeInCm;
+    if (subjectCount === 1) sizeInCm = 7;
+    else if (subjectCount === 2) sizeInCm = 10;
+    else if (subjectCount === 3) sizeInCm = 13;
+    else if (subjectCount === 4) sizeInCm = 16;
+    else sizeInCm = 19;
+    
+    // Convert cm to pixels for 400px clothing container (5px per cm for smaller preview)
+    return Math.round(sizeInCm * 5);
+  };
+
+  // Get additional cost based on subject count
+  const getSubjectCost = (subjectCount: number) => {
+    // 1 subject = +$0, 2 subjects = +$5, 3 subjects = +$10, etc. (+$5 for each additional subject)
+    if (subjectCount <= 1) return 0;
+    return (subjectCount - 1) * 5;
+  };
+
   // Get default position for clothing type (prioritizing custom presets)
   const getDefaultPosition = (clothingType: string) => {
     // If custom presets are available, use the first one
@@ -2043,6 +2135,12 @@ export default function Edit() {
   if (step === 'preview') {
     const finalImage = localStorage.getItem('pixelme-final-image') || currentImage;
     
+    console.log('🔍 Step 7 Debug:', {
+      selectedClothing,
+      finalImage: !!finalImage,
+      step
+    });
+    
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
         <Image
@@ -2056,13 +2154,13 @@ export default function Edit() {
         
         <div className="w-full max-w-6xl bg-white rounded-lg shadow p-4 sm:p-6 lg:p-8 flex flex-col items-center relative">
           <div className="w-full flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
-            <div className="flex items-center gap-2 pb-2 lg:pb-0 min-w-0 flex-shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 pb-2 lg:pb-0 min-w-0 flex-shrink-0 overflow-x-auto">
               <div className="flex items-center gap-2 min-w-max">
                 {/* Step 0 - Welcome */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => router.push('/')}
-                    className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-transparent transition-all duration-200 cursor-pointer"
+                    className="text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 flex items-center justify-center border-2 border-transparent transition-all duration-200 cursor-pointer"
                     title="Go back to welcome screen"
                   >
                     📋
@@ -2073,7 +2171,7 @@ export default function Edit() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleGoHome}
-                      className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                      className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
                       title="Change clothing style"
                     >
                       {productsLoading ? (
@@ -2086,14 +2184,14 @@ export default function Edit() {
                             alt={`${selectedClothing} ${selectedColor || ''}`}
                             width={60}
                             height={60}
-                            className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                            className="object-contain w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16"
                             priority
                           />
                         ) : (
                           <img
                             src={stepImage}
                             alt={`${selectedClothing} ${selectedColor || ''}`}
-                            className="object-contain w-12 h-12 sm:w-14 sm:h-14"
+                            className="object-contain w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16"
                           />
                         );
                       })()}
@@ -2105,7 +2203,7 @@ export default function Edit() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleStepChange('upload')}
-                      className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                      className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
                       title="Change uploaded photo"
                     >
                       <img
@@ -2113,7 +2211,7 @@ export default function Edit() {
                         alt="Uploaded preview"
                         width={60}
                         height={60}
-                        className="object-contain rounded-lg w-12 h-12 sm:w-16 sm:h-16"
+                        className="object-contain rounded-lg w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16"
                       />
                     </button>
                   </div>
@@ -2123,7 +2221,7 @@ export default function Edit() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleStepChange('style')}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
                   title="Change style selection"
                 >
                   <Image
@@ -2131,7 +2229,7 @@ export default function Edit() {
                     alt={`${selectedStyle} Style`}
                     width={60}
                     height={60}
-                    className="object-contain rounded-lg w-12 h-12 sm:w-14 sm:h-14"
+                    className="object-contain rounded-lg w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16"
                   />
                 </button>
               </div>
@@ -2141,7 +2239,7 @@ export default function Edit() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleStepChange('convert')}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
                   title="Go back to convert step"
                 >
                   <img
@@ -2162,7 +2260,7 @@ export default function Edit() {
                     setStep('edit');
                     localStorage.setItem('pixelme-current-step', 'edit');
                   }}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
                   title="Go back to edit step"
                 >
                   {editedImage && (
@@ -2181,7 +2279,7 @@ export default function Edit() {
                     setStep('edit');
                     localStorage.setItem('pixelme-current-step', 'edit');
                   }}
-                  className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 flex items-center justify-center border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
                   title="Go back to edit step"
                 >
                   5
@@ -2197,7 +2295,7 @@ export default function Edit() {
                     setStep('color-reduce');
                     localStorage.setItem('pixelme-current-step', 'color-reduce');
                   }}
-                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
+                  className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
                   title="Go back to color reduction step"
                 >
                   <img
@@ -2214,7 +2312,7 @@ export default function Edit() {
                     setStep('color-reduce');
                     localStorage.setItem('pixelme-current-step', 'color-reduce');
                   }}
-                  className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 flex items-center justify-center border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
                   title="Go back to color reduction step"
                 >
                   6
@@ -2224,9 +2322,9 @@ export default function Edit() {
 
             {/* Step 7 - Preview */}
             <div className="flex items-center gap-2">
-              <div className="relative flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 w-20 h-20">
+              <div className="relative flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20">
                 {selectedClothing && finalImage ? (
-                  <div className="relative w-16 h-16">
+                  <div className="relative w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16">
                     {productsLoading ? (
                       <div className="w-full h-full bg-gray-200 rounded animate-pulse"></div>
                     ) : (() => {
@@ -2282,6 +2380,18 @@ export default function Edit() {
                     <div><span className="font-medium">Product:</span> {selectedClothing ? (selectedClothing.charAt(0).toUpperCase() + selectedClothing.slice(1)) : 'Not Selected'}</div>
                     <div><span className="font-medium">Color:</span> {selectedColor || 'Not Selected'}</div>
                     <div><span className="font-medium">Size:</span> {selectedSize || 'Not Selected'}</div>
+                    {peopleCount > 0 && (
+                      <>
+                        <div><span className="font-medium">Subjects:</span> {peopleCount} {peopleCount === 1 ? 'subject' : 'subjects'} ({imageSize})</div>
+                        <div><span className="font-medium">Extra Cost:</span> {(() => {
+                          if (peopleCount === 1) return '+$0';
+                          if (peopleCount === 2) return '+$5';
+                          if (peopleCount === 3) return '+$10';
+                          if (peopleCount === 4) return '+$15';
+                          if (peopleCount >= 5) return `+$${(peopleCount - 1) * 5}`;
+                        })()}</div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -2289,7 +2399,7 @@ export default function Edit() {
               {/* Clear Button */}
               <button
                 onClick={confirmClear}
-                className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center flex-shrink-0"
+                className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center flex-shrink-0"
                 title="Clear all and start over"
               >
                 <Image
@@ -2297,7 +2407,7 @@ export default function Edit() {
                   alt="Clear"
                   width={32}
                   height={32}
-                  className="object-contain w-6 h-6 sm:w-8 sm:h-8"
+                  className="object-contain w-4 h-4 sm:w-6 sm:h-6 lg:w-8 lg:h-8"
                 />
               </button>
             </div>
@@ -2326,7 +2436,7 @@ export default function Edit() {
                             setSelectedPosition(position.id);
                             localStorage.setItem('pixelme-selected-position', position.id);
                           }}
-                          className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
+                          className={`px-3 py-2 sm:px-4 text-sm sm:text-base rounded-lg font-semibold transition-all duration-200 ${
                             selectedPosition === position.id
                               ? 'bg-green-600 text-white shadow-lg'
                               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -2342,10 +2452,10 @@ export default function Edit() {
             </div>
 
             {/* Preview of image on clothing with zoom control */}
-            {selectedClothing && (
+            {selectedClothing && finalImage && (
               <div className="flex flex-col items-center w-full mb-6">
                 {/* Horizontal Zoom Control - Above image */}
-                <div className="flex items-center justify-center gap-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-4 w-full max-w-lg">
+                <div className="flex items-center justify-center gap-2 sm:gap-4 p-3 sm:p-4 bg-white rounded-lg shadow-sm border border-gray-200 mb-4 w-full max-w-sm sm:max-w-lg">
                   {/* Left section with instruction */}
                   <div className="flex items-center">
                     {zoomLevel > 100 ? (
@@ -2454,8 +2564,8 @@ export default function Edit() {
                   <div 
                     className={`relative overflow-hidden rounded-lg bg-white shadow-sm border border-gray-200 ${zoomLevel > 100 ? 'cursor-grab' : 'cursor-default'} ${isPanning ? 'cursor-grabbing' : ''}`}
                     style={{ 
-                      width: '500px',
-                      height: '500px',
+                      width: 'min(400px, 90vw)',
+                      height: 'min(400px, 90vw)',
                       touchAction: 'none', // Prevent default touch behaviors like scrolling when panning
                     }}
                     onMouseDown={handlePanStart}
@@ -2499,8 +2609,8 @@ export default function Edit() {
                               src={finalImage}
                               alt="Your design"
                               style={{
-                                width: `${getDesignSize(selectedPosition)}px`,
-                                height: `${getDesignSize(selectedPosition)}px`,
+                                width: `${getDesignSizeForSubjects(peopleCount)}px`,
+                                height: `${getDesignSizeForSubjects(peopleCount)}px`,
                                 objectFit: 'contain',
                                 backgroundColor: 'transparent',
                               }}
@@ -2516,19 +2626,6 @@ export default function Edit() {
 
             {/* Checkout Section */}
             <div className="w-full max-w-md">
-              {/* Price Display */}
-              <div className="text-center mb-6">
-                {isPriceLoading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-lg text-gray-600">Loading price...</span>
-                  </div>
-                ) : variantPrice ? (
-                  <div className="text-2xl font-bold text-gray-800">${variantPrice}</div>
-                ) : (
-                  <div className="text-lg text-gray-500">Select size & color to see price</div>
-                )}
-              </div>
 
               {/* Design Team Notice */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-center">
@@ -2539,7 +2636,7 @@ export default function Edit() {
                   <h4 className="font-semibold text-blue-800">Design Processing</h4>
                 </div>
                 <p className="text-sm text-blue-700">
-                  Your image will be sent to our design team and printed with <span className="font-medium">10cm width or height by default</span> (whichever is larger). Our team will ensure optimal sizing and quality for your custom design.
+                  Your design will be embroidered at <span className="font-medium">{imageSize}</span> size{peopleCount > 1 ? ` (${peopleCount} subjects)` : ''}.
                 </p>
                 <p className="text-sm text-blue-700 mt-2">
                   <span className="font-medium">Important:</span> We will only be embroidering people or animals from your image. Any backgrounds will be removed during the design process.
@@ -2619,17 +2716,16 @@ export default function Edit() {
                           throw new Error('Unable to create or find product');
                         }
                         
-                        console.log('Product variants:', product.variants);
-                        console.log('Looking for size:', selectedSize, 'and color:', selectedColor);
                         
-                        // Find the variant for the selected size AND color
+                        // Find the variant for the selected size, color AND image size
                         let variant = product.variants.edges.find((edge: any) => {
                           const title = edge.node.title || '';
                           const selectedOptions = edge.node.selectedOptions || [];
                           
-                          // Check by title (like "L / Black")
+                          // Check by title (like "L / Black / 7cm")
                           const titleIncludesSize = title.includes(selectedSize);
                           const titleIncludesColor = title.toLowerCase().includes(selectedColor.toLowerCase());
+                          const titleIncludesImageSize = title.includes(selectedImageSize);
                           
                           // Check by selectedOptions array
                           const hasSize = selectedOptions.some((opt: any) => 
@@ -2638,15 +2734,21 @@ export default function Edit() {
                           const hasColor = selectedOptions.some((opt: any) => 
                             opt.name === 'Color' && opt.value.toLowerCase() === selectedColor.toLowerCase()
                           );
+                          const hasImageSize = selectedOptions.some((opt: any) => 
+                            (opt.name === 'Image Size' || opt.name === 'Design Size' || opt.name === 'Embroidery Sizes') && opt.value === selectedImageSize
+                          );
                           
-                          return (titleIncludesSize && titleIncludesColor) || (hasSize && hasColor);
+                          return (titleIncludesSize && titleIncludesColor && titleIncludesImageSize) || 
+                                 (hasSize && hasColor && hasImageSize);
                         });
                         
-                        // If not found by title, try by SKU with both size and color
+                        // If not found by title, try by SKU with size, color, and image size
                         if (!variant) {
                           variant = product.variants.edges.find((edge: any) => {
                             const sku = edge.node.sku || '';
-                            return sku.includes(selectedSize) && sku.toLowerCase().includes(selectedColor.toLowerCase());
+                            return sku.includes(selectedSize) && 
+                                   sku.toLowerCase().includes(selectedColor.toLowerCase()) &&
+                                   sku.includes(selectedImageSize);
                           });
                         }
                         
@@ -2674,7 +2776,12 @@ export default function Edit() {
                           throw new Error('No variants available for this product');
                         }
                         
-                        console.log('Selected variant:', variant);
+                        console.log('🎯 Selected variant:', {
+                          title: variant.node.title,
+                          options: variant.node.selectedOptions,
+                          price: variant.node.price,
+                          id: variant.node.id
+                        });
                         const variantId = variant.node.id;
                         console.log('Variant ID for cart:', variantId);
                         // Custom attributes for cart display (include image for cart preview)
@@ -2683,8 +2790,10 @@ export default function Edit() {
                           { key: 'clothing_type', value: selectedClothing || 'hoodie' },
                           { key: 'style', value: selectedStyle || 'Dragon Ball' },
                           { key: 'size', value: selectedSize || 'M' },
+                          { key: 'image_size', value: selectedImageSize || '7cm' },
                           { key: 'position', value: selectedPosition || 'chest' }
                         ];
+
                         console.log('Custom attributes for cart:', customAttributes);
                         
                         // Check if cart exists
@@ -2849,14 +2958,15 @@ export default function Edit() {
                         console.log('Buy Now - Product variants:', product.variants);
                         console.log('Buy Now - Looking for size:', selectedSize, 'and color:', selectedColor);
                         
-                        // Find the variant for the selected size AND color
+                        // Find the variant for the selected size, color AND image size
                         let variant = product.variants.edges.find((edge: any) => {
                           const title = edge.node.title || '';
                           const selectedOptions = edge.node.selectedOptions || [];
                           
-                          // Check by title (like "L / Black")
+                          // Check by title (like "L / Black / 7cm")
                           const titleIncludesSize = title.includes(selectedSize);
                           const titleIncludesColor = title.toLowerCase().includes(selectedColor.toLowerCase());
+                          const titleIncludesImageSize = title.includes(selectedImageSize);
                           
                           // Check by selectedOptions array
                           const hasSize = selectedOptions.some((opt: any) => 
@@ -2865,15 +2975,21 @@ export default function Edit() {
                           const hasColor = selectedOptions.some((opt: any) => 
                             opt.name === 'Color' && opt.value.toLowerCase() === selectedColor.toLowerCase()
                           );
+                          const hasImageSize = selectedOptions.some((opt: any) => 
+                            (opt.name === 'Image Size' || opt.name === 'Design Size' || opt.name === 'Embroidery Sizes') && opt.value === selectedImageSize
+                          );
                           
-                          return (titleIncludesSize && titleIncludesColor) || (hasSize && hasColor);
+                          return (titleIncludesSize && titleIncludesColor && titleIncludesImageSize) || 
+                                 (hasSize && hasColor && hasImageSize);
                         });
                         
-                        // If not found by title, try by SKU with both size and color
+                        // If not found by title, try by SKU with size, color, and image size
                         if (!variant) {
                           variant = product.variants.edges.find((edge: any) => {
                             const sku = edge.node.sku || '';
-                            return sku.includes(selectedSize) && sku.toLowerCase().includes(selectedColor.toLowerCase());
+                            return sku.includes(selectedSize) && 
+                                   sku.toLowerCase().includes(selectedColor.toLowerCase()) &&
+                                   sku.includes(selectedImageSize);
                           });
                         }
                         
@@ -3175,6 +3291,18 @@ export default function Edit() {
                   <div><span className="font-medium">Product:</span> {selectedClothing ? (selectedClothing.charAt(0).toUpperCase() + selectedClothing.slice(1)) : 'Not Selected'}</div>
                   <div><span className="font-medium">Color:</span> {selectedColor || 'Not Selected'}</div>
                   <div><span className="font-medium">Size:</span> {selectedSize || 'Not Selected'}</div>
+                  {peopleCount > 0 && (
+                    <>
+                      <div><span className="font-medium">Subjects:</span> {peopleCount} {peopleCount === 1 ? 'subject' : 'subjects'} ({imageSize})</div>
+                      <div><span className="font-medium">Extra Cost:</span> {(() => {
+                        if (peopleCount === 1) return '+$0';
+                        if (peopleCount === 2) return '+$5';
+                        if (peopleCount === 3) return '+$10';
+                        if (peopleCount === 4) return '+$15';
+                        if (peopleCount >= 5) return `+$${(peopleCount - 1) * 5}`;
+                      })()}</div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -3595,7 +3723,7 @@ export default function Edit() {
                         )}
                       </button>
 
-                      {/* Less Aggressive Option - Only show after first attempt */}
+                      {/* Alternative Options - Only show after first attempt */}
                       {justRemovedBackground && (
                         <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
                           <div className="flex items-center gap-2 mb-2">
@@ -3604,18 +3732,33 @@ export default function Edit() {
                             </svg>
                             <p className="text-sm font-medium text-amber-800">Not satisfied with the result?</p>
                           </div>
-                          <p className="text-sm text-amber-700 mb-3">Try a less aggressive approach that preserves more details around edges.</p>
-                          <button
-                            onClick={() => handleBackgroundRemoval(true)}
-                            disabled={isFilling}
-                            className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
-                              isFilling
-                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg'
-                            }`}
-                          >
-                            {isFilling ? 'Processing...' : 'Try Less Aggressive Removal'}
-                          </button>
+                          <p className="text-sm text-amber-700 mb-3">Try different approaches to get better results:</p>
+                          
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => handleBackgroundRemoval('less')}
+                              disabled={isFilling}
+                              className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                                isFilling
+                                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                  : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg'
+                              }`}
+                            >
+                              {isFilling ? 'Processing...' : 'Try Less Aggressive (Preserves Details)'}
+                            </button>
+                            
+                            <button
+                              onClick={() => handleBackgroundRemoval('more')}
+                              disabled={isFilling}
+                              className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                                isFilling
+                                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                  : 'bg-red-500 text-white hover:bg-red-600 shadow-md hover:shadow-lg'
+                              }`}
+                            >
+                              {isFilling ? 'Processing...' : 'Try More Aggressive (Removes More)'}
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -4381,29 +4524,42 @@ export default function Edit() {
                           )}
                         </button>
 
-                        {/* Less Aggressive Option */}
+                        {/* Aggressiveness Options */}
                         {justRemovedBackground && (
                           <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
                             <div className="flex items-center gap-2 mb-2">
                               <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.314 16.5c-.77.833.192 2.5 1.732 2.5z" />
                               </svg>
-                              <h6 className="font-semibold text-amber-800">Removed too much?</h6>
+                              <h6 className="font-semibold text-amber-800">Need different results?</h6>
                             </div>
-                            <p className="text-sm text-amber-700 mb-3">
-                              If the background removal was too aggressive and removed parts of your subject, try a gentler approach.
-                            </p>
-                            <button 
-                              onClick={() => handleBackgroundRemoval(true)}
-                              disabled={isFilling}
-                              className={`w-full px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                                isFilling
-                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                  : 'bg-amber-600 text-white hover:bg-amber-700'
-                              }`}
-                            >
-                              {isFilling ? 'Processing...' : 'Try Less Aggressive Removal'}
-                            </button>
+                            <p className="text-sm text-amber-700 mb-3">Try different approaches to get better results:</p>
+                            
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => handleBackgroundRemoval('less')}
+                                disabled={isFilling}
+                                className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                                  isFilling
+                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg'
+                                }`}
+                              >
+                                {isFilling ? 'Processing...' : 'Try Less Aggressive (Preserves Details)'}
+                              </button>
+                              
+                              <button
+                                onClick={() => handleBackgroundRemoval('more')}
+                                disabled={isFilling}
+                                className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                                  isFilling
+                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    : 'bg-red-500 text-white hover:bg-red-600 shadow-md hover:shadow-lg'
+                                }`}
+                              >
+                                {isFilling ? 'Processing...' : 'Try More Aggressive (Removes More)'}
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>

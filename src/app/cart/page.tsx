@@ -389,6 +389,7 @@ export default function CartPage() {
     return attributes.find(attr => attr.key === key)?.value || '';
   };
 
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -559,6 +560,7 @@ export default function CartPage() {
                   const customStyle = getCustomAttribute(item.attributes, 'style');
                   const clothingType = getCustomAttribute(item.attributes, 'clothing_type');
                   const position = getCustomAttribute(item.attributes, 'position');
+                  const imageSize = getCustomAttribute(item.attributes, 'image_size');
                   const color = item.merchandise.selectedOptions.find(opt => opt.name === 'Color')?.value;
                   const size = item.merchandise.selectedOptions.find(opt => opt.name === 'Size')?.value;
                   
@@ -628,10 +630,11 @@ export default function CartPage() {
                           <p className="text-sm text-gray-600 mb-2">
                             {item.merchandise.title}
                           </p>
-                          {(color || size) && (
+                          {(color || size || imageSize) && (
                             <div className="flex gap-4 text-sm text-gray-600 mb-2">
                               {color && <span>Color: {color}</span>}
                               {size && <span>Size: {size}</span>}
+                              {imageSize && <span>Design Size: {imageSize}</span>}
                             </div>
                           )}
                           <p className="text-lg font-semibold text-gray-900">

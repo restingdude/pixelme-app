@@ -161,11 +161,12 @@ export async function GET(request: NextRequest) {
 // Create a new cart
 async function createCart(data: any) {
   console.log('🚀 Creating cart with data:', JSON.stringify(data, null, 2));
-  const { variantId, quantity = 1, customAttributes = [] } = data;
+  const { variantId, quantity = 1, customAttributes = [], properties = [] } = data;
   console.log('🔍 Extracted values:');
   console.log('  - Variant ID:', variantId);
   console.log('  - Quantity:', quantity, '(type:', typeof quantity, ')');
   console.log('  - Custom attributes:', JSON.stringify(customAttributes, null, 2));
+  console.log('  - Line item properties:', JSON.stringify(properties, null, 2));
 
   // Step 1: Create empty cart first
   const createEmptyCartMutation = `
@@ -264,13 +265,34 @@ async function createCart(data: any) {
       }
     `;
 
-    // Directly add item with custom attributes
+    // Directly add item with custom attributes and properties
     const merchandiseId = variantId.startsWith('gid://') ? variantId : `gid://shopify/ProductVariant/${variantId}`;
-    const lines = [{
+    const lineItem: any = {
       merchandiseId,
       quantity,
       attributes: customAttributes
-    }];
+    };
+
+    // Add properties if they exist (Shopify line item properties)
+    if (properties && properties.length > 0) {
+      // Convert properties array to key-value object for Shopify
+      const sellingPlanId = properties.find(p => p.key === 'selling_plan_id')?.value;
+      if (sellingPlanId) {
+        lineItem.sellingPlanId = sellingPlanId;
+      }
+      
+      // For other properties, we'll include them as attributes with property prefix
+      properties.forEach(prop => {
+        if (prop.key !== 'selling_plan_id') {
+          lineItem.attributes.push({
+            key: `property_${prop.key}`,
+            value: prop.value
+          });
+        }
+      });
+    }
+
+    const lines = [lineItem];
 
     console.log('🎨 Adding item to cart:');
     console.log('  - Merchandise ID:', merchandiseId);
@@ -398,12 +420,13 @@ async function fixZeroQuantityItems(cartId: string, zeroQuantityItems: any[]) {
 // Add item to existing cart
 async function addToCart(data: any) {
   console.log('🛒 Adding to existing cart with data:', JSON.stringify(data, null, 2));
-  const { cartId, variantId, quantity = 1, customAttributes = [] } = data;
+  const { cartId, variantId, quantity = 1, customAttributes = [], properties = [] } = data;
   console.log('🔍 Extracted values for addToCart:');
   console.log('  - Cart ID:', cartId);
   console.log('  - Variant ID:', variantId);
   console.log('  - Quantity:', quantity, '(type:', typeof quantity, ')');
   console.log('  - Custom attributes:', JSON.stringify(customAttributes, null, 2));
+  console.log('  - Line item properties:', JSON.stringify(properties, null, 2));
 
   if (!cartId || !variantId) {
     return NextResponse.json(
@@ -456,11 +479,24 @@ async function addToCart(data: any) {
 
   const merchandiseId = variantId.startsWith('gid://') ? variantId : `gid://shopify/ProductVariant/${variantId}`;
   
-  const lines = [{
+  const lineItem: any = {
     merchandiseId,
     quantity,
-    attributes: customAttributes
-  }];
+    attributes: [...customAttributes] // Create a copy to avoid mutations
+  };
+
+  // Add properties if they exist (Shopify line item properties)
+  if (properties && properties.length > 0) {
+    // For properties, we'll include them as attributes with property prefix
+    properties.forEach(prop => {
+      lineItem.attributes.push({
+        key: `property_${prop.key}`,
+        value: prop.value
+      });
+    });
+  }
+
+  const lines = [lineItem];
 
   console.log('🎯 Adding to existing cart:');
   console.log('  - Merchandise ID:', merchandiseId);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { imageData, lessAggressive = false } = await request.json();
+    const { imageData, aggressiveness = 'normal' } = await request.json();
 
     if (!imageData) {
       return NextResponse.json(
@@ -20,12 +20,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Using 851-labs/background-remover model ${lessAggressive ? '(less aggressive)' : ''}`);
+    console.log(`Using 851-labs/background-remover model (${aggressiveness} aggressive)`);
     
     // Adjust threshold based on aggressiveness level
     // Lower threshold = less sensitive, more soft edges (0.0-1.0)
+    // Higher threshold = more aggressive, sharper edges
     // Use more conservative thresholds to better preserve white clothing
-    const threshold = lessAggressive ? 0.01 : 0.15; // Extremely low threshold for less aggressive to preserve white clothing
+    let threshold;
+    switch (aggressiveness) {
+      case 'less':
+        threshold = 0.01; // Extremely low threshold for less aggressive to preserve white clothing
+        break;
+      case 'more':
+        threshold = 0.4; // Higher threshold for more aggressive background removal
+        break;
+      default: // 'normal'
+        threshold = 0.15;
+        break;
+    }
     
     // Call the background remover model directly with base64 image
     const response = await fetch('https://api.replicate.com/v1/predictions', {
@@ -89,7 +101,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       imageUrl: generatedImageUrl, // Keep as temporary Replicate URL for intermediate edits
-      method: `851-labs-background-remover${lessAggressive ? '-less-aggressive' : ''}`
+      method: `851-labs-background-remover-${aggressiveness}-aggressive`
     });
 
   } catch (error) {

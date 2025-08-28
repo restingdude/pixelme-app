@@ -328,6 +328,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
     return attributes.find(attr => attr.key === key)?.value || '';
   };
 
+
   if (!isOpen) return null;
 
   return (
@@ -405,6 +406,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                     const customStyle = getCustomAttribute(item.attributes, 'style');
                     const clothingType = getCustomAttribute(item.attributes, 'clothing_type');
                     const position = getCustomAttribute(item.attributes, 'position');
+                    const imageSize = getCustomAttribute(item.attributes, 'image_size');
                     const color = item.merchandise.selectedOptions?.find(opt => opt.name === 'Color')?.value;
                     const size = item.merchandise.selectedOptions?.find(opt => opt.name === 'Size')?.value;
                     
@@ -474,9 +476,9 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                               {customStyle} Style
                             </p>
                           )}
-                          {(color || size) && (
+                          {(color || size || imageSize) && (
                             <p className="text-xs text-gray-600 mt-1">
-                              {[color, size].filter(Boolean).join(' • ')}
+                              {[color, size, imageSize && `${imageSize} design`].filter(Boolean).join(' • ')}
                             </p>
                           )}
                           <div className="flex items-center justify-between mt-2">

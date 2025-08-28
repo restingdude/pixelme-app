@@ -153,6 +153,7 @@ export default function Create() {
     localStorage.removeItem('pixelme-selected-color');
     localStorage.removeItem('pixelme-selected-size');
     localStorage.removeItem('pixelme-selected-variant-id');
+    localStorage.removeItem('pixelme-variant-price');
     setCachedClothing(clothingType);
     setCachedColor(null);
     setCachedSize(null);
@@ -199,7 +200,8 @@ export default function Create() {
     if (!product) return;
 
     // Find the variant that matches the selected color and size
-    const variant = product.variants.edges.find(edge => {
+    // For step 1, we prefer the 7cm embroidery size variant as the base
+    const matchingVariants = product.variants.edges.filter(edge => {
       const options = edge.node.selectedOptions;
       if (!options || !Array.isArray(options)) return false;
       const colorOption = options.find(opt => opt.name === 'Color');
@@ -207,20 +209,27 @@ export default function Create() {
       return colorOption?.value === selectedColor && sizeOption?.value === size;
     });
 
-    if (!variant) {
-      console.error('No variant found for color:', selectedColor, 'size:', size);
+    if (matchingVariants.length === 0) {
+      console.error('No variants found for color:', selectedColor, 'size:', size);
       return;
     }
 
-    // Check if the variant is in stock
-    if (variant.node.inventoryQuantity <= 0) {
-      alert('Sorry, this size is currently out of stock. Please select a different size.');
-      return;
-    }
+    // Prefer the 7cm variant (base price), otherwise take the first available
+    const variant = matchingVariants.find(edge => {
+      const embroideryOption = edge.node.selectedOptions.find(opt => 
+        (opt.name === 'Embroidery Sizes' || opt.name === 'Design Size' || opt.name === 'Image Size') && 
+        opt.value === '7cm'
+      );
+      return embroideryOption;
+    }) || matchingVariants[0];
 
-    // Cache the size and variant ID selection
+
+    // We allow selection even if inventory is 0 since "Continue selling when out of stock" is enabled
+
+    // Cache the size, variant ID, and price selection
     localStorage.setItem('pixelme-selected-size', size);
     localStorage.setItem('pixelme-selected-variant-id', variant.node.id);
+    localStorage.setItem('pixelme-variant-price', variant.node.price);
     setCachedSize(size);
     setCachedVariantId(variant.node.id);
     
@@ -262,6 +271,8 @@ export default function Create() {
     localStorage.removeItem('pixelme-selected-color');
     localStorage.removeItem('pixelme-selected-size');
     localStorage.removeItem('pixelme-selected-variant-id');
+    localStorage.removeItem('pixelme-variant-price');
+    localStorage.removeItem('pixelme-variant-price');
     localStorage.removeItem('pixelme-conversion-result');
     localStorage.removeItem('pixelme-edited-image');
     localStorage.removeItem('pixelme-color-reduced-image'); // Step 6 embroidery conversion
@@ -339,12 +350,14 @@ export default function Create() {
 
     if (!product) return [];
 
+
     // Find all variants that match the selected color regardless of stock
     const matchingVariants = product.variants.edges.filter(edge => {
       if (!edge.node.selectedOptions || !Array.isArray(edge.node.selectedOptions)) return false;
       const colorOption = edge.node.selectedOptions.find(opt => opt.name === 'Color');
       return colorOption?.value === selectedColor;
     });
+
 
     // Extract unique sizes from all matching variants
     const sizes = matchingVariants.map(edge => {
@@ -353,7 +366,8 @@ export default function Create() {
       return sizeOption?.value;
     }).filter((size): size is string => Boolean(size));
 
-    return [...new Set(sizes)];
+    const uniqueSizes = [...new Set(sizes)];
+    return uniqueSizes;
   };
 
 
@@ -482,7 +496,8 @@ export default function Create() {
 
     if (!product) return 0;
 
-    const variant = product.variants.edges.find(edge => {
+    // Find variants that match color and size (we might have multiple with different embroidery sizes)
+    const matchingVariants = product.variants.edges.filter(edge => {
       const options = edge.node.selectedOptions;
       if (!options || !Array.isArray(options)) return false;
       const colorOption = options.find(opt => opt.name === 'Color');
@@ -490,7 +505,17 @@ export default function Create() {
       return colorOption?.value === color && sizeOption?.value === size;
     });
 
-    return variant?.node.inventoryQuantity || 0;
+
+    if (matchingVariants.length === 0) return 0;
+
+    // Get the maximum inventory from all matching variants
+    // This accounts for multiple embroidery size variants of the same size/color
+    const maxInventory = Math.max(...matchingVariants.map(edge => edge.node.inventoryQuantity));
+    
+    // If any variant has inventory > 0, we consider this size available
+    // If all variants have 0 inventory but exist, we still show it as available 
+    // (assuming "Continue selling when out of stock" is enabled)
+    return maxInventory > 0 ? maxInventory : 999; // Return 999 for out-of-stock variants that can still be ordered
   };
 
   // Get total inventory for a color (across all sizes)

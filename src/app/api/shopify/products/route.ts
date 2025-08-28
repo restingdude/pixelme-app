@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
               name
               values
             }
-            variants(first: 50) {
+            variants(first: 250) {
               edges {
                 node {
                   id
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
                   name
                   values
                 }
-                variants(first: 50) {
+                variants(first: 250) {
                   edges {
                     node {
                       id
@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
           productType
           vendor
           status
-          variants(first: 50) {
+          variants(first: 250) {
             edges {
               node {
                 id
@@ -470,7 +470,7 @@ export async function PUT(request: NextRequest) {
       const getVariantsQuery = `
         query getProduct($id: ID!) {
           product(id: $id) {
-            variants(first: 50) {
+            variants(first: 250) {
               edges {
                 node {
                   id

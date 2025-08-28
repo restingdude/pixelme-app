@@ -16,6 +16,7 @@ function UploadContent() {
   const [imageRotation, setImageRotation] = useState(0);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [peopleCount, setPeopleCount] = useState<number>(1);
+  const [peopleCountSelected, setPeopleCountSelected] = useState<boolean>(false); // Track if user has explicitly selected
   const [imageSize, setImageSize] = useState<string>('7cm');
   const [genders, setGenders] = useState<string[]>(['']);
   const [step, setStep] = useState<'upload' | 'style' | 'convert'>('upload');
@@ -420,6 +421,7 @@ function UploadContent() {
     if (cachedPeopleCount) {
       const count = parseInt(cachedPeopleCount);
       setPeopleCount(count);
+      setPeopleCountSelected(true); // User has previously selected
       // Initialize genders array if not cached
       if (!cachedGenders) {
         setGenders(new Array(count).fill(''));
@@ -699,6 +701,7 @@ function UploadContent() {
 
   const handlePeopleCountSelect = (count: number) => {
     setPeopleCount(count);
+    setPeopleCountSelected(true); // User has explicitly selected
     
     // Set image size based on people count
     let size = '7cm';
@@ -710,6 +713,9 @@ function UploadContent() {
     setImageSize(size);
     localStorage.setItem('pixelme-people-count', count.toString());
     localStorage.setItem('pixelme-image-size', size);
+    
+    // Store the selected image size as a separate sizing option for variants
+    localStorage.setItem('pixelme-selected-image-size', size);
     
     // Initialize genders array with empty values
     setGenders(new Array(count).fill(''));
@@ -904,6 +910,7 @@ function UploadContent() {
     setImageRotation(0);
     setSelectedStyle(null);
     setPeopleCount(1);
+    setPeopleCountSelected(false); // Reset selection flag
     setImageSize('7cm');
     setGenders(['']);
     setStep('upload');
@@ -1263,6 +1270,24 @@ function UploadContent() {
                   <div><span className="font-medium">Product:</span> {selectedClothing ? (selectedClothing.charAt(0).toUpperCase() + selectedClothing.slice(1)) : 'Not Selected'}</div>
                   <div><span className="font-medium">Color:</span> {selectedColor || 'Not Selected'}</div>
                   <div><span className="font-medium">Size:</span> {selectedSize || 'Not Selected'}</div>
+                  {peopleCountSelected && (
+                    <>
+                      <div><span className="font-medium">Subjects:</span> {peopleCount} {peopleCount === 1 ? 'subject' : 'subjects'} ({(() => {
+                        if (peopleCount === 1) return '7cm';
+                        if (peopleCount === 2) return '10cm';
+                        if (peopleCount === 3) return '13cm';
+                        if (peopleCount === 4) return '16cm';
+                        if (peopleCount >= 5) return '19cm';
+                      })()})</div>
+                      <div><span className="font-medium">Extra Cost:</span> {(() => {
+                        if (peopleCount === 1) return '+$0';
+                        if (peopleCount === 2) return '+$5';
+                        if (peopleCount === 3) return '+$10';
+                        if (peopleCount === 4) return '+$15';
+                        if (peopleCount >= 5) return `+$${(peopleCount - 1) * 5}`;
+                      })()}</div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -1470,6 +1495,15 @@ function UploadContent() {
                               if (peopleCount >= 5) return '19cm size';
                             })()}
                           </div>
+                          <div className="text-xs font-medium text-black mt-1">
+                            {(() => {
+                              if (peopleCount === 1) return '+$0';
+                              if (peopleCount === 2) return '+$5';
+                              if (peopleCount === 3) return '+$10';
+                              if (peopleCount === 4) return '+$15';
+                              if (peopleCount >= 5) return `+$${(peopleCount - 1) * 5}`;
+                            })()}
+                          </div>
                         </div>
                         
                         <button
@@ -1488,7 +1522,7 @@ function UploadContent() {
                 )}
 
                 {/* Gender selection */}
-                {peopleCount && (
+                {selectedStyle && peopleCount && (
                   <div className="w-full max-w-lg mx-auto">
                     <div className="mb-3 text-center">
                       <p className="text-sm text-black font-medium mb-1">Select type for each subject</p>

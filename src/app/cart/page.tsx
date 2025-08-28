@@ -404,7 +404,7 @@ export default function CartPage() {
   if (!cart || cart.lines.edges.length === 0) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
@@ -446,21 +446,21 @@ export default function CartPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between mb-4 sm:mb-8">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => router.push('/')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Your Cart</h1>
-              <p className="text-gray-600">{cart.totalQuantity} item{cart.totalQuantity !== 1 ? 's' : ''}</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Your Cart</h1>
+              <p className="text-sm sm:text-base text-gray-600">{cart ? cart.totalQuantity : 0} item{cart && cart.totalQuantity !== 1 ? 's' : ''}</p>
             </div>
           </div>
         </div>
@@ -477,28 +477,28 @@ export default function CartPage() {
               <p>{error}</p>
               {/* Show fix button for quantity issues */}
               {!error.includes('✅') && !error.includes('🔍') && !error.includes('📋') && error.includes('quantity') && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
                   <button
                     onClick={fixCartQuantities}
-                    className="ml-4 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                    className="px-3 py-1 bg-blue-600 text-white text-xs sm:text-sm rounded hover:bg-blue-700 touch-manipulation"
                   >
                     Fix Cart
                   </button>
                   <button
                     onClick={debugVariant}
-                    className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
+                    className="px-3 py-1 bg-purple-600 text-white text-xs sm:text-sm rounded hover:bg-purple-700 touch-manipulation"
                   >
                     Debug
                   </button>
                   <button
                     onClick={listVariants}
-                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                    className="px-3 py-1 bg-green-600 text-white text-xs sm:text-sm rounded hover:bg-green-700 touch-manipulation"
                   >
                     List Variants
                   </button>
                   <button
                     onClick={clearCart}
-                    className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                    className="px-3 py-1 bg-red-600 text-white text-xs sm:text-sm rounded hover:bg-red-700 touch-manipulation"
                   >
                     Clear Cart
                   </button>
@@ -527,16 +527,16 @@ export default function CartPage() {
                   Your cart items are stuck at quantity 0 because the Shopify product variant is not configured as "Available for sale". 
                   The + button won't work until this is fixed.
                 </p>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={clearCart}
-                    className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition-colors"
+                    className="px-4 sm:px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition-colors text-sm sm:text-base touch-manipulation"
                   >
                     🗑️ Clear Cart & Start Fresh
                   </button>
                   <button
                     onClick={() => window.open('/edit', '_self')}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
+                    className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors text-sm sm:text-base touch-manipulation"
                   >
                     🎨 Go Back to Editor
                   </button>
@@ -546,7 +546,7 @@ export default function CartPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -565,12 +565,12 @@ export default function CartPage() {
                   const size = item.merchandise.selectedOptions.find(opt => opt.name === 'Size')?.value;
                   
                   return (
-                    <div key={item.id} className="p-6">
-                      <div className="flex gap-4">
+                    <div key={item.id} className="p-4 sm:p-6">
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                         {/* Product Images Section */}
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 flex sm:flex-col gap-3 sm:gap-0">
                           {/* Main Product Image */}
-                          <div className="w-28 h-28 bg-gray-100 rounded-lg overflow-hidden relative">
+                          <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gray-100 rounded-lg overflow-hidden relative">
                             {image ? (
                               <img
                                 src={image.url}
@@ -593,23 +593,23 @@ export default function CartPage() {
                             )}
                           </div>
 
-                          {/* Custom Design Preview - shown as a patch below the main image */}
+                          {/* Custom Design Preview */}
                           {customImageUrl && (
-                            <div className="mt-3 w-28">
+                            <div className="mt-2 sm:mt-3 w-20 sm:w-28">
                               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                                <div className="px-2 py-1 bg-gray-50 border-b border-gray-200">
-                                  <p className="text-xs font-medium text-gray-600 text-center">Custom Design</p>
+                                <div className="px-1 sm:px-2 py-1 bg-gray-50 border-b border-gray-200">
+                                  <p className="text-xs font-medium text-gray-600 text-center">Custom</p>
                                   {position && (
-                                    <p className="text-xs text-green-600 font-medium text-center mt-1">
+                                    <p className="text-xs text-green-600 font-medium text-center">
                                       {position.charAt(0).toUpperCase() + position.slice(1)}
                                     </p>
                                   )}
                                 </div>
-                                <div className="p-2">
+                                <div className="p-1 sm:p-2">
                                   <img
                                     src={customImageUrl}
                                     alt="Custom design preview"
-                                    className="w-full h-16 object-cover rounded border border-gray-100"
+                                    className="w-full h-12 sm:h-16 object-cover rounded border border-gray-100"
                                   />
                                 </div>
                               </div>
@@ -643,7 +643,7 @@ export default function CartPage() {
                         </div>
 
                         {/* Quantity Controls */}
-                        <div className="flex flex-col items-end gap-2">
+                        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:gap-2 mt-3 sm:mt-0">
                           <div className="flex items-center gap-2">
                             {(() => {
                               // Display quantity: show 1 if quantity is 0 (workaround for Shopify issue)
@@ -654,7 +654,7 @@ export default function CartPage() {
                                   <button
                                     onClick={() => updateQuantity(item.id, Math.max(0, displayQuantity - 1))}
                                     disabled={updating === item.id || displayQuantity <= 1}
-                                    className="w-8 h-8 border-2 border-gray-400 rounded-md flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-9 h-9 sm:w-8 sm:h-8 border-2 border-gray-400 rounded-md flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                                   >
                                     <svg className="w-4 h-4 stroke-black font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" />
@@ -666,7 +666,7 @@ export default function CartPage() {
                                   <button
                                     onClick={() => updateQuantity(item.id, displayQuantity + 1)}
                                     disabled={updating === item.id}
-                                    className="w-8 h-8 border-2 border-gray-400 rounded-md flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-9 h-9 sm:w-8 sm:h-8 border-2 border-gray-400 rounded-md flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                                   >
                                     <svg className="w-4 h-4 stroke-black font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -694,7 +694,7 @@ export default function CartPage() {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 lg:sticky lg:top-8">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
               
               {/* Check if cart has broken quantity items */}

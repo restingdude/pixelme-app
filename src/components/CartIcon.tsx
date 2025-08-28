@@ -18,12 +18,12 @@ export default function CartIcon() {
     <>
       <button
         onClick={handleCartClick}
-        className="relative p-4 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group"
+        className="relative p-3 sm:p-4 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group touch-manipulation"
         title={`Cart - ${cartCount} item${cartCount !== 1 ? 's' : ''} - $${parseFloat(cartTotal).toFixed(2)}`}
       >
         {/* Cart Icon */}
         <svg 
-          className="w-7 h-7 text-white transition-colors" 
+          className="w-5 h-5 sm:w-7 sm:h-7 text-white transition-colors" 
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
@@ -38,7 +38,7 @@ export default function CartIcon() {
         
         {/* Cart Count Badge */}
         {cartCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.5rem] h-6 flex items-center justify-center px-1 border-2 border-white shadow-lg z-10">
+          <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.25rem] sm:min-w-[1.5rem] h-5 sm:h-6 flex items-center justify-center px-1 border-2 border-white shadow-lg z-10">
             {cartCount > 99 ? '99+' : cartCount}
           </span>
         )}

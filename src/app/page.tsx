@@ -45,7 +45,7 @@ export default function Home() {
     <main className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-center p-6 relative">
-        <div className="absolute right-6">
+        <div className="absolute right-4 sm:right-6">
           <CartIcon />
         </div>
         <div>

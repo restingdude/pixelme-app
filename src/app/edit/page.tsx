@@ -5129,21 +5129,29 @@ export default function Edit() {
 
               {/* Interactive Before/After Comparison */}
               {colorReducedImage ? (
-                <div className="mb-8 flex flex-col items-center max-w-md mx-auto">
+                <div className="mb-8 flex flex-col items-center max-w-md mx-auto px-4">
                   {/* Toggle instruction */}
-                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-                    <p className="text-sm text-green-700 font-medium mb-1">
-                      👆 Click image to compare embroidery conversion
+                  <div className="mb-4 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg text-center w-full">
+                    <p className="text-sm sm:text-base text-green-700 font-medium mb-1">
+                      👆 Tap image to compare embroidery conversion
                     </p>
-                    <p className="text-xs text-green-600">
+                    <p className="text-xs sm:text-sm text-green-600">
                       Currently showing: {showingOriginalEmbroidery ? 'Before (Original)' : 'After (Embroidery Ready)'}
                     </p>
                   </div>
                   
                   {/* Clickable Image */}
                   <div 
-                    className="relative cursor-pointer group"
+                    className="relative cursor-pointer group touch-manipulation select-none"
                     onClick={() => setShowingOriginalEmbroidery(!showingOriginalEmbroidery)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setShowingOriginalEmbroidery(!showingOriginalEmbroidery);
+                      }
+                    }}
                   >
                     <img 
                       src={showingOriginalEmbroidery ? (editedImage || '') : (colorReducedImage || '')} 
@@ -5152,24 +5160,24 @@ export default function Edit() {
                     />
                     
                     {/* Overlay indicator */}
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <div className="bg-black/70 text-white px-3 py-2 rounded-lg text-sm font-medium text-center">
+                    <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">
+                      <div className="bg-black/70 text-white px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-center">
                         {showingOriginalEmbroidery ? '🎨 Before (Original)' : '🧵 After (Embroidery Ready)'}
                         <div className="text-xs opacity-80 mt-1">
-                          Click to switch
+                          Tap to switch
                         </div>
                       </div>
                     </div>
                     
                     {/* Embroidery ready badge - only show when viewing embroidery version */}
                     {!showingOriginalEmbroidery && (
-                      <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                      <div className="absolute top-2 sm:top-3 right-2 sm:right-3 bg-green-600 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold">
                         🧵 Embroidery Ready
                       </div>
                     )}
                     
-                    {/* Hover effect */}
-                    <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-amber-400 transition-all duration-300"></div>
+                    {/* Hover/Focus/Active effects */}
+                    <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-amber-400 group-focus:border-amber-400 group-active:border-amber-600 transition-all duration-300"></div>
                   </div>
                 </div>
               ) : (

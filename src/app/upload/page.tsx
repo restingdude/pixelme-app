@@ -28,6 +28,7 @@ function UploadContent() {
   const [cachedFinalImage, setCachedFinalImage] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+  const [showReferencePhoto, setShowReferencePhoto] = useState(false);
   const [productsLoading, setProductsLoading] = useState(true);
   const [generationHistory, setGenerationHistory] = useState<Array<{
     id: string;
@@ -1527,6 +1528,15 @@ function UploadContent() {
                     <div className="mb-3 text-center">
                       <p className="text-sm text-black font-medium mb-1">Select type for each subject</p>
                       <p className="text-xs text-gray-600">👈 From left to right in your photo 👉</p>
+                      {uploadedImage && (
+                        <button
+                          onClick={() => setShowReferencePhoto(true)}
+                          className="mt-2 px-3 py-1.5 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-200 flex items-center gap-1 mx-auto"
+                        >
+                          <span>📷</span>
+                          <span>View Reference Photo</span>
+                        </button>
+                      )}
                     </div>
                     <div className="grid gap-3">
                       {Array.from({ length: peopleCount }, (_, index) => (
@@ -1855,6 +1865,33 @@ function UploadContent() {
                 Clear
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reference Photo Modal */}
+      {showReferencePhoto && uploadedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setShowReferencePhoto(false)}>
+          <div className="bg-white rounded-lg p-4 max-w-md w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Reference Photo</h3>
+              <button
+                onClick={() => setShowReferencePhoto(false)}
+                className="text-gray-500 hover:text-gray-700 text-xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex justify-center">
+              <img
+                src={uploadedImage}
+                alt="Reference photo"
+                className="max-w-full max-h-96 object-contain rounded-lg"
+              />
+            </div>
+            <p className="text-xs text-gray-600 text-center mt-3">
+              Use this reference to identify subjects from left to right
+            </p>
           </div>
         </div>
       )}

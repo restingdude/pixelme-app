@@ -27,6 +27,7 @@ interface Order {
     style: string;
     position: string;
     clothingType: string;
+    designSize: string;
   }>;
   customItemsCount: number;
   totalItems: number;
@@ -871,6 +872,10 @@ export default function AdminOrders() {
                             <div className="flex justify-between">
                               <span className="text-gray-500">Position:</span>
                               <span className="font-medium text-gray-900">{item.position || 'Default'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Embroidery Size:</span>
+                              <span className="font-medium text-purple-600">{item.designSize || 'Not specified'}</span>
                             </div>
                           </div>
                           

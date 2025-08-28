@@ -86,14 +86,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate simplified subject description to avoid content filters
+    // Generate detailed subject description including gender information
     const generateSubjectDescription = (peopleCount: number, genders: string[]) => {
       if (!peopleCount || peopleCount <= 1) {
         return '';
       }
       
-      // Keep it simple and neutral - just mention multiple subjects exist
-      return `Convert ${peopleCount} subjects in the image. `;
+      // Create specific description for each subject based on gender
+      const subjectDescriptions = genders.slice(0, peopleCount).map((gender, index) => {
+        const position = peopleCount === 2 ? (index === 0 ? 'left' : 'right') :
+                        peopleCount === 3 ? (index === 0 ? 'left' : index === 1 ? 'center' : 'right') :
+                        (index === 0 ? 'leftmost' : index === peopleCount - 1 ? 'rightmost' : `position ${index + 1}`);
+        
+        const subjectType = gender === 'male' ? 'male person' : 
+                           gender === 'female' ? 'female person' : 
+                           gender === 'animal' ? 'animal' : 'person';
+        
+        return `${position} subject is a ${subjectType}`;
+      });
+      
+      return `Convert ${peopleCount} subjects in the image: ${subjectDescriptions.join(', ')}. `;
     };
 
     const subjectDescription = generateSubjectDescription(peopleCount, genders);
@@ -110,7 +122,7 @@ export async function POST(request: NextRequest) {
           return `${subjectDescription}Convert into South Park cartoon style: perfectly round geometric head, tiny black dot eyes, simple line mouth, construction paper cutout appearance, extremely simple geometric shapes. NO OUTLINES OR BORDERS - create clean edges without black outlines. Preserve original facial features and proportions. Maintain original hair color and style simplified to South Park style. Keep original background unchanged.`;
 
         case 'Animated Comedy':
-          return `${subjectDescription}Convert into Family Guy cartoon style: oval elongated head, large white oval eyes with black pupils, slightly exaggerated facial features, flat 2D cartoon appearance. NO OUTLINES OR BORDERS - create clean edges without black outlines. Preserve original facial features and proportions. Maintain original hair color and style. Keep original background unchanged.`;
+          return `${subjectDescription}Convert into Family Guy cartoon style: oval elongated head, large white oval eyes with black pupils, slightly exaggerated facial features, flat 2D cartoon appearance. For male characters: broader jaw, shorter eyelashes. For female characters: longer eyelashes, softer facial features, lipstick. NO OUTLINES OR BORDERS - create clean edges without black outlines. Preserve original facial features and proportions. Maintain original hair color and style. Keep original background unchanged.`;
 
         case 'Action Anime':
           return `${subjectDescription}Convert into Dragon Ball Z anime style: vibrant colors, cell-shaded art style, angular anime eyes, dynamic spiky hair. For pets: keep natural fur texture. Use DBZ character proportions and styling. Keep original background unchanged. Preserve original hair/fur color.`;

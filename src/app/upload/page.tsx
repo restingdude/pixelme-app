@@ -29,6 +29,7 @@ function UploadContent() {
   const [products, setProducts] = useState<any[]>([]);
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const [showReferencePhoto, setShowReferencePhoto] = useState(false);
+  const [showingOriginal, setShowingOriginal] = useState(false);
   const [productsLoading, setProductsLoading] = useState(true);
   const [generationHistory, setGenerationHistory] = useState<Array<{
     id: string;
@@ -733,14 +734,6 @@ function UploadContent() {
     // Check if all genders are selected
     const allSelected = newGenders.every(g => g !== '' && g !== null && g !== undefined);
     console.log('Gender selection:', { newGenders, allSelected, peopleCount });
-    
-    if (allSelected && newGenders.length === peopleCount) {
-      // Add a small delay to show the completion message before transitioning
-      setTimeout(() => {
-        setStep('convert');
-        localStorage.setItem('pixelme-current-step', 'convert');
-      }, 1500); // 1.5 second delay
-    }
   };
 
   const handleConvert = async () => {
@@ -778,6 +771,7 @@ function UploadContent() {
     setIsConverting(true);
     setConversionError(null);
     setConversionResult(null);
+    setShowingOriginal(false); // Reset to show converted result first
 
     try {
       const response = await fetch('/api/convert', {
@@ -1590,9 +1584,20 @@ function UploadContent() {
                           ></div>
                         </div>
                         {genders.length === peopleCount && genders.every(g => g !== '' && g !== null && g !== undefined) && (
-                          <p className="text-green-700 text-xs mt-2 text-center font-medium">
-                            ✓ Complete! Proceeding...
-                          </p>
+                          <div className="mt-4 text-center">
+                            <p className="text-green-700 text-xs mb-3 font-medium">
+                              ✓ All subjects selected!
+                            </p>
+                            <button
+                              onClick={() => {
+                                setStep('convert');
+                                localStorage.setItem('pixelme-current-step', 'convert');
+                              }}
+                              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
+                            >
+                              Proceed to Convert
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1608,6 +1613,20 @@ function UploadContent() {
                   <div className="text-center mb-6">
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Ready to Convert</h3>
                     <p className="text-gray-600">Transform your photo into <span className="font-semibold text-amber-600">{selectedStyle}</span> style</p>
+                    
+                    {/* Preview of original image */}
+                    {uploadedImage && !conversionResult && (
+                      <div className="mt-4 flex justify-center">
+                        <div className="flex flex-col items-center">
+                          <p className="text-sm text-gray-500 mb-2">Your photo:</p>
+                          <img 
+                            src={uploadedImage} 
+                            alt="Photo to convert"
+                            className="max-w-xs h-auto rounded-lg shadow-md"
+                          />
+                        </div>
+                      </div>
+                    )}
                   
                   {/* Rate Limit Status */}
                   {rateLimitStatus && (
@@ -1725,11 +1744,43 @@ function UploadContent() {
                             </button>
                           </div>
                           
-                          <img 
-                            src={conversionResult} 
-                            alt={`${selectedStyle} conversion`}
-                            className="max-w-md h-auto rounded-lg shadow-lg"
-                          />
+                          {/* Interactive Before/After Image */}
+                          <div className="flex flex-col items-center max-w-md mx-auto">
+                            {/* Toggle instruction */}
+                            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                              <p className="text-sm text-green-700 font-medium mb-1">
+                                👆 Click image to compare
+                              </p>
+                              <p className="text-xs text-green-600">
+                                Currently showing: {showingOriginal ? 'Original Photo' : `${selectedStyle} Style`}
+                              </p>
+                            </div>
+                            
+                            {/* Clickable Image */}
+                            <div 
+                              className="relative cursor-pointer group"
+                              onClick={() => setShowingOriginal(!showingOriginal)}
+                            >
+                              <img 
+                                src={showingOriginal ? (uploadedImage || '') : (conversionResult || '')} 
+                                alt={showingOriginal ? "Original uploaded photo" : `${selectedStyle} conversion`}
+                                className="w-full max-w-md h-auto rounded-lg shadow-lg transition-opacity duration-300 hover:opacity-90"
+                              />
+                              
+                              {/* Overlay indicator */}
+                              <div className="absolute bottom-4 left-4 right-4">
+                                <div className="bg-black/70 text-white px-3 py-2 rounded-lg text-sm font-medium text-center">
+                                  {showingOriginal ? '📷 Original Photo' : `🎨 ${selectedStyle} Style`}
+                                  <div className="text-xs opacity-80 mt-1">
+                                    Click to switch
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Hover effect */}
+                              <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-amber-400 transition-all duration-300"></div>
+                            </div>
+                          </div>
                         </div>
                       ) : (
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{conversionResult}</p>

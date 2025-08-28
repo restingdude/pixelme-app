@@ -34,6 +34,7 @@ export default function Edit() {
   const [finalImagePreview, setFinalImagePreview] = useState<string | null>(null);
   const [colorReducedImage, setColorReducedImage] = useState<string | null>(null);
   const [isColorReducing, setIsColorReducing] = useState<boolean>(false);
+  const [showingOriginalEmbroidery, setShowingOriginalEmbroidery] = useState(false);
   const [aiFillPrompt, setAiFillPrompt] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('Black'); // Default to Black
@@ -803,6 +804,7 @@ export default function Edit() {
     }
 
     setIsColorReducing(true);
+    setShowingOriginalEmbroidery(false); // Reset to show embroidery result first
 
     try {
       // Convert URL to data URL if needed
@@ -5125,38 +5127,49 @@ export default function Edit() {
                 </p>
               </div>
 
-              {/* Before and After Comparison */}
+              {/* Interactive Before/After Comparison */}
               {colorReducedImage ? (
-                <div className="mb-8 w-full max-w-4xl">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Original Edited Image */}
-                    <div className="text-center">
-                      <h4 className="text-lg font-semibold text-gray-700 mb-3">Before (Original)</h4>
-                      <div className="relative inline-block">
-                        {editedImage && (
-                          <img 
-                            src={editedImage} 
-                            alt="Original edited image"
-                            className="max-w-full h-auto rounded-lg shadow-lg"
-                          />
-                        )}
-                      </div>
-                    </div>
+                <div className="mb-8 flex flex-col items-center max-w-md mx-auto">
+                  {/* Toggle instruction */}
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                    <p className="text-sm text-green-700 font-medium mb-1">
+                      👆 Click image to compare embroidery conversion
+                    </p>
+                    <p className="text-xs text-green-600">
+                      Currently showing: {showingOriginalEmbroidery ? 'Before (Original)' : 'After (Embroidery Ready)'}
+                    </p>
+                  </div>
+                  
+                  {/* Clickable Image */}
+                  <div 
+                    className="relative cursor-pointer group"
+                    onClick={() => setShowingOriginalEmbroidery(!showingOriginalEmbroidery)}
+                  >
+                    <img 
+                      src={showingOriginalEmbroidery ? (editedImage || '') : (colorReducedImage || '')} 
+                      alt={showingOriginalEmbroidery ? "Original edited image" : "Embroidery style image"}
+                      className="w-full max-w-md h-auto rounded-lg shadow-lg transition-opacity duration-300 hover:opacity-90"
+                    />
                     
-                    {/* Embroidery Style Image */}
-                    <div className="text-center">
-                      <h4 className="text-lg font-semibold text-gray-700 mb-3">After (Embroidery Ready)</h4>
-                      <div className="relative inline-block">
-                        <img 
-                          src={colorReducedImage} 
-                          alt="Embroidery style image"
-                          className="max-w-full h-auto rounded-lg shadow-lg"
-                        />
-                        <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                          🧵 Embroidery Ready
+                    {/* Overlay indicator */}
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <div className="bg-black/70 text-white px-3 py-2 rounded-lg text-sm font-medium text-center">
+                        {showingOriginalEmbroidery ? '🎨 Before (Original)' : '🧵 After (Embroidery Ready)'}
+                        <div className="text-xs opacity-80 mt-1">
+                          Click to switch
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Embroidery ready badge - only show when viewing embroidery version */}
+                    {!showingOriginalEmbroidery && (
+                      <div className="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                        🧵 Embroidery Ready
+                      </div>
+                    )}
+                    
+                    {/* Hover effect */}
+                    <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-amber-400 transition-all duration-300"></div>
                   </div>
                 </div>
               ) : (

@@ -5181,14 +5181,16 @@ export default function Edit() {
                   </div>
                 </div>
               ) : (
-                <div className="mb-6 relative inline-block">
-                  {editedImage && (
-                    <img 
-                      src={editedImage} 
-                      alt="Edited image"
-                      className="max-w-md h-auto rounded-lg shadow-lg"
-                    />
-                  )}
+                <div className="mb-6 flex justify-center px-4">
+                  <div className="w-full max-w-sm">
+                    {editedImage && (
+                      <img 
+                        src={editedImage} 
+                        alt="Edited image"
+                        className="w-full h-auto max-h-64 sm:max-h-80 object-contain rounded-lg shadow-lg"
+                      />
+                    )}
+                  </div>
                 </div>
               )}
 

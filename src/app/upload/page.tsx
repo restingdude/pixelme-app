@@ -1616,13 +1616,13 @@ function UploadContent() {
                     
                     {/* Preview of original image */}
                     {uploadedImage && !conversionResult && (
-                      <div className="mt-4 flex justify-center">
-                        <div className="flex flex-col items-center">
+                      <div className="mt-4 flex justify-center px-4">
+                        <div className="flex flex-col items-center w-full max-w-sm">
                           <p className="text-sm text-gray-500 mb-2">Your photo:</p>
                           <img 
                             src={uploadedImage} 
                             alt="Photo to convert"
-                            className="max-w-xs h-auto rounded-lg shadow-md"
+                            className="w-full h-auto max-h-64 sm:max-h-80 object-contain rounded-lg shadow-md"
                           />
                         </div>
                       </div>

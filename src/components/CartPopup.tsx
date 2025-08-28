@@ -340,13 +340,13 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
       />
       
       {/* Popup */}
-      <div className="fixed top-4 right-4 bottom-4 w-96 bg-white rounded-lg shadow-xl z-50 flex flex-col max-h-[calc(100vh-2rem)]">
+      <div className="fixed top-2 right-2 bottom-2 left-2 sm:top-4 sm:right-4 sm:bottom-4 sm:left-auto w-full sm:w-96 bg-white rounded-lg shadow-xl z-50 flex flex-col max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Your Cart</h2>
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900">Your Cart</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -380,8 +380,8 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
           ) : (
             <>
               {/* Cart Items */}
-              <div className="p-4">
-                <div className="text-sm text-gray-600 mb-4">
+              <div className="p-3 sm:p-4">
+                <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                   {cart.totalQuantity} item{cart.totalQuantity !== 1 ? 's' : ''}
                 </div>
                 
@@ -411,12 +411,12 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                     const size = item.merchandise.selectedOptions?.find(opt => opt.name === 'Size')?.value;
                     
                     return (
-                      <div key={item.id} className="flex gap-3 p-3 border border-gray-200 rounded-lg">
+                      <div key={item.id} className="flex gap-2 sm:gap-3 p-2 sm:p-3 border border-gray-200 rounded-lg">
                         {/* Product Images Section */}
                         <div className="flex-shrink-0">
                           {/* Main Product Image */}
                           <div 
-                            className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden relative cursor-pointer hover:shadow-md transition-shadow"
+                            className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-lg overflow-hidden relative cursor-pointer hover:shadow-md transition-shadow"
                             onClick={() => image && openImageModal(image.url, image.altText || item.merchandise.product.title)}
                           >
                             {image ? (
@@ -443,12 +443,12 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
 
                           {/* Custom Design Preview - shown as a patch below the main image */}
                           {customImageUrl && (
-                            <div className="mt-2 w-20">
+                            <div className="mt-1 sm:mt-2 w-16 sm:w-20">
                               <div className="bg-white border border-gray-200 rounded overflow-hidden shadow-sm">
                                 <div className="px-1 py-0.5 bg-gray-50 border-b border-gray-200">
-                                  <p className="text-xs font-medium text-gray-600 text-center text-[10px]">Custom Design</p>
+                                  <p className="text-xs font-medium text-gray-600 text-center text-[9px] sm:text-[10px]">Custom</p>
                                   {position && (
-                                    <p className="text-xs text-green-600 font-medium text-center text-[9px] mt-0.5">
+                                    <p className="text-xs text-green-600 font-medium text-center text-[8px] sm:text-[9px]">
                                       {position.charAt(0).toUpperCase() + position.slice(1)}
                                     </p>
                                   )}
@@ -457,7 +457,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                                   <img
                                     src={customImageUrl}
                                     alt="Custom design preview"
-                                    className="w-full h-10 object-cover rounded border border-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                                    className="w-full h-8 sm:h-10 object-cover rounded border border-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
                                     onClick={() => openImageModal(customImageUrl, 'Custom design preview')}
                                   />
                                 </div>
@@ -468,21 +468,21 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
 
                         {/* Product Details */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 text-sm truncate">
+                          <h4 className="font-medium text-gray-900 text-xs sm:text-sm truncate">
                             {customImageUrl ? `Custom ${item.merchandise.product.title}` : item.merchandise.product.title}
                           </h4>
                           {customStyle && (
-                            <p className="text-xs text-blue-600 font-medium mt-1">
+                            <p className="text-xs text-blue-600 font-medium mt-0.5 sm:mt-1">
                               {customStyle} Style
                             </p>
                           )}
                           {(color || size || imageSize) && (
-                            <p className="text-xs text-gray-600 mt-1">
+                            <p className="text-xs text-gray-600 mt-0.5 sm:mt-1">
                               {[color, size, imageSize && `${imageSize} design`].filter(Boolean).join(' • ')}
                             </p>
                           )}
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="font-medium text-gray-900 text-sm">
+                          <div className="flex items-center justify-between mt-1 sm:mt-2">
+                            <span className="font-medium text-gray-900 text-xs sm:text-sm">
                               ${parseFloat(item.merchandise.price.amount).toFixed(2)}
                             </span>
                             
@@ -497,17 +497,17 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                                     <button
                                       onClick={() => updateQuantity(item.id, Math.max(0, displayQuantity - 1))}
                                       disabled={updating === item.id || displayQuantity <= 1}
-                                      className="w-6 h-6 border-2 border-gray-400 rounded flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold text-black"
+                                      className="w-7 h-7 sm:w-6 sm:h-6 border-2 border-gray-400 rounded flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold text-black touch-manipulation"
                                     >
                                       −
                                     </button>
-                                    <span className="w-8 text-center text-sm font-bold text-gray-900">
+                                    <span className="w-6 sm:w-8 text-center text-xs sm:text-sm font-bold text-gray-900">
                                       {updating === item.id ? '...' : displayQuantity}
                                     </span>
                                     <button
                                       onClick={() => updateQuantity(item.id, displayQuantity + 1)}
                                       disabled={updating === item.id}
-                                      className="w-6 h-6 border-2 border-gray-400 rounded flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold text-black"
+                                      className="w-7 h-7 sm:w-6 sm:h-6 border-2 border-gray-400 rounded flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold text-black touch-manipulation"
                                     >
                                       +
                                     </button>
@@ -537,7 +537,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
 
         {/* Footer */}
         {cart && cart.lines.edges.length > 0 && (
-          <div className="border-t border-gray-200 p-4 space-y-3">
+          <div className="border-t border-gray-200 p-3 sm:p-4 space-y-2 sm:space-y-3">
             {/* Total */}
             <div className="flex justify-between items-center">
               <span className="font-semibold text-gray-900">Total</span>
@@ -559,7 +559,7 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                   <button
                     onClick={handleCheckout}
                     disabled={!canCheckout}
-                    className={`w-full px-4 py-3 rounded-lg font-semibold transition-colors ${
+                    className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-semibold transition-colors text-sm sm:text-base touch-manipulation ${
                       canCheckout
                         ? 'bg-blue-600 text-white hover:bg-blue-700'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -569,16 +569,16 @@ export default function CartPopup({ isOpen, onClose }: CartPopupProps) {
                   </button>
                 );
               })()}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={viewFullCart}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors text-sm"
+                  className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors text-xs sm:text-sm touch-manipulation"
                 >
                   View Cart
                 </button>
                 <button
                   onClick={continueShopping}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors text-sm"
+                  className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors text-xs sm:text-sm touch-manipulation"
                 >
                   Continue Shopping
                 </button>

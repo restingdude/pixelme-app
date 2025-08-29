@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
       size,
       color,
       position,
-      custom_design_url
+      custom_design_url,
+      embroidery_size
     } = body;
 
     if (!variantId) {
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
     if (size) customAttributes.push({ key: 'size', value: size });
     if (color) customAttributes.push({ key: 'color', value: color });
     if (position) customAttributes.push({ key: 'position', value: position });
+    if (embroidery_size) customAttributes.push({ key: 'embroidery_size', value: embroidery_size });
 
     // Create a fresh cart with the single item
     const cartCreateMutation = `

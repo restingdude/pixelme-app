@@ -46,8 +46,8 @@ export default function Edit() {
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const [productsLoading, setProductsLoading] = useState(true);
   const [peopleCount, setPeopleCount] = useState<number>(1);
-  const [imageSize, setImageSize] = useState<string>('7cm');
-  const [selectedImageSize, setSelectedImageSize] = useState<string>('7cm');
+  const [imageSize, setImageSize] = useState<string>('10cm');
+  const [selectedImageSize, setSelectedImageSize] = useState<string>('10cm');
   
   // Custom presets state
   const [customPresets, setCustomPresets] = useState<{[key: string]: {name: string, x: number, y: number, size: number}}>({});
@@ -2102,11 +2102,10 @@ export default function Edit() {
 
   // Get design size based on subject count for preview
   const getDesignSizeForSubjects = (subjectCount: number) => {
-    // Base size mapping: 1=7cm, 2=10cm, 3=13cm, 4=16cm, 5+=19cm
+    // Base size mapping: 1-2=10cm, 3=13cm, 4=16cm, 5+=19cm
     // Convert cm to pixels (smaller scale for better preview - roughly 5px per cm)
     let sizeInCm;
-    if (subjectCount === 1) sizeInCm = 7;
-    else if (subjectCount === 2) sizeInCm = 10;
+    if (subjectCount <= 2) sizeInCm = 10;
     else if (subjectCount === 3) sizeInCm = 13;
     else if (subjectCount === 4) sizeInCm = 16;
     else sizeInCm = 19;
@@ -2115,11 +2114,14 @@ export default function Edit() {
     return Math.round(sizeInCm * 5);
   };
 
-  // Get additional cost based on subject count
+  // Get additional cost based on embroidery size (not subject count)
   const getSubjectCost = (subjectCount: number) => {
-    // 1 subject = +$0, 2 subjects = +$5, 3 subjects = +$10, etc. (+$5 for each additional subject)
-    if (subjectCount <= 1) return 0;
-    return (subjectCount - 1) * 5;
+    // Pricing is based on size: 10cm = +$0, 13cm = +$5, 16cm = +$10, 19cm = +$15
+    // After 5 subjects (19cm), price stays the same
+    if (subjectCount <= 2) return 0; // 10cm
+    if (subjectCount === 3) return 5; // 13cm  
+    if (subjectCount === 4) return 10; // 16cm
+    if (subjectCount >= 5) return 15; // 19cm (stays same for 5+ subjects)
   };
 
   // Get default position for clothing type (prioritizing custom presets)
@@ -2386,11 +2388,10 @@ export default function Edit() {
                       <>
                         <div><span className="font-medium">Subjects:</span> {peopleCount} {peopleCount === 1 ? 'subject' : 'subjects'} ({imageSize})</div>
                         <div><span className="font-medium">Extra Cost:</span> {(() => {
-                          if (peopleCount === 1) return '+$0';
-                          if (peopleCount === 2) return '+$5';
-                          if (peopleCount === 3) return '+$10';
-                          if (peopleCount === 4) return '+$15';
-                          if (peopleCount >= 5) return `+$${(peopleCount - 1) * 5}`;
+                          if (peopleCount <= 2) return '+$0';
+                          if (peopleCount === 3) return '+$5';
+                          if (peopleCount === 4) return '+$10';
+                          if (peopleCount >= 5) return '+$15';
                         })()}</div>
                       </>
                     )}
@@ -2724,7 +2725,7 @@ export default function Edit() {
                           const title = edge.node.title || '';
                           const selectedOptions = edge.node.selectedOptions || [];
                           
-                          // Check by title (like "L / Black / 7cm")
+                          // Check by title (like "L / Black / 10cm")
                           const titleIncludesSize = title.includes(selectedSize);
                           const titleIncludesColor = title.toLowerCase().includes(selectedColor.toLowerCase());
                           const titleIncludesImageSize = title.includes(selectedImageSize);
@@ -2792,7 +2793,7 @@ export default function Edit() {
                           { key: 'clothing_type', value: selectedClothing || 'hoodie' },
                           { key: 'style', value: selectedStyle || 'Dragon Ball' },
                           { key: 'size', value: selectedSize || 'M' },
-                          { key: 'image_size', value: selectedImageSize || '7cm' },
+                          { key: 'image_size', value: selectedImageSize || '10cm' },
                           { key: 'position', value: selectedPosition || 'chest' }
                         ];
 
@@ -2965,7 +2966,7 @@ export default function Edit() {
                           const title = edge.node.title || '';
                           const selectedOptions = edge.node.selectedOptions || [];
                           
-                          // Check by title (like "L / Black / 7cm")
+                          // Check by title (like "L / Black / 10cm")
                           const titleIncludesSize = title.includes(selectedSize);
                           const titleIncludesColor = title.toLowerCase().includes(selectedColor.toLowerCase());
                           const titleIncludesImageSize = title.includes(selectedImageSize);
@@ -3035,7 +3036,8 @@ export default function Edit() {
                             size: selectedSize,
                             color: selectedColor || 'Black',
                             position: selectedPosition || 'chest',
-                            custom_design_url: finalImage || ''
+                            custom_design_url: finalImage || '',
+                            embroidery_size: selectedImageSize || '10cm'
                           })
                         });
                         
@@ -3297,11 +3299,10 @@ export default function Edit() {
                     <>
                       <div><span className="font-medium">Subjects:</span> {peopleCount} {peopleCount === 1 ? 'subject' : 'subjects'} ({imageSize})</div>
                       <div><span className="font-medium">Extra Cost:</span> {(() => {
-                        if (peopleCount === 1) return '+$0';
-                        if (peopleCount === 2) return '+$5';
-                        if (peopleCount === 3) return '+$10';
-                        if (peopleCount === 4) return '+$15';
-                        if (peopleCount >= 5) return `+$${(peopleCount - 1) * 5}`;
+                        if (peopleCount <= 2) return '+$0';
+                        if (peopleCount === 3) return '+$5';
+                        if (peopleCount === 4) return '+$10';
+                        if (peopleCount >= 5) return '+$15';
                       })()}</div>
                     </>
                   )}

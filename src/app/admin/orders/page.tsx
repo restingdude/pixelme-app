@@ -635,19 +635,13 @@ export default function AdminOrders() {
                       Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Payment
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fulfillment
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Items
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Digitized
+                      Embroidery Size
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Digitization Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -686,19 +680,6 @@ export default function AdminOrders() {
                         {formatDate(order.createdAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.financialStatus)}`}>
-                          {order.financialStatus}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.fulfillmentStatus)}`}>
-                          {order.fulfillmentStatus || 'unfulfilled'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${parseFloat(order.totalPrice).toFixed(2)} {order.currency}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-black">
                           {order.totalItems} item{order.totalItems !== 1 ? 's' : ''}
                         </div>
@@ -706,6 +687,19 @@ export default function AdminOrders() {
                           <div className="text-xs text-black font-medium">
                             {order.customItemsCount} custom design{order.customItemsCount !== 1 ? 's' : ''}
                           </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {order.isPixelMeOrder && order.pixelMeItems.length > 0 ? (
+                          <div className="text-sm">
+                            {order.pixelMeItems.map((item: any, idx: number) => (
+                              <div key={idx} className="text-purple-600 font-medium">
+                                {item.designSize || 'Not specified'}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

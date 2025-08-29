@@ -17,7 +17,7 @@ function UploadContent() {
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [peopleCount, setPeopleCount] = useState<number>(1);
   const [peopleCountSelected, setPeopleCountSelected] = useState<boolean>(false); // Track if user has explicitly selected
-  const [imageSize, setImageSize] = useState<string>('7cm');
+  const [imageSize, setImageSize] = useState<string>('10cm');
   const [genders, setGenders] = useState<string[]>(['']);
   const [step, setStep] = useState<'upload' | 'style' | 'convert'>('upload');
   const [isConverting, setIsConverting] = useState(false);
@@ -716,9 +716,9 @@ function UploadContent() {
     setPeopleCount(count);
     setPeopleCountSelected(true); // User has explicitly selected
     
-    // Set image size based on people count
-    let size = '7cm';
-    if (count === 2) size = '10cm';
+    // Set image size based on people count (minimum 10cm)
+    let size = '10cm';
+    if (count <= 2) size = '10cm';
     else if (count === 3) size = '13cm';
     else if (count === 4) size = '16cm';
     else if (count >= 5) size = '19cm';
@@ -730,10 +730,10 @@ function UploadContent() {
     // Store the selected image size as a separate sizing option for variants
     localStorage.setItem('pixelme-selected-image-size', size);
     
-    // Initialize genders array with empty values
+    // Initialize genders array with empty values (optional selection)
     setGenders(new Array(count).fill(''));
     
-    // Don't advance to convert yet - wait for gender selection
+    // Gender selection is now optional - user can continue with or without it
   };
 
   const handleGenderSelect = (personIndex: number, gender: string) => {
@@ -917,7 +917,7 @@ function UploadContent() {
     setSelectedStyle(null);
     setPeopleCount(1);
     setPeopleCountSelected(false); // Reset selection flag
-    setImageSize('7cm');
+    setImageSize('10cm');
     setGenders(['']);
     setStep('upload');
     setConversionResult(null);
@@ -1279,18 +1279,16 @@ function UploadContent() {
                   {peopleCountSelected && (
                     <>
                       <div><span className="font-medium">Subjects:</span> {peopleCount} {peopleCount === 1 ? 'subject' : 'subjects'} ({(() => {
-                        if (peopleCount === 1) return '7cm';
-                        if (peopleCount === 2) return '10cm';
+                        if (peopleCount <= 2) return '10cm';
                         if (peopleCount === 3) return '13cm';
                         if (peopleCount === 4) return '16cm';
                         if (peopleCount >= 5) return '19cm';
                       })()})</div>
                       <div><span className="font-medium">Extra Cost:</span> {(() => {
-                        if (peopleCount === 1) return '+$0';
-                        if (peopleCount === 2) return '+$5';
-                        if (peopleCount === 3) return '+$10';
-                        if (peopleCount === 4) return '+$15';
-                        if (peopleCount >= 5) return `+$${(peopleCount - 1) * 5}`;
+                        if (peopleCount <= 2) return '+$0';
+                        if (peopleCount === 3) return '+$5';
+                        if (peopleCount === 4) return '+$10';
+                        if (peopleCount >= 5) return '+$15';
                       })()}</div>
                     </>
                   )}
@@ -1494,7 +1492,7 @@ function UploadContent() {
                           </div>
                           <div className="text-sm text-gray-600">
                             {(() => {
-                              if (peopleCount === 1) return '7cm size';
+                              if (peopleCount === 1) return '10cm size';
                               if (peopleCount === 2) return '10cm size';
                               if (peopleCount === 3) return '13cm size';
                               if (peopleCount === 4) return '16cm size';
@@ -1503,11 +1501,10 @@ function UploadContent() {
                           </div>
                           <div className="text-xs font-medium text-black mt-1">
                             {(() => {
-                              if (peopleCount === 1) return '+$0';
-                              if (peopleCount === 2) return '+$5';
-                              if (peopleCount === 3) return '+$10';
-                              if (peopleCount === 4) return '+$15';
-                              if (peopleCount >= 5) return `+$${(peopleCount - 1) * 5}`;
+                              if (peopleCount <= 2) return '+$0';
+                              if (peopleCount === 3) return '+$5';
+                              if (peopleCount === 4) return '+$10';
+                              if (peopleCount >= 5) return '+$15';
                             })()}
                           </div>
                         </div>
@@ -1531,8 +1528,9 @@ function UploadContent() {
                 {selectedStyle && peopleCount && (
                   <div className="w-full max-w-lg mx-auto">
                     <div className="mb-3 text-center">
-                      <p className="text-sm text-black font-medium mb-1">Select type for each subject</p>
+                      <p className="text-sm text-black font-medium mb-1">Select type for each subject (optional)</p>
                       <p className="text-xs text-gray-600">👈 From left to right in your photo 👉</p>
+                      <p className="text-xs text-amber-600 font-medium mt-1">💡 You can skip this step if you prefer</p>
                       {uploadedImage && (
                         <button
                           onClick={() => setShowReferencePhoto(true)}
@@ -1594,22 +1592,43 @@ function UploadContent() {
                             }}
                           ></div>
                         </div>
-                        {genders.length === peopleCount && genders.every(g => g !== '' && g !== null && g !== undefined) && (
-                          <div className="mt-4 text-center">
+                        <div className="mt-4 text-center">
+                          {genders.length === peopleCount && genders.every(g => g !== '' && g !== null && g !== undefined) && (
                             <p className="text-green-700 text-xs mb-3 font-medium">
                               ✓ All subjects selected!
                             </p>
-                            <button
-                              onClick={() => {
-                                setStep('convert');
-                                localStorage.setItem('pixelme-current-step', 'convert');
-                              }}
-                              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
-                            >
-                              Proceed to Convert
-                            </button>
+                          )}
+                          <div className="flex flex-col gap-2">
+                            <div className="flex gap-3 justify-center">
+                              <button
+                                onClick={() => {
+                                  setStep('convert');
+                                  localStorage.setItem('pixelme-current-step', 'convert');
+                                }}
+                                className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
+                              >
+                                Continue to Generate
+                              </button>
+                              {genders.filter(g => g !== '' && g !== null && g !== undefined).length === 0 && (
+                                <button
+                                  onClick={() => {
+                                    setStep('convert');
+                                    localStorage.setItem('pixelme-current-step', 'convert');
+                                  }}
+                                  className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200 font-medium"
+                                >
+                                  Skip Selection
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              {genders.filter(g => g !== '' && g !== null && g !== undefined).length === 0 
+                                ? "No types selected - AI will determine automatically"
+                                : `${genders.filter(g => g !== '' && g !== null && g !== undefined).length}/${peopleCount} subjects have types selected`
+                              }
+                            </p>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   </div>

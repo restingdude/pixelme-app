@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
           style: props.style,
           position: props.position,
           clothingType: props.clothing_type,
-          designSize: props['Design Size'] || props['Image Size'] || props['Embroidery Sizes'] || 'Not specified'
+          designSize: props['Design Size'] || props['Image Size'] || props['Embroidery Sizes'] || props.embroidery_size || props.image_size || 'Not specified'
         };
       });
 

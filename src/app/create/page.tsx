@@ -200,7 +200,7 @@ export default function Create() {
     if (!product) return;
 
     // Find the variant that matches the selected color and size
-    // For step 1, we prefer the 7cm embroidery size variant as the base
+    // For step 1, we prefer the 10cm embroidery size variant as the base
     const matchingVariants = product.variants.edges.filter(edge => {
       const options = edge.node.selectedOptions;
       if (!options || !Array.isArray(options)) return false;
@@ -214,11 +214,11 @@ export default function Create() {
       return;
     }
 
-    // Prefer the 7cm variant (base price), otherwise take the first available
+    // Prefer the 10cm variant (base price), otherwise take the first available
     const variant = matchingVariants.find(edge => {
       const embroideryOption = edge.node.selectedOptions.find(opt => 
         (opt.name === 'Embroidery Sizes' || opt.name === 'Design Size' || opt.name === 'Image Size') && 
-        opt.value === '7cm'
+        opt.value === '10cm'
       );
       return embroideryOption;
     }) || matchingVariants[0];

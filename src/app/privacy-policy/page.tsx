@@ -106,7 +106,7 @@ export default function PrivacyPolicy() {
               If you have questions about this privacy policy or how we handle your data, please contact us:
             </p>
             <ul className="text-gray-600 space-y-1">
-              <li>Email: help@pixelme.com</li>
+              <li>Email: help@pixelme.store</li>
               <li>Response time: Within 72 hours</li>
             </ul>
 

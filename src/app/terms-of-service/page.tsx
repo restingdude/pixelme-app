@@ -129,7 +129,7 @@ export default function TermsOfService() {
               If you have questions about these terms, please contact us:
             </p>
             <ul className="text-gray-600 space-y-1">
-              <li>Email: help@pixelme.com</li>
+              <li>Email: help@pixelme.store</li>
               <li>Response time: Within 5 business days</li>
             </ul>
 

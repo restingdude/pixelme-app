@@ -67,7 +67,7 @@ export default function ReturnPolicy() {
               For return requests or questions about our return policy, please contact us:
             </p>
             <ul className="text-gray-600 space-y-1">
-              <li>Email: support@pixelme.com</li>
+              <li>Email: help@pixelme.store</li>
               <li>Response time: Within 24 hours</li>
             </ul>
 

@@ -699,6 +699,17 @@ function UploadContent() {
     setSelectedStyle(style);
     localStorage.setItem('pixelme-selected-style', style);
     // Don't auto-advance to convert, stay on style to select people count
+    
+    // Auto-scroll to people count section
+    setTimeout(() => {
+      const peopleCountSection = document.querySelector('[data-people-count-section]');
+      if (peopleCountSection) {
+        peopleCountSection.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    }, 100);
   };
 
   const handlePeopleCountSelect = (count: number) => {
@@ -1454,7 +1465,7 @@ function UploadContent() {
 
                 {/* People count selection */}
                 {selectedStyle && (
-                  <div className="w-full max-w-lg mx-auto mb-4">
+                  <div className="w-full max-w-lg mx-auto mb-4" data-people-count-section>
                     <div className="mb-3 text-center">
                       <p className="text-sm text-black font-medium mb-1">How many subjects in your photo?</p>
                       <p className="text-xs text-gray-600 mb-2">Choose carefully - more subjects = larger size for better embroidery quality</p>

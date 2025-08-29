@@ -3341,11 +3341,13 @@ export default function Edit() {
               </div>
 
               <div className="mb-6 relative inline-block">
-                <img 
-                  src={conversionResult} 
-                  alt="Styled converted image"
-                  className="max-w-md h-auto rounded-lg shadow-lg"
-                />
+                <div className="w-full max-w-md h-[400px] flex items-center justify-center bg-gray-50 rounded-lg">
+                  <img 
+                    src={conversionResult} 
+                    alt="Styled converted image"
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-center">
@@ -5154,11 +5156,13 @@ export default function Edit() {
                       }
                     }}
                   >
-                    <img 
-                      src={showingOriginalEmbroidery ? (editedImage || '') : (colorReducedImage || '')} 
-                      alt={showingOriginalEmbroidery ? "Original edited image" : "Embroidery style image"}
-                      className="w-full max-w-md h-auto rounded-lg shadow-lg transition-opacity duration-300 hover:opacity-90"
-                    />
+                    <div className="w-full max-w-md h-[400px] flex items-center justify-center bg-gray-50 rounded-lg">
+                      <img 
+                        src={showingOriginalEmbroidery ? (editedImage || '') : (colorReducedImage || '')} 
+                        alt={showingOriginalEmbroidery ? "Original edited image" : "Embroidery style image"}
+                        className="max-w-full max-h-full object-contain rounded-lg shadow-lg transition-opacity duration-300 hover:opacity-90"
+                      />
+                    </div>
                     
                     {/* Overlay indicator */}
                     <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">

@@ -504,8 +504,7 @@ export default function Create() {
       const colorOption = options.find(opt => opt.name === 'Color');
       const sizeOption = options.find(opt => opt.name === 'Size');
       const embroideryOption = options.find(opt => 
-        (opt.name === 'Embroidery Sizes' || opt.name === 'Design Size' || opt.name === 'Image Size') && 
-        opt.value === '10cm'
+        opt.name === 'Embroidery Size' && opt.value === '10cm'
       );
       return colorOption?.value === color && sizeOption?.value === size && embroideryOption;
     });
@@ -533,17 +532,19 @@ export default function Create() {
 
     if (!product) return 0;
 
-    return product.variants.edges
-      .filter(edge => {
-        if (!edge.node.selectedOptions || !Array.isArray(edge.node.selectedOptions)) return false;
-        const colorOption = edge.node.selectedOptions.find(opt => opt.name === 'Color');
-        const embroideryOption = edge.node.selectedOptions.find(opt => 
-          (opt.name === 'Embroidery Sizes' || opt.name === 'Design Size' || opt.name === 'Image Size') && 
-          opt.value === '10cm'
-        );
-        return colorOption?.value === color && embroideryOption;
-      })
-      .reduce((total, edge) => total + edge.node.inventoryQuantity, 0);
+    const matchingVariants = product.variants.edges.filter(edge => {
+      if (!edge.node.selectedOptions || !Array.isArray(edge.node.selectedOptions)) return false;
+      const colorOption = edge.node.selectedOptions.find(opt => opt.name === 'Color');
+      const embroideryOption = edge.node.selectedOptions.find(opt => 
+        opt.name === 'Embroidery Size' && opt.value === '10cm'
+      );
+      
+      return colorOption?.value === color && embroideryOption;
+    });
+
+    const total = matchingVariants.reduce((total, edge) => total + edge.node.inventoryQuantity, 0);
+    
+    return total;
   };
 
   return (

@@ -7,7 +7,9 @@
       "Bash(taskkill:*)",
       "Bash(node:*)",
       "Bash(npm:*)",
-      "Bash(npx next dev:*)"
+      "Bash(npx next dev:*)",
+      "Bash(curl:*)",
+      "Bash(/dev/null)"
     ],
     "deny": [],
     "ask": []

@@ -486,6 +486,7 @@ export default function Create() {
   };
 
   // Get inventory quantity for a specific color/size combination
+  // For step 1, we only consider 10cm embroidery size variants for stock display
   const getInventoryQuantity = (color: string, size: string) => {
     if (!selectedProduct) return 0;
 
@@ -496,29 +497,32 @@ export default function Create() {
 
     if (!product) return 0;
 
-    // Find variants that match color and size (we might have multiple with different embroidery sizes)
+    // Find variants that match color and size, but only consider 10cm embroidery size
     const matchingVariants = product.variants.edges.filter(edge => {
       const options = edge.node.selectedOptions;
       if (!options || !Array.isArray(options)) return false;
       const colorOption = options.find(opt => opt.name === 'Color');
       const sizeOption = options.find(opt => opt.name === 'Size');
-      return colorOption?.value === color && sizeOption?.value === size;
+      const embroideryOption = options.find(opt => 
+        (opt.name === 'Embroidery Sizes' || opt.name === 'Design Size' || opt.name === 'Image Size') && 
+        opt.value === '10cm'
+      );
+      return colorOption?.value === color && sizeOption?.value === size && embroideryOption;
     });
-
 
     if (matchingVariants.length === 0) return 0;
 
-    // Get the maximum inventory from all matching variants
-    // This accounts for multiple embroidery size variants of the same size/color
-    const maxInventory = Math.max(...matchingVariants.map(edge => edge.node.inventoryQuantity));
+    // Get the inventory from the 10cm variant only
+    const inventory10cm = matchingVariants[0].node.inventoryQuantity;
     
-    // If any variant has inventory > 0, we consider this size available
-    // If all variants have 0 inventory but exist, we still show it as available 
+    // If the 10cm variant has inventory > 0, show that number
+    // If the 10cm variant has 0 inventory but exists, we still show it as available 
     // (assuming "Continue selling when out of stock" is enabled)
-    return maxInventory > 0 ? maxInventory : 999; // Return 999 for out-of-stock variants that can still be ordered
+    return inventory10cm > 0 ? inventory10cm : 999; // Return 999 for out-of-stock variants that can still be ordered
   };
 
   // Get total inventory for a color (across all sizes)
+  // For step 1, we only consider 10cm embroidery size variants for stock display
   const getTotalInventoryForColor = (color: string) => {
     if (!selectedProduct) return 0;
 
@@ -533,7 +537,11 @@ export default function Create() {
       .filter(edge => {
         if (!edge.node.selectedOptions || !Array.isArray(edge.node.selectedOptions)) return false;
         const colorOption = edge.node.selectedOptions.find(opt => opt.name === 'Color');
-        return colorOption?.value === color;
+        const embroideryOption = edge.node.selectedOptions.find(opt => 
+          (opt.name === 'Embroidery Sizes' || opt.name === 'Design Size' || opt.name === 'Image Size') && 
+          opt.value === '10cm'
+        );
+        return colorOption?.value === color && embroideryOption;
       })
       .reduce((total, edge) => total + edge.node.inventoryQuantity, 0);
   };

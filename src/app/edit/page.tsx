@@ -980,7 +980,7 @@ export default function Edit() {
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       setIsDrawing(true);
       draw(e);
     } else if (activeMode === 'crop') {
@@ -991,14 +991,14 @@ export default function Edit() {
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     // Update mouse position for brush cursor
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       setMousePosition({ x, y });
     }
     
-    if ((activeMode === 'remove' || activeMode === 'fill') && isDrawing && canvasRef.current) {
+    if (activeMode === 'remove' && isDrawing && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
@@ -1008,8 +1008,8 @@ export default function Edit() {
       const y = e.clientY - rect.top;
       
       ctx.globalCompositeOperation = 'source-over';
-      // Use different colors for different modes with more transparency
-      ctx.fillStyle = activeMode === 'fill' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(255, 255, 255, 0.4)'; // Purple for fill, white for remove
+      // Use white for remove mode
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; // White for remove
       ctx.beginPath();
       ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
       ctx.fill();
@@ -1024,7 +1024,7 @@ export default function Edit() {
   };
 
   const stopDrawing = () => {
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       setIsDrawing(false);
     } else if (activeMode === 'crop') {
       stopCrop();
@@ -1032,7 +1032,7 @@ export default function Edit() {
   };
 
   const handleMouseLeave = () => {
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       setIsDrawing(false);
       setShowBrushCursor(false);
     }
@@ -1040,25 +1040,25 @@ export default function Edit() {
   };
 
   const handleMouseEnter = () => {
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       setShowBrushCursor(true);
     }
   };
 
   const handleTouchStart = () => {
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       setShowBrushCursor(true);
     }
   };
 
   const handleTouchEnd = () => {
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       setShowBrushCursor(false);
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -1108,7 +1108,7 @@ export default function Edit() {
   // Touch event handlers for mobile support
   const startTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault(); // Prevent scrolling/zooming
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       setIsDrawing(true);
       drawTouch(e);
     } else if (activeMode === 'crop') {
@@ -1123,14 +1123,14 @@ export default function Edit() {
     const touch = e.touches[0];
     
     // Update touch position for brush cursor
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       const rect = e.currentTarget.getBoundingClientRect();
       const x = touch.clientX - rect.left;
       const y = touch.clientY - rect.top;
       setMousePosition({ x, y });
     }
     
-    if ((activeMode === 'remove' || activeMode === 'fill') && isDrawing && canvasRef.current) {
+    if (activeMode === 'remove' && isDrawing && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
@@ -1140,8 +1140,8 @@ export default function Edit() {
       const y = touch.clientY - rect.top;
       
       ctx.globalCompositeOperation = 'source-over';
-      // Use different colors for different modes with more transparency
-      ctx.fillStyle = activeMode === 'fill' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(255, 255, 255, 0.4)'; // Purple for fill, white for remove
+      // Use white for remove mode
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; // White for remove
       ctx.beginPath();
       ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
       ctx.fill();
@@ -1157,7 +1157,7 @@ export default function Edit() {
 
   const stopTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault(); // Prevent scrolling/zooming
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       setIsDrawing(false);
     } else if (activeMode === 'crop') {
       stopCrop();
@@ -1222,7 +1222,7 @@ export default function Edit() {
     if (!e.touches.length) return;
     const touch = e.touches[0];
     
-    if (activeMode === 'remove' || activeMode === 'fill') {
+    if (activeMode === 'remove') {
       const rect = e.currentTarget.getBoundingClientRect();
       const x = touch.clientX - rect.left;
       const y = touch.clientY - rect.top;
@@ -1709,11 +1709,17 @@ export default function Edit() {
 
   const handleAIFill = async () => {
     const sourceImage = currentImage; // Use current edited image, not original
-    if (!sourceImage || !canvasRef.current) return;
+    if (!sourceImage) return;
+
+    if (!aiFillPrompt.trim()) {
+      alert('Please enter a prompt for the AI image editing');
+      return;
+    }
 
     // Save current image for undo
     setPreviousImage(sourceImage);
     setIsFilling(true);
+    
     // Clear background removal flag when performing other operations
     setJustRemovedBackground(false);
 
@@ -1741,88 +1747,6 @@ export default function Edit() {
       
       imageCtx.drawImage(img, 0, 0);
       const imageDataUrl = imageCanvas.toDataURL('image/jpeg', 0.95);
-
-      // Create properly scaled mask for FLUX Fill Pro
-      const maskCanvas = document.createElement('canvas');
-      maskCanvas.width = img.naturalWidth;
-      maskCanvas.height = img.naturalHeight;
-      const maskCtx = maskCanvas.getContext('2d');
-      
-      if (!maskCtx) {
-        throw new Error('Failed to create mask canvas context');
-      }
-
-      // Fill with black background first (areas to keep)
-      maskCtx.fillStyle = 'black';
-      maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
-
-      // Scale and draw the user's mask
-      const scaleX = img.naturalWidth / canvasSize.width;
-      const scaleY = img.naturalHeight / canvasSize.height;
-      
-      // Get the drawn mask data
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvasRef.current!.width;
-      tempCanvas.height = canvasRef.current!.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      if (!tempCtx) throw new Error('Failed to create temp canvas context');
-      
-      tempCtx.drawImage(canvasRef.current!, 0, 0);
-      const tempImageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-      const tempPixelData = tempImageData.data;
-      
-      // Draw white areas where user drew (areas to fill)
-      // Create a new canvas to scale the user's drawn mask properly
-      const userMaskCanvas = document.createElement('canvas');
-      userMaskCanvas.width = img.naturalWidth;
-      userMaskCanvas.height = img.naturalHeight;
-      const userMaskCtx = userMaskCanvas.getContext('2d');
-      
-      if (userMaskCtx) {
-        // Scale the user's drawing to match the original image dimensions
-        userMaskCtx.imageSmoothingEnabled = false; // Keep crisp edges for mask
-        userMaskCtx.drawImage(canvasRef.current!, 0, 0, canvasSize.width, canvasSize.height, 0, 0, img.naturalWidth, img.naturalHeight);
-        
-        // Now composite the scaled user mask onto the final mask as white areas
-        maskCtx.globalCompositeOperation = 'source-over';
-        maskCtx.fillStyle = 'white';
-        
-        // Get the scaled mask data
-        const scaledMaskData = userMaskCtx.getImageData(0, 0, img.naturalWidth, img.naturalHeight);
-        const scaledPixels = scaledMaskData.data;
-        
-        // Draw white pixels where user drew
-        for (let y = 0; y < img.naturalHeight; y++) {
-          for (let x = 0; x < img.naturalWidth; x++) {
-            const index = (y * img.naturalWidth + x) * 4;
-            const alpha = scaledPixels[index + 3];
-            
-            if (alpha > 128) { // User drew here - should be filled
-              maskCtx.fillRect(x, y, 1, 1);
-            }
-          }
-        }
-        
-        console.log('Mask generation completed - user drawn areas converted to white on black background');
-      }
-
-      const maskDataUrl = maskCanvas.toDataURL('image/png');
-      
-      // Debug: Log mask info
-      console.log('Mask canvas size:', maskCanvas.width, 'x', maskCanvas.height);
-      console.log('Original canvas size:', canvasSize.width, 'x', canvasSize.height);
-      console.log('Scale factors:', scaleX, scaleY);
-      console.log('Mask data URL length:', maskDataUrl.length);
-      
-      // Debug: Create a visual representation of the mask
-      const debugMaskCanvas = document.createElement('canvas');
-      debugMaskCanvas.width = 200;
-      debugMaskCanvas.height = 200;
-      const debugCtx = debugMaskCanvas.getContext('2d');
-      if (debugCtx) {
-        debugCtx.drawImage(maskCanvas, 0, 0, 200, 200);
-        console.log('Debug mask preview (scaled to 200x200):', debugMaskCanvas.toDataURL());
-      }
       
       const response = await fetch('/api/fill', {
         method: 'POST',
@@ -1831,8 +1755,7 @@ export default function Edit() {
         },
         body: JSON.stringify({
           imageData: imageDataUrl,
-          maskData: maskDataUrl,
-          prompt: aiFillPrompt || 'Remove all objects and content within the masked areas, then intelligently fill the empty space by extending and continuing the background elements from the surrounding areas. Analyze the context around the masked region and seamlessly blend the background patterns, textures, colors, and structures to naturally fill the void where the removed objects were. Focus on extending background elements like walls, floors, clothing, sky, or other environmental details rather than the removed foreground objects.'
+          prompt: aiFillPrompt
         }),
       });
 
@@ -1844,14 +1767,17 @@ export default function Edit() {
         // Clear the mask after successful fill
         clearMask();
         
-        console.log('Smart remove & fill completed successfully using FLUX Fill Pro');
+        // Clear the prompt after successful edit
+        setAiFillPrompt('');
+        
+        console.log('Nano banana image editing completed successfully');
       } else {
-        console.error('Smart remove & fill failed:', data.error);
-        alert('Smart remove & fill failed: ' + (data.error || 'Unknown error'));
+        console.error('Nano banana editing failed:', data.error);
+        alert('Image editing failed: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Smart remove & fill error:', error);
-      alert('Smart remove & fill failed: Network error');
+      console.error('Nano banana editing error:', error);
+      alert('Image editing failed: Network error');
     } finally {
       setIsFilling(false);
     }
@@ -3444,7 +3370,7 @@ export default function Edit() {
                     <div className={`font-medium text-xs text-center ${
                       activeMode === 'remove' || activeMode === 'fill' ? 'text-purple-700' : 'text-gray-700'
                     }`}>
-                      Erase / Fill
+                      Erase / Edit
                     </div>
                   </button>
 
@@ -3553,7 +3479,7 @@ export default function Edit() {
                 
                 {/* Tool Options - Mobile Only (Above Image) */}
                 <div className="lg:hidden w-full max-w-xl">
-                  {/* Erase/Fill Sub-mode Toggle */}
+                  {/* Erase/Edit Sub-mode Toggle */}
                   {(activeMode === 'remove' || activeMode === 'fill') && (
                     <div className="mb-4">
                       <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
@@ -3581,7 +3507,7 @@ export default function Edit() {
                               : 'text-gray-600 hover:text-purple-600'
                           }`}
                         >
-                          Fill
+                          Edit
                         </button>
                       </div>
                     </div>
@@ -3633,16 +3559,16 @@ export default function Edit() {
                     </div>
                   )}
 
-                  {/* Fill Tool Options */}
+                  {/* Edit Tool Options */}
                   {activeMode === 'fill' && (
                     <div className="mb-4">
                       <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 mb-4">
-                        <p className="text-sm text-purple-700 mb-3">Paint over areas to remove and fill with AI</p>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">AI Fill Prompt:</label>
+                        <p className="text-sm text-purple-700 mb-3">Describe how you want to edit your image with AI</p>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">AI Image Edit Prompt:</label>
                         <textarea
                           value={aiFillPrompt}
                           onChange={(e) => setAiFillPrompt(e.target.value)}
-                          placeholder="Remove all objects and content within the masked areas..."
+                          placeholder="Describe your desired edits, e.g., 'Add sunglasses to the person', 'Change the background to a beach', 'Make the shirt blue'..."
                           className="w-full h-24 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm text-black placeholder-gray-400"
                         />
                         <div className="flex gap-2 mt-2 flex-wrap">
@@ -3653,24 +3579,24 @@ export default function Edit() {
                             Clear
                           </button>
                           <button
-                            onClick={() => setAiFillPrompt('Add beautiful flowers and plants to fill the selected areas')}
+                            onClick={() => setAiFillPrompt('Add sunglasses to the person')}
                             className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
                           >
-                            Add Flowers
+                            Add Sunglasses
+                          </button>
+                          <button
+                            onClick={() => setAiFillPrompt('Change the background to a beach scene')}
+                            className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
+                          >
+                            Beach Background
+                          </button>
+                          <button
+                            onClick={() => setAiFillPrompt('Make the shirt blue')}
+                            className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
+                          >
+                            Blue Shirt
                           </button>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg mb-4">
-                        <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
-                        <input
-                          type="range"
-                          min="5"
-                          max="50"
-                          value={brushSize}
-                          onChange={(e) => setBrushSize(Number(e.target.value))}
-                          className="flex-1"
-                        />
-                        <span className="text-sm text-gray-600 w-8">{brushSize}</span>
                       </div>
                       <div className="flex gap-2 mb-4">
                         <button 
@@ -3682,9 +3608,9 @@ export default function Edit() {
                       </div>
                       <button 
                         onClick={handleAIFill}
-                        disabled={isFilling || !conversionResult || !hasSelection}
+                        disabled={isFilling || !conversionResult || !aiFillPrompt.trim()}
                         className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                          isFilling || !conversionResult || !hasSelection
+                          isFilling || !conversionResult || !aiFillPrompt.trim()
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                             : 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg hover:shadow-xl'
                         }`}
@@ -3692,12 +3618,12 @@ export default function Edit() {
                         {isFilling ? (
                           <div className="flex items-center justify-center gap-2">
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Removing & Filling...
+                            Applying AI Edit...
                           </div>
-                        ) : hasSelection ? (
-                          'Remove & Fill Selected Areas'
+                        ) : aiFillPrompt.trim() ? (
+                          'Apply AI Edit'
                         ) : (
-                          'Select Areas to Fill'
+                          'Enter Prompt Above'
                         )}
                       </button>
                     </div>
@@ -3774,7 +3700,7 @@ export default function Edit() {
                   {activeMode === 'zoom' && (
                     <div className="mb-4">
                       <div className="p-4 bg-orange-50 rounded-lg border border-orange-200 mb-4">
-                        <p className="text-sm text-orange-700">Add transparent padding around your image. Each time you save, the padding becomes permanent and you can add more.</p>
+                        <p className="text-sm text-orange-700">Zoom out and extend your image with AI-generated background. The image gets smaller and the borders are filled intelligently.</p>
                       </div>
                       
                       {/* Zoom Controls */}
@@ -3833,111 +3759,65 @@ export default function Edit() {
                         onClick={async () => {
                           if (!currentImage) return;
                           
-                          // Save current image for undo
                           setPreviousImage(currentImage);
                           setIsFilling(true);
                           
                           try {
-                            // First, remove background from current image
-                            console.log('Step 1: Removing background before adding padding...');
+                            const img = document.createElement('img');
+                            img.crossOrigin = 'anonymous';
                             
-                            const response = await fetch('/api/replicate/background-removal', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ imageUrl: currentImage }),
+                            await new Promise((resolve, reject) => {
+                              img.onload = resolve;
+                              img.onerror = reject;
+                              img.src = currentImage;
                             });
                             
-                            const data = await response.json();
+                            // Create new canvas that matches what the preview shows
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) return;
                             
-                            if (data.success && data.imageUrl) {
-                              console.log('Step 2: Background removal successful, adding padding...');
-                              
-                              const bgRemovedImg = document.createElement('img');
-                              bgRemovedImg.crossOrigin = 'anonymous';
-                              bgRemovedImg.onload = () => {
-                                const originalWidth = bgRemovedImg.naturalWidth;
-                                const originalHeight = bgRemovedImg.naturalHeight;
-                                
-                                // Calculate padding based on zoom level
-                                const paddingFactor = (100 - zoomLevel) / 100;
-                                const paddingX = originalWidth * paddingFactor;
-                                const paddingY = originalHeight * paddingFactor;
-                                
-                                const finalCanvas = document.createElement('canvas');
-                                const finalCtx = finalCanvas.getContext('2d');
-                                if (!finalCtx) return;
-                                
-                                finalCanvas.width = originalWidth + paddingX * 2;
-                                finalCanvas.height = originalHeight + paddingY * 2;
-                                
-                                // Clear canvas with transparent background
-                                finalCtx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
-                                
-                                // Draw the background-removed image in the center
-                                finalCtx.drawImage(
-                                  bgRemovedImg,
-                                  paddingX,
-                                  paddingY,
-                                  originalWidth,
-                                  originalHeight
-                                );
-                                
-                                const finalImage = finalCanvas.toDataURL('image/png');
-                                setEditedImage(finalImage);
-                                
-                                // Reset zoom level to 100% since we've baked the padding into the image
-                                setZoomLevel(100);
-                                localStorage.setItem('pixelme-zoom-level', '100');
-                                
-                                setIsFilling(false);
-                                console.log('Zoom out with background removal completed successfully');
-                              };
-                              bgRemovedImg.src = data.imageUrl;
-                            } else {
-                              console.error('Background removal failed, falling back to regular padding');
-                              // Fallback to regular padding without background removal
-                              const imgElement = document.createElement('img');
-                              imgElement.crossOrigin = 'anonymous';
-                              imgElement.onload = () => {
-                                const originalWidth = imgElement.naturalWidth;
-                                const originalHeight = imgElement.naturalHeight;
-                                
-                                const paddingFactor = (100 - zoomLevel) / 100;
-                                const paddingX = originalWidth * paddingFactor;
-                                const paddingY = originalHeight * paddingFactor;
-                                
-                                const finalCanvas = document.createElement('canvas');
-                                const finalCtx = finalCanvas.getContext('2d');
-                                if (!finalCtx) return;
-                                
-                                finalCanvas.width = originalWidth + paddingX * 2;
-                                finalCanvas.height = originalHeight + paddingY * 2;
-                                
-                                finalCtx.fillStyle = 'white';
-                                finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-                                
-                                finalCtx.drawImage(
-                                  imgElement,
-                                  paddingX,
-                                  paddingY,
-                                  originalWidth,
-                                  originalHeight
-                                );
-                                
-                                const finalImage = finalCanvas.toDataURL('image/png');
-                                setEditedImage(finalImage);
-                                
-                                setZoomLevel(100);
-                                localStorage.setItem('pixelme-zoom-level', '100');
-                                
-                                setIsFilling(false);
-                              };
-                              imgElement.src = currentImage;
-                            }
-                          } catch (error) {
-                            console.error('Zoom out with background removal error:', error);
-                            alert('Failed to process image');
+                            const originalWidth = img.naturalWidth;
+                            const originalHeight = img.naturalHeight;
+                            
+                            // Scale the image down by the zoom level (just like preview)
+                            const scaleFactor = zoomLevel / 100;
+                            const scaledWidth = originalWidth * scaleFactor;
+                            const scaledHeight = originalHeight * scaleFactor;
+                            
+                            // Canvas stays the same size as original
+                            canvas.width = originalWidth;
+                            canvas.height = originalHeight;
+                            
+                            // Clear canvas (transparent)
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            
+                            // Draw scaled image in center
+                            const offsetX = (originalWidth - scaledWidth) / 2;
+                            const offsetY = (originalHeight - scaledHeight) / 2;
+                            
+                            ctx.drawImage(
+                              img,
+                              offsetX,
+                              offsetY,
+                              scaledWidth,
+                              scaledHeight
+                            );
+                            
+                            const zoomedOutImage = canvas.toDataURL('image/png');
+                            
+                            // Set the zoomed out image directly
+                            setEditedImage(zoomedOutImage);
+                            localStorage.setItem('pixelme-edited-image', zoomedOutImage);
+                            
+                            setZoomLevel(100);
+                            localStorage.setItem('pixelme-zoom-level', '100');
+                            
                             setIsFilling(false);
+                          } catch (error) {
+                            console.error('Zoom out failed:', error);
+                            setIsFilling(false);
+                            alert('Zoom out failed');
                           }
                         }}
                         disabled={isFilling || !conversionResult || zoomLevel >= 100}
@@ -3950,12 +3830,12 @@ export default function Edit() {
                         {isFilling ? (
                           <div className="flex items-center justify-center gap-2">
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Adding Padding...
+                            Zooming Out...
                           </div>
                         ) : zoomLevel >= 100 ? (
                           'Zoom out to add padding'
                         ) : (
-                          'Add Transparent Padding'
+                          'Zoom Out'
                         )}
                       </button>
                     </div>
@@ -4156,8 +4036,9 @@ export default function Edit() {
                         ` : 'transparent',
                         backgroundSize: zoomLevel < 100 ? '20px 20px' : 'auto',
                         backgroundPosition: zoomLevel < 100 ? '0 0, 0 10px, 10px -10px, -10px 0px' : 'auto',
-                        padding: zoomLevel < 100 ? '20px' : '0',
-                        borderRadius: '8px'
+                        padding: zoomLevel < 100 ? `${((100 - zoomLevel) / 100) * 100}px` : '0',
+                        borderRadius: '8px',
+                        border: zoomLevel < 100 ? '2px dashed #ff6b35' : 'none'
                       }}
                     >
                       <img 
@@ -4176,28 +4057,28 @@ export default function Edit() {
                         className={`absolute top-0 left-0 rounded-lg ${
                           isFilling ? 'cursor-not-allowed' :
                           activeMode === 'remove' ? 'cursor-none' : 
-                          activeMode === 'fill' ? 'cursor-none' :
+                          activeMode === 'fill' ? 'cursor-default' :
                           activeMode === 'crop' ? 'cursor-crosshair' : 
                           activeMode === 'rotate' ? 'cursor-default' :
                           'cursor-default'
                         }`}
-                        onMouseDown={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : startDrawing}
-                        onMouseMove={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
+                        onMouseDown={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : startDrawing}
+                        onMouseMove={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : (e) => {
                           handleMouseMove(e);
                           draw(e);
                         }}
-                        onMouseUp={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : stopDrawing}
-                        onMouseLeave={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : handleMouseLeave}
-                        onMouseEnter={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : handleMouseEnter}
-                        onTouchStart={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
+                        onMouseUp={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : stopDrawing}
+                        onMouseLeave={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : handleMouseLeave}
+                        onMouseEnter={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : handleMouseEnter}
+                        onTouchStart={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : (e) => {
                           handleTouchStart();
                           startTouchDrawing(e);
                         }}
-                        onTouchMove={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
+                        onTouchMove={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : (e) => {
                           handleTouchMove(e);
                           drawTouch(e);
                         }}
-                        onTouchEnd={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
+                        onTouchEnd={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : (e) => {
                           handleTouchEnd();
                           stopTouchDrawing(e);
                         }}
@@ -4216,11 +4097,9 @@ export default function Edit() {
                       />
                       
                       {/* Brush Size Cursor */}
-                      {showBrushCursor && (activeMode === 'remove' || activeMode === 'fill') && !isFilling && (
+                      {showBrushCursor && activeMode === 'remove' && !isFilling && (
                         <div
-                          className={`absolute pointer-events-none rounded-full border-2 ${
-                            activeMode === 'fill' ? 'border-purple-500' : 'border-red-500'
-                          } bg-transparent`}
+                          className="absolute pointer-events-none rounded-full border-2 border-red-500 bg-transparent"
                           style={{
                             left: mousePosition.x - brushSize / 2,
                             top: mousePosition.y - brushSize / 2,
@@ -4359,7 +4238,7 @@ export default function Edit() {
                         <div className={`font-medium text-xs text-center ${
                           activeMode === 'remove' || activeMode === 'fill' ? 'text-purple-700' : 'text-gray-700'
                         }`}>
-                          Erase / Fill
+                          Erase / Edit
                         </div>
                       </button>
 
@@ -4466,7 +4345,7 @@ export default function Edit() {
                       </button>
                     </div>
 
-                    {/* Erase/Fill Sub-mode Toggle */}
+                    {/* Erase/Edit Sub-mode Toggle */}
                     {(activeMode === 'remove' || activeMode === 'fill') && (
                       <div className="mb-4">
                         <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
@@ -4494,7 +4373,7 @@ export default function Edit() {
                                 : 'text-gray-600 hover:text-purple-600'
                             }`}
                           >
-                            Fill
+                            Edit
                           </button>
                         </div>
                       </div>
@@ -4619,18 +4498,18 @@ export default function Edit() {
                       </div>
                     )}
 
-                    {/* Fill Tool - Desktop Only */}
+                    {/* Edit Tool - Desktop Only */}
                     {activeMode === 'fill' && (
                       <div className="hidden lg:block">
-                        <h5 className="font-semibold text-gray-800 mb-3">AI Fill Tool</h5>
+                        <h5 className="font-semibold text-gray-800 mb-3">AI Image Edit Tool</h5>
                         <div className="space-y-4">
                           <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                            <p className="text-sm text-purple-700 mb-3">Paint over areas to remove and fill with AI</p>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">AI Fill Prompt:</label>
+                            <p className="text-sm text-purple-700 mb-3">Describe how you want to edit your image with AI</p>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">AI Image Edit Prompt:</label>
                             <textarea
                               value={aiFillPrompt}
                               onChange={(e) => setAiFillPrompt(e.target.value)}
-                              placeholder="Remove all objects and content within the masked areas..."
+                              placeholder="Describe your desired edits, e.g., 'Add sunglasses to the person', 'Change the background to a beach', 'Make the shirt blue'..."
                               className="w-full h-24 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm text-black placeholder-gray-400"
                             />
                             <div className="flex gap-2 mt-2 flex-wrap">
@@ -4641,24 +4520,24 @@ export default function Edit() {
                                 Clear
                               </button>
                               <button
-                                onClick={() => setAiFillPrompt('Add beautiful flowers and plants to fill the selected areas')}
+                                onClick={() => setAiFillPrompt('Add sunglasses to the person')}
                                 className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
                               >
-                                Add Flowers
+                                Add Sunglasses
+                              </button>
+                              <button
+                                onClick={() => setAiFillPrompt('Change the background to a beach scene')}
+                                className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
+                              >
+                                Beach Background
+                              </button>
+                              <button
+                                onClick={() => setAiFillPrompt('Make the shirt blue')}
+                                className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
+                              >
+                                Blue Shirt
                               </button>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                            <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
-                            <input
-                              type="range"
-                              min="5"
-                              max="50"
-                              value={brushSize}
-                              onChange={(e) => setBrushSize(Number(e.target.value))}
-                              className="flex-1"
-                            />
-                            <span className="text-sm text-gray-600 w-8">{brushSize}</span>
                           </div>
                           <div className="flex gap-2">
                             <button 
@@ -4670,9 +4549,9 @@ export default function Edit() {
                           </div>
                           <button 
                             onClick={handleAIFill}
-                            disabled={isFilling || !conversionResult || !hasSelection}
+                            disabled={isFilling || !conversionResult || !aiFillPrompt.trim()}
                             className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                              isFilling || !conversionResult || !hasSelection
+                              isFilling || !conversionResult || !aiFillPrompt.trim()
                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                                 : 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg hover:shadow-xl'
                             }`}
@@ -4680,12 +4559,12 @@ export default function Edit() {
                             {isFilling ? (
                               <div className="flex items-center justify-center gap-2">
                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Removing & Filling...
+                                Applying AI Edit...
                               </div>
-                            ) : hasSelection ? (
-                              'Remove & Fill Selected Areas'
+                            ) : aiFillPrompt.trim() ? (
+                              'Apply AI Edit'
                             ) : (
-                              'Select Areas to Fill'
+                              'Enter Prompt Above'
                             )}
                           </button>
                         </div>
@@ -4700,7 +4579,7 @@ export default function Edit() {
                         <h5 className="font-semibold text-gray-800 mb-3">Zoom Out Tool</h5>
                         <div className="space-y-4">
                           <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                            <p className="text-sm text-orange-700">Add transparent padding around your image. Each time you save, the padding becomes permanent and you can add more.</p>
+                            <p className="text-sm text-orange-700">Zoom out to add transparent padding around your image. The image gets smaller and transparent borders are added.</p>
                           </div>
                           
                           {/* Zoom Controls */}
@@ -4748,9 +4627,9 @@ export default function Edit() {
                             </div>
                             <div className="mt-2 text-xs text-gray-500">
                               {zoomLevel < 100 ? (
-                                <>📤 Zoomed out - Ready to add {100 - zoomLevel}% padding</>
+                                <>📤 Zoomed out - Ready to extend {100 - zoomLevel}% with AI</>
                               ) : (
-                                <>📐 100% - No additional padding</>
+                                <>📐 100% - No additional extension</>
                               )}
                             </div>
                           </div>
@@ -4759,128 +4638,65 @@ export default function Edit() {
                             onClick={async () => {
                               if (!currentImage) return;
                               
-                              // Save current image for undo
                               setPreviousImage(currentImage);
                               setIsFilling(true);
                               
                               try {
-                                // First, remove background from current image
-                                console.log('Step 1: Removing background before adding padding...');
+                                const img = document.createElement('img');
+                                img.crossOrigin = 'anonymous';
                                 
-                                // Create canvas for current image
-                                const tempCanvas = document.createElement('canvas');
-                                const tempCtx = tempCanvas.getContext('2d');
-                                if (!tempCtx) return;
+                                await new Promise((resolve, reject) => {
+                                  img.onload = resolve;
+                                  img.onerror = reject;
+                                  img.src = currentImage;
+                                });
                                 
-                                const tempImg = document.createElement('img');
-                                tempImg.crossOrigin = 'anonymous';
-                                tempImg.onload = async () => {
-                                  tempCanvas.width = tempImg.naturalWidth;
-                                  tempCanvas.height = tempImg.naturalHeight;
-                                  tempCtx.drawImage(tempImg, 0, 0);
-                                  const imageDataUrl = tempCanvas.toDataURL('image/jpeg', 0.95);
-                                  
-                                  // Remove background first
-                                  const response = await fetch('/api/remove-background', {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                      imageData: imageDataUrl
-                                    }),
-                                  });
-                                  
-                                  const data = await response.json();
-                                  
-                                  if (response.ok && data.success) {
-                                    console.log('Step 2: Background removed, now adding padding...');
-                                    
-                                    // Now add padding to the background-removed image
-                                    const bgRemovedImg = document.createElement('img');
-                                    bgRemovedImg.crossOrigin = 'anonymous';
-                                    bgRemovedImg.onload = () => {
-                                      const originalWidth = bgRemovedImg.naturalWidth;
-                                      const originalHeight = bgRemovedImg.naturalHeight;
-                                      
-                                      // Calculate padding based on zoom level
-                                      const paddingFactor = (100 - zoomLevel) / 100; // 0 at 100%, 0.5 at 50%
-                                      const paddingX = originalWidth * paddingFactor;
-                                      const paddingY = originalHeight * paddingFactor;
-                                      
-                                      // Create final canvas with padding
-                                      const finalCanvas = document.createElement('canvas');
-                                      const finalCtx = finalCanvas.getContext('2d');
-                                      if (!finalCtx) return;
-                                      
-                                      // Canvas size includes the transparent padding
-                                      finalCanvas.width = originalWidth + (paddingX * 2);
-                                      finalCanvas.height = originalHeight + (paddingY * 2);
-                                      
-                                      // Make the entire canvas transparent
-                                      finalCtx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
-                                      
-                                      // Draw the background-removed image centered on the canvas
-                                      finalCtx.drawImage(
-                                        bgRemovedImg,
-                                        paddingX, // x offset (padding)
-                                        paddingY, // y offset (padding)
-                                        originalWidth,
-                                        originalHeight
-                                      );
-                                      
-                                      const finalImage = finalCanvas.toDataURL('image/png');
-                                      setEditedImage(finalImage);
-                                      localStorage.setItem('pixelme-edited-image', finalImage);
-                                      
-                                      // Reset zoom level to 100% since we've baked the padding into the image
-                                      setZoomLevel(100);
-                                      localStorage.setItem('pixelme-zoom-level', '100');
-                                      
-                                      setIsFilling(false);
-                                      console.log('Zoom out with background removal completed successfully');
-                                    };
-                                    bgRemovedImg.src = data.imageUrl;
-                                    
-                                  } else {
-                                    console.error('Background removal failed:', data.error);
-                                    // Fallback to original behavior if background removal fails
-                                    const imgElement = document.createElement('img');
-                                    imgElement.crossOrigin = 'anonymous';
-                                    imgElement.onload = () => {
-                                      const originalWidth = imgElement.naturalWidth;
-                                      const originalHeight = imgElement.naturalHeight;
-                                      
-                                      // Calculate padding based on zoom level
-                                      const paddingFactor = (100 - zoomLevel) / 100;
-                                      const paddingX = originalWidth * paddingFactor;
-                                      const paddingY = originalHeight * paddingFactor;
-                                      
-                                      const canvas = document.createElement('canvas');
-                                      const ctx = canvas.getContext('2d');
-                                      if (!ctx) return;
-                                      
-                                      canvas.width = originalWidth + (paddingX * 2);
-                                      canvas.height = originalHeight + (paddingY * 2);
-                                      ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                      ctx.drawImage(imgElement, paddingX, paddingY, originalWidth, originalHeight);
-                                      
-                                      const zoomedOutImage = canvas.toDataURL('image/png');
-                                      setEditedImage(zoomedOutImage);
-                                      localStorage.setItem('pixelme-edited-image', zoomedOutImage);
-                                      setZoomLevel(100);
-                                      localStorage.setItem('pixelme-zoom-level', '100');
-                                      setIsFilling(false);
-                                    };
-                                    imgElement.src = currentImage;
-                                  }
-                                };
-                                tempImg.src = currentImage;
+                                // Create new canvas that matches what the preview shows
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                if (!ctx) return;
                                 
-                              } catch (error) {
-                                console.error('Zoom out with background removal error:', error);
-                                alert('Failed to process image');
+                                const originalWidth = img.naturalWidth;
+                                const originalHeight = img.naturalHeight;
+                                
+                                // Scale the image down by the zoom level (just like preview)
+                                const scaleFactor = zoomLevel / 100;
+                                const scaledWidth = originalWidth * scaleFactor;
+                                const scaledHeight = originalHeight * scaleFactor;
+                                
+                                // Canvas stays the same size as original
+                                canvas.width = originalWidth;
+                                canvas.height = originalHeight;
+                                
+                                // Clear canvas (transparent)
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                
+                                // Draw scaled image in center
+                                const offsetX = (originalWidth - scaledWidth) / 2;
+                                const offsetY = (originalHeight - scaledHeight) / 2;
+                                
+                                ctx.drawImage(
+                                  img,
+                                  offsetX,
+                                  offsetY,
+                                  scaledWidth,
+                                  scaledHeight
+                                );
+                                
+                                const zoomedOutImage = canvas.toDataURL('image/png');
+                                
+                                // Set the zoomed out image directly
+                                setEditedImage(zoomedOutImage);
+                                localStorage.setItem('pixelme-edited-image', zoomedOutImage);
+                                
+                                setZoomLevel(100);
+                                localStorage.setItem('pixelme-zoom-level', '100');
+                                
                                 setIsFilling(false);
+                              } catch (error) {
+                                console.error('Zoom out failed:', error);
+                                setIsFilling(false);
+                                alert('Zoom out failed');
                               }
                             }}
                             disabled={isFilling || !conversionResult || zoomLevel >= 100}
@@ -4893,12 +4709,12 @@ export default function Edit() {
                             {isFilling ? (
                               <div className="flex items-center justify-center gap-2">
                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Adding Padding...
+                                Zooming Out...
                               </div>
                             ) : zoomLevel >= 100 ? (
-                              'Zoom out to add padding'
+                              'Zoom out to extend image'
                             ) : (
-                              'Add Transparent Padding'
+                              'Zoom Out'
                             )}
                           </button>
                         </div>
@@ -5265,7 +5081,7 @@ export default function Edit() {
 
       {/* Clear Confirmation Modal */}
       {showClearConfirmation && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-20 flex items-center justify-center z-50 p-4" onClick={() => setShowClearConfirmation(false)}>
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-20 flex items-center justify-center z-[9999] p-4" onClick={() => setShowClearConfirmation(false)}>
           <div className="bg-white border border-gray-200 shadow-lg rounded-lg p-4 max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
             <p className="text-sm text-gray-900 mb-4 text-center">Clear all progress?</p>
             <div className="flex gap-2 justify-center">

@@ -9,7 +9,9 @@
       "Bash(npm:*)",
       "Bash(npx next dev:*)",
       "Bash(curl:*)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(rg:*)",
+      "WebFetch(domain:replicate.com)"
     ],
     "deny": [],
     "ask": []

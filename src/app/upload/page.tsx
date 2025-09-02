@@ -1802,7 +1802,7 @@ function UploadContent() {
                               <img 
                                 src={showingOriginal ? (uploadedImage || '') : (conversionResult || '')} 
                                 alt={showingOriginal ? "Original uploaded photo" : `${selectedStyle} conversion`}
-                                className="w-full max-w-md h-auto rounded-lg shadow-lg transition-opacity duration-300 hover:opacity-90"
+                                className="w-full max-w-md h-[400px] object-cover rounded-lg shadow-lg transition-opacity duration-300 hover:opacity-90"
                               />
                               
                               {/* Overlay indicator */}

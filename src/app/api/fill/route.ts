@@ -2,30 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { imageData, maskData, prompt } = await request.json();
+    const { imageData, prompt } = await request.json();
 
-    if (!imageData || !maskData) {
+    if (!imageData) {
       return NextResponse.json(
-        { success: false, error: 'Image and mask data are required' },
+        { success: false, error: 'Image data is required' },
         { status: 400 }
       );
     }
 
-    console.log('Starting smart remove & fill with FLUX Fill Pro...');
+    if (!prompt) {
+      return NextResponse.json(
+        { success: false, error: 'Prompt is required' },
+        { status: 400 }
+      );
+    }
 
-    // Upload images to Replicate file service
-    const [imageUpload, maskUpload] = await Promise.all([
-      uploadToReplicate(imageData, 'image.jpg'),
-      uploadToReplicate(maskData, 'mask.png')
-    ]);
+    console.log('Starting nano banana image editing...');
+
+    // Upload image to Replicate file service
+    const imageUpload = await uploadToReplicate(imageData, 'image.jpg');
 
     console.log('Image uploaded to:', imageUpload.urls.get);
-    console.log('Mask uploaded to:', maskUpload.urls.get);
+    console.log('Using google/nano-banana model');
 
-    console.log('Using black-forest-labs/flux-fill-pro model');
-
-    // Call FLUX Fill Pro model
-    const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-fill-pro/predictions', {
+    // Call nano banana model
+    const response = await fetch('https://api.replicate.com/v1/models/google/nano-banana/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}`,
@@ -33,15 +35,9 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         input: {
-          image: imageUpload.urls.get,
-          mask: maskUpload.urls.get,
-          prompt: prompt || 'Fill in the missing space by extending foreground elements like clothing, objects, skin, hair, and other subject details. Do NOT extend or change the background. Preserve the background exactly as it is. Only extend and continue the non-background elements that are missing in the masked areas.',
-          safety_checker: false,
-          seed: Math.floor(Math.random() * 1000000),
-          output_format: 'png',
-          output_quality: 90,
-          num_inference_steps: 30,
-          guidance_scale: 3.5
+          prompt: prompt,
+          image_input: [imageUpload.urls.get],
+          output_format: "png"
         }
       })
     });
@@ -56,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-    console.log('Smart remove & fill result:', result);
+    console.log('Nano banana result:', result);
 
     // Wait for completion with timeout
     let finalResult = result;
@@ -74,7 +70,7 @@ export async function POST(request: NextRequest) {
       
       if (statusResponse.ok) {
         finalResult = await statusResponse.json();
-        console.log(`Fill status check ${attempts + 1}:`, finalResult.status);
+        console.log(`Nano banana status check ${attempts + 1}:`, finalResult.status);
       }
       
       attempts++;
@@ -83,21 +79,20 @@ export async function POST(request: NextRequest) {
     if (finalResult.status === 'succeeded' && finalResult.output) {
       console.log('Generated image URL:', finalResult.output);
       
-      // 🔄 TEMPORARY URL - Smart fill is intermediate edit, not final design
       return NextResponse.json({
         success: true,
-        imageUrl: finalResult.output // Keep as temporary Replicate URL for intermediate edits
+        imageUrl: finalResult.output
       });
     } else {
-      console.error('Smart remove & fill failed:', finalResult.error || 'Unknown error');
+      console.error('Nano banana failed:', finalResult.error || 'Unknown error');
       return NextResponse.json(
-        { success: false, error: finalResult.error || 'Smart remove & fill failed' },
+        { success: false, error: finalResult.error || 'Nano banana failed' },
         { status: 500 }
       );
     }
 
   } catch (error) {
-    console.error('Smart remove & fill error:', error);
+    console.error('Nano banana error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

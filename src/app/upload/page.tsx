@@ -1543,17 +1543,18 @@ function UploadContent() {
                     </div>
                     <div className="grid gap-3">
                       {Array.from({ length: peopleCount }, (_, index) => (
-                        <div key={index} className="flex items-center gap-2 bg-white p-3 rounded-lg shadow-sm">
-                          <span className="text-sm font-medium text-black min-w-[80px]">
-                            {peopleCount === 1 ? 'Subject' : 
-                             peopleCount === 2 ? (index === 0 ? 'Left' : 'Right') :
-                             peopleCount === 3 ? (index === 0 ? 'Left' : index === 1 ? 'Center' : 'Right') :
-                             (index === 0 ? 'Left' : index === peopleCount - 1 ? 'Right' : `#${index + 1}`)}:
-                          </span>
-                          <div className="flex gap-2">
+                        <div key={index} className="bg-white p-3 rounded-lg shadow-sm">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <span className="text-sm font-medium text-black sm:min-w-[80px]">
+                              {peopleCount === 1 ? 'Subject' : 
+                               peopleCount === 2 ? (index === 0 ? 'Left' : 'Right') :
+                               peopleCount === 3 ? (index === 0 ? 'Left' : index === 1 ? 'Center' : 'Right') :
+                               (index === 0 ? 'Left' : index === peopleCount - 1 ? 'Right' : `#${index + 1}`)}:
+                            </span>
+                            <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                             <button
                               onClick={() => handleGenderSelect(index, 'male')}
-                              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-all duration-200 hover:scale-105 ${
+                              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs transition-all duration-200 hover:scale-105 flex-1 sm:flex-none justify-center ${
                                 genders[index] === 'male' ? 'ring-2 ring-blue-500 bg-blue-50 text-blue-700' : 'bg-gray-50 hover:shadow-md text-black'
                               }`}
                             >
@@ -1562,7 +1563,7 @@ function UploadContent() {
                             </button>
                             <button
                               onClick={() => handleGenderSelect(index, 'female')}
-                              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-all duration-200 hover:scale-105 ${
+                              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs transition-all duration-200 hover:scale-105 flex-1 sm:flex-none justify-center ${
                                 genders[index] === 'female' ? 'ring-2 ring-pink-500 bg-pink-50 text-pink-700' : 'bg-gray-50 hover:shadow-md text-black'
                               }`}
                             >
@@ -1571,13 +1572,14 @@ function UploadContent() {
                             </button>
                             <button
                               onClick={() => handleGenderSelect(index, 'animal')}
-                              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-all duration-200 hover:scale-105 ${
+                              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs transition-all duration-200 hover:scale-105 flex-1 sm:flex-none justify-center ${
                                 genders[index] === 'animal' ? 'ring-2 ring-green-500 bg-green-50 text-green-700' : 'bg-gray-50 hover:shadow-md text-black'
                               }`}
                             >
                               <span>🐾</span>
                               <span>Animal</span>
                             </button>
+                            </div>
                           </div>
                         </div>
                       ))}

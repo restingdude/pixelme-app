@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import * as React from "react";
 import CartIcon from "../../components/CartIcon";
 
 export default function Edit() {
@@ -11,12 +12,11 @@ export default function Edit() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [conversionResult, setConversionResult] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editedImage, setEditedImage] = useState<string | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
   const [isFilling, setIsFilling] = useState(false);
-  const [brushSize, setBrushSize] = useState(20);
-  const [activeMode, setActiveMode] = useState<'remove' | 'crop' | 'background' | 'fill' | 'zoom' | 'rotate'>('remove');
+  const [activeMode, setActiveMode] = useState<'edit' | 'crop' | 'background' | 'zoom' | 'rotate'>('edit');
   const [previousImage, setPreviousImage] = useState<string | null>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [cropArea, setCropArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -26,8 +26,7 @@ export default function Edit() {
   const [cropResizeHandle, setCropResizeHandle] = useState<string | null>(null);
   const [cropDragStart, setCropDragStart] = useState<{ x: number; y: number } | null>(null);
   const [imageRotation, setImageRotation] = useState<number>(0); // Rotation angle in degrees (0, 90, 180, 270)
-  const [step, setStep] = useState<'edit' | 'color-reduce' | 'preview' | 'before'>('edit');
-  const [justRemovedBackground, setJustRemovedBackground] = useState(false);
+  const [step, setStep] = useState<'edit' | 'color-reduce' | 'preview'>('edit');
   const [selectedPosition, setSelectedPosition] = useState<string>('middle-chest');
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [hasReachedPreview, setHasReachedPreview] = useState<boolean>(false);
@@ -53,20 +52,21 @@ export default function Edit() {
   const [customPresets, setCustomPresets] = useState<{[key: string]: {name: string, x: number, y: number, size: number}}>({});
   const [presetsLoading, setPresetsLoading] = useState<boolean>(false);
   
+  
+  // Image refresh trigger
+  const [imageRefreshKey, setImageRefreshKey] = useState<number>(0);
+  
   // Pan functionality for zoom
   const [isPanning, setIsPanning] = useState(false);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   
-  // Brush cursor position
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [showBrushCursor, setShowBrushCursor] = useState(false);
-  const [hasSelection, setHasSelection] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [actualImageSize, setActualImageSize] = useState({ width: 0, height: 0 });
+  
 
   // Load custom presets from Shopify metafields
   const loadCustomPresets = async (clothingType: string) => {
@@ -248,6 +248,7 @@ export default function Edit() {
     const cachedImage = localStorage.getItem('pixelme-uploaded-image');
     const cachedStyle = localStorage.getItem('pixelme-selected-style');
     const cachedConversionResult = localStorage.getItem('pixelme-conversion-result');
+    const cachedGeneratedImages = localStorage.getItem('pixelme-generated-images');
     const cachedEditedImage = localStorage.getItem('pixelme-edited-image');
     const cachedColorReducedImage = localStorage.getItem('pixelme-color-reduced-image');
     const cachedStep = localStorage.getItem('pixelme-current-step');
@@ -256,8 +257,18 @@ export default function Edit() {
     setUploadedImage(cachedImage);
     setSelectedStyle(cachedStyle);
     setConversionResult(cachedConversionResult);
+    if (cachedGeneratedImages) {
+      try {
+        const parsedImages = JSON.parse(cachedGeneratedImages);
+        setGeneratedImages(Array.isArray(parsedImages) ? parsedImages : []);
+      } catch (error) {
+        console.error('Failed to parse generated images:', error);
+        setGeneratedImages([]);
+      }
+    }
     setEditedImage(cachedEditedImage);
     setColorReducedImage(cachedColorReducedImage);
+    
     
     // Check if we should be in preview mode or color-reduce mode
     if (cachedStep === 'preview') {
@@ -347,6 +358,24 @@ export default function Edit() {
       localStorage.setItem('pixelme-zoom-level', '100');
     }
   }, [step]);
+
+  // Listen for when page loads/refocuses and refresh edited image when navigating from step 4
+  useEffect(() => {
+    const handleFocus = () => {
+      // Refresh edited image from localStorage when page regains focus (after navigation)
+      const freshEditedImage = localStorage.getItem('pixelme-edited-image');
+      if (freshEditedImage && freshEditedImage !== editedImage) {
+        setEditedImage(freshEditedImage);
+        setImageRefreshKey(Date.now());
+      }
+    };
+
+    // Also check immediately on mount
+    handleFocus();
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [editedImage]);
 
   // Get variant price from products data based on selected size and color
   useEffect(() => {
@@ -922,7 +951,7 @@ export default function Edit() {
     }
   };
 
-  const handleStepChange = (newStep: 'edit' | 'color-reduce' | 'preview' | 'before' | 'convert' | 'upload' | 'style') => {
+  const handleStepChange = (newStep: 'edit' | 'color-reduce' | 'preview' | 'convert' | 'upload' | 'style') => {
     localStorage.setItem('pixelme-current-step', newStep);
     if (newStep === 'convert') {
       // Don't clear edited image data - preserve user's step 5 edits when navigating
@@ -930,10 +959,19 @@ export default function Edit() {
       router.push(`/upload?clothing=${selectedClothing}&color=${selectedColor}&size=${selectedSize}&variantId=${encodeURIComponent(selectedVariantId || '')}`);
     } else if (newStep === 'upload' || newStep === 'style') {
       router.push(`/upload?clothing=${selectedClothing}&color=${selectedColor}&size=${selectedSize}&variantId=${encodeURIComponent(selectedVariantId || '')}`);
-    } else if (newStep === 'before') {
-      setStep('before');
     } else if (newStep === 'edit') {
       setStep('edit');
+      // Refresh edited image from localStorage in case it was updated
+      const freshEditedImage = localStorage.getItem('pixelme-edited-image');
+      if (freshEditedImage) {
+        setEditedImage(freshEditedImage);
+      } else if (!editedImage && conversionResult) {
+        // Fallback: If no edited image exists but we have a conversion result, use it as the starting point for editing
+        setEditedImage(conversionResult);
+        localStorage.setItem('pixelme-edited-image', conversionResult);
+      }
+      // Force UI refresh to show the correct image
+      setImageRefreshKey(Date.now());
     } else if (newStep === 'color-reduce') {
       setStep('color-reduce');
     } else if (newStep === 'preview') {
@@ -980,90 +1018,42 @@ export default function Edit() {
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (activeMode === 'remove') {
-      setIsDrawing(true);
-      draw(e);
-    } else if (activeMode === 'crop') {
+    if (activeMode === 'crop') {
       startCrop(e);
     }
     // No interaction needed for background mode
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Update mouse position for brush cursor
-    if (activeMode === 'remove') {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      setMousePosition({ x, y });
-    }
-    
-    if (activeMode === 'remove' && isDrawing && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      ctx.globalCompositeOperation = 'source-over';
-      // Use white for remove mode
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; // White for remove
-      ctx.beginPath();
-      ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // Mark that we have a selection
-      if (!hasSelection) {
-        setHasSelection(true);
-      }
-    } else if (activeMode === 'crop' && isCropping) {
+    if (activeMode === 'crop' && isCropping) {
       updateCrop(e);
     }
   };
 
   const stopDrawing = () => {
-    if (activeMode === 'remove') {
-      setIsDrawing(false);
-    } else if (activeMode === 'crop') {
+    if (activeMode === 'crop') {
       stopCrop();
     }
   };
 
   const handleMouseLeave = () => {
-    if (activeMode === 'remove') {
-      setIsDrawing(false);
-      setShowBrushCursor(false);
-    }
     // Don't stop cropping when mouse leaves - let user continue cropping
   };
 
   const handleMouseEnter = () => {
-    if (activeMode === 'remove') {
-      setShowBrushCursor(true);
-    }
+    // No special handling needed for non-drawing modes
   };
 
   const handleTouchStart = () => {
-    if (activeMode === 'remove') {
-      setShowBrushCursor(true);
-    }
+    // No special handling needed for non-drawing modes
   };
 
   const handleTouchEnd = () => {
-    if (activeMode === 'remove') {
-      setShowBrushCursor(false);
-    }
+    // No special handling needed for non-drawing modes
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (activeMode === 'remove') {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      setMousePosition({ x, y });
-    } else if (activeMode === 'crop' && cropArea && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
+    if (activeMode === 'crop' && cropArea && Math.abs(cropArea.width) > 5 && Math.abs(cropArea.height) > 5) {
       const rect = e.currentTarget.getBoundingClientRect();
       
       // Calculate coordinates accounting for zoom level
@@ -1108,10 +1098,7 @@ export default function Edit() {
   // Touch event handlers for mobile support
   const startTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault(); // Prevent scrolling/zooming
-    if (activeMode === 'remove') {
-      setIsDrawing(true);
-      drawTouch(e);
-    } else if (activeMode === 'crop') {
+    if (activeMode === 'crop') {
       startTouchCrop(e);
     }
   };
@@ -1119,47 +1106,14 @@ export default function Edit() {
   const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault(); // Prevent scrolling/zooming
     
-    if (!e.touches.length) return;
-    const touch = e.touches[0];
-    
-    // Update touch position for brush cursor
-    if (activeMode === 'remove') {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      setMousePosition({ x, y });
-    }
-    
-    if (activeMode === 'remove' && isDrawing && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      const rect = canvas.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      
-      ctx.globalCompositeOperation = 'source-over';
-      // Use white for remove mode
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; // White for remove
-      ctx.beginPath();
-      ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // Mark that we have a selection
-      if (!hasSelection) {
-        setHasSelection(true);
-      }
-    } else if (activeMode === 'crop' && isCropping) {
+    if (activeMode === 'crop' && isCropping) {
       updateTouchCrop(e);
     }
   };
 
   const stopTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault(); // Prevent scrolling/zooming
-    if (activeMode === 'remove') {
-      setIsDrawing(false);
-    } else if (activeMode === 'crop') {
+    if (activeMode === 'crop') {
       stopCrop();
     }
   };
@@ -1222,12 +1176,6 @@ export default function Edit() {
     if (!e.touches.length) return;
     const touch = e.touches[0];
     
-    if (activeMode === 'remove') {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      setMousePosition({ x, y });
-    }
   };
 
   // Helper functions for crop box interaction
@@ -1375,7 +1323,6 @@ export default function Edit() {
     setIsResizingCrop(false);
     setCropResizeHandle(null);
     setCropDragStart(null);
-    setHasSelection(false);
   };
 
   const resetCropArea = () => {
@@ -1495,6 +1442,9 @@ export default function Edit() {
       setEditedImage(croppedImageUrl);
       localStorage.setItem('pixelme-edited-image', croppedImageUrl);
       
+      // Force UI refresh to show the new image immediately
+      setImageRefreshKey(Date.now());
+      
       // Clear crop selection
       clearMask();
       
@@ -1564,6 +1514,9 @@ export default function Edit() {
       
       setEditedImage(rotatedImageUrl);
       localStorage.setItem('pixelme-edited-image', rotatedImageUrl);
+      
+      // Force UI refresh to show the new image immediately
+      setImageRefreshKey(Date.now());
       
       // Clear crop area since image dimensions have changed
       setCropArea(null);
@@ -1636,7 +1589,7 @@ export default function Edit() {
     });
   };
 
-  const handleBackgroundRemoval = async (aggressiveness = 'normal') => {
+  const handleBackgroundRemoval = async () => {
     const sourceImage = currentImage; // Use current edited image, not original
     if (!sourceImage) return;
 
@@ -1675,8 +1628,7 @@ export default function Edit() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          imageData: imageDataUrl,
-          aggressiveness: aggressiveness,
+          imageData: imageDataUrl
         }),
       });
 
@@ -1687,14 +1639,11 @@ export default function Edit() {
         const transparentImage = await addCheckeredBackground(data.imageUrl);
         setEditedImage(transparentImage);
         localStorage.setItem('pixelme-edited-image', transparentImage);
-        // Set flag to show alternative options only for normal removal
-        if (aggressiveness === 'normal') {
-          setJustRemovedBackground(true);
-        } else {
-          setJustRemovedBackground(false); // Hide options after aggressive/less-aggressive attempts
-        }
         
-        console.log(`Background removal completed successfully using 851-labs/background-remover (${aggressiveness})`);
+        // Force UI refresh to show the new image immediately
+        setImageRefreshKey(Date.now());
+        
+        console.log('Background removal completed successfully using nano-banana');
       } else {
         console.error('Background removal failed:', data.error);
         alert('Background removal failed: ' + (data.error || 'Unknown error'));
@@ -1719,9 +1668,6 @@ export default function Edit() {
     // Save current image for undo
     setPreviousImage(sourceImage);
     setIsFilling(true);
-    
-    // Clear background removal flag when performing other operations
-    setJustRemovedBackground(false);
 
     try {
       // Load image and get dimensions
@@ -1764,6 +1710,10 @@ export default function Edit() {
       if (response.ok && data.success) {
         setEditedImage(data.imageUrl);
         localStorage.setItem('pixelme-edited-image', data.imageUrl);
+        
+        // Force UI refresh to show the new image immediately
+        setImageRefreshKey(Date.now());
+        
         // Clear the mask after successful fill
         clearMask();
         
@@ -1783,139 +1733,35 @@ export default function Edit() {
     }
   };
 
-  const handleGenerativeFill = async () => {
-    const sourceImage = currentImage; // Use current edited image, not original
-    if (!sourceImage || !canvasRef.current) return;
-
-    // Save current image for undo
-    setPreviousImage(sourceImage);
-    setIsFilling(true);
-
-    try {
-      // Load image and get dimensions
-      const img = document.createElement('img');
-      img.crossOrigin = 'anonymous';
-      
-      // Wait for image to load
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = sourceImage;
-      });
-
-      // Create image canvas with actual dimensions
-      const imageCanvas = document.createElement('canvas');
-      imageCanvas.width = img.naturalWidth;
-      imageCanvas.height = img.naturalHeight;
-      const imageCtx = imageCanvas.getContext('2d');
-      
-      if (!imageCtx) {
-        throw new Error('Failed to create image canvas context');
-      }
-      
-      imageCtx.drawImage(img, 0, 0);
-      const imageDataUrl = imageCanvas.toDataURL('image/jpeg', 0.95);
-
-      // Create properly scaled mask for LaMa model
-      const maskCanvas = document.createElement('canvas');
-      maskCanvas.width = img.naturalWidth;
-      maskCanvas.height = img.naturalHeight;
-      const maskCtx = maskCanvas.getContext('2d');
-      
-      if (!maskCtx) {
-        throw new Error('Failed to create mask canvas context');
-      }
-
-      // Fill with black background first (areas to keep)
-      maskCtx.fillStyle = 'black';
-      maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
-
-      // Scale and draw the user's mask
-      const scaleX = img.naturalWidth / canvasSize.width;
-      const scaleY = img.naturalHeight / canvasSize.height;
-      
-      // Get the drawn mask data
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvasRef.current!.width;
-      tempCanvas.height = canvasRef.current!.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      if (!tempCtx) throw new Error('Failed to create temp canvas context');
-      
-      tempCtx.drawImage(canvasRef.current!, 0, 0);
-      const tempImageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-      const tempPixelData = tempImageData.data;
-      
-      // Draw white areas where user drew (areas to remove)
-      // Create a new canvas to scale the user's drawn mask properly
-      const userMaskCanvas = document.createElement('canvas');
-      userMaskCanvas.width = img.naturalWidth;
-      userMaskCanvas.height = img.naturalHeight;
-      const userMaskCtx = userMaskCanvas.getContext('2d');
-      
-      if (userMaskCtx) {
-        // Scale the user's drawing to match the original image dimensions
-        userMaskCtx.imageSmoothingEnabled = false; // Keep crisp edges for mask
-        userMaskCtx.drawImage(canvasRef.current!, 0, 0, canvasSize.width, canvasSize.height, 0, 0, img.naturalWidth, img.naturalHeight);
-        
-        // Now composite the scaled user mask onto the final mask as white areas
-        maskCtx.globalCompositeOperation = 'source-over';
-        maskCtx.fillStyle = 'white';
-        
-        // Get the scaled mask data
-        const scaledMaskData = userMaskCtx.getImageData(0, 0, img.naturalWidth, img.naturalHeight);
-        const scaledPixels = scaledMaskData.data;
-        
-        // Draw white pixels where user drew
-        for (let y = 0; y < img.naturalHeight; y++) {
-          for (let x = 0; x < img.naturalWidth; x++) {
-            const index = (y * img.naturalWidth + x) * 4;
-            const alpha = scaledPixels[index + 3];
-            
-            if (alpha > 128) { // User drew here - should be removed
-              maskCtx.fillRect(x, y, 1, 1);
-            }
-          }
-        }
-        
-        console.log('Remove mask generation completed - user drawn areas converted to white on black background');
-      }
-
-      const maskDataUrl = maskCanvas.toDataURL('image/png');
-      
-      // Use Remove Objects API with LaMa model
-      const response = await fetch('/api/remove-objects', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageData: imageDataUrl,
-          maskData: maskDataUrl
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setEditedImage(data.imageUrl);
-        localStorage.setItem('pixelme-edited-image', data.imageUrl);
-        // Clear the mask after successful removal
-        clearMask();
-        
-        console.log('Object removal completed successfully using LaMa model');
-      } else {
-        console.error('Object removal failed:', data.error);
-        alert('Object removal failed: ' + (data.error || 'Unknown error'));
-      }
-    } catch (error) {
-      console.error('Object removal error:', error);
-      alert('Object removal failed: Network error');
-    } finally {
-      setIsFilling(false);
-    }
-  };
 
   const currentImage = editedImage || conversionResult;
+  
+  // Debug logging and canvas clearing
+  React.useEffect(() => {
+    console.log('=== CURRENT IMAGE DEBUG ===', {
+      step,
+      editedImage: editedImage ? `${editedImage.substring(0, 50)}...` : null,
+      conversionResult: conversionResult ? `${conversionResult.substring(0, 50)}...` : null,
+      currentImage: currentImage ? `${currentImage.substring(0, 50)}...` : null,
+      imageRefreshKey
+    });
+    
+    // Clear canvas when current image changes to ensure no overlay issues
+    if (canvasRef.current && currentImage) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    
+    // Force canvas reinitialization when we're on edit step and image changes
+    if (step === 'edit' && currentImage && imageRef.current) {
+      setTimeout(() => {
+        initializeCanvas();
+      }, 50);
+    }
+  }, [editedImage, conversionResult, currentImage, step, imageRefreshKey]);
 
   // Get available positions for clothing type (using custom presets)
   const getAvailablePositions = (clothingType: string) => {
@@ -2168,9 +2014,14 @@ export default function Edit() {
             {conversionResult && (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleStepChange('convert')}
+                  onClick={() => {
+                    // Set step to 'convert' so upload page shows step 4 (generation history)
+                    localStorage.setItem('pixelme-current-step', 'convert');
+                    // Navigate to step 4 (upload page)
+                    router.push(`/upload?clothing=${selectedClothing}&color=${selectedColor}&size=${selectedSize}&variantId=${encodeURIComponent(selectedVariantId || '')}`);
+                  }}
                   className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
-                  title="Go back to convert step"
+                  title="Go back to step 4"
                 >
                   <img
                     src={conversionResult}
@@ -2189,6 +2040,11 @@ export default function Edit() {
                   onClick={() => {
                     setStep('edit');
                     localStorage.setItem('pixelme-current-step', 'edit');
+                    // If no edited image exists but we have a conversion result, use it as the starting point for editing
+                    if (!editedImage && conversionResult) {
+                      setEditedImage(conversionResult);
+                      localStorage.setItem('pixelme-edited-image', conversionResult);
+                    }
                   }}
                   className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20"
                   title="Go back to edit step"
@@ -2208,6 +2064,11 @@ export default function Edit() {
                   onClick={() => {
                     setStep('edit');
                     localStorage.setItem('pixelme-current-step', 'edit');
+                    // If no edited image exists but we have a conversion result, use it as the starting point for editing
+                    if (!editedImage && conversionResult) {
+                      setEditedImage(conversionResult);
+                      localStorage.setItem('pixelme-edited-image', conversionResult);
+                    }
                   }}
                   className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 flex items-center justify-center border-2 border-green-600 hover:shadow-lg transition-all duration-200 cursor-pointer"
                   title="Go back to edit step"
@@ -3136,9 +2997,14 @@ export default function Edit() {
               {/* Step 4 - Convert */}
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleStepChange('convert')}
+                  onClick={() => {
+                    // Set step to 'convert' so upload page shows step 4 (generation history)
+                    localStorage.setItem('pixelme-current-step', 'convert');
+                    // Navigate to step 4 (upload page)
+                    router.push(`/upload?clothing=${selectedClothing}&color=${selectedColor}&size=${selectedSize}&variantId=${encodeURIComponent(selectedVariantId || '')}`);
+                  }}
                   className="flex items-center justify-center p-1 bg-white rounded-lg border-2 border-transparent hover:shadow-lg transition-all duration-200 cursor-pointer w-16 h-16 sm:w-20 sm:h-20"
-                  title="Go back to convert step"
+                  title="Go back to step 4"
                 >
                   {conversionResult ? (
                     <img
@@ -3258,36 +3124,6 @@ export default function Edit() {
 
         {/* Main Content Area */}
         <div className="w-full flex flex-col lg:flex-row gap-6">
-          {/* Step 4 - After Style Conversion Content */}
-          {step === 'before' && conversionResult && (
-            <div className="flex flex-col items-center w-full">
-              <div className="text-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Styled Image</h3>
-                <p className="text-gray-600">This is your image converted to <span className="font-semibold text-blue-600">{selectedStyle}</span> style, ready for editing</p>
-              </div>
-
-              <div className="mb-6 relative inline-block">
-                <div className="w-full max-w-md h-[400px] flex items-center justify-center bg-gray-50 rounded-lg">
-                  <img 
-                    src={conversionResult} 
-                    alt="Styled converted image"
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-center">
-                <button 
-                  onClick={() => handleStepChange('edit')}
-                  className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors duration-200 font-semibold"
-                >
-                  Continue to Editing →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Other steps content would go here */}
           {step === 'edit' && (
             <div className="flex flex-col items-center w-full">
               <div className="text-center mb-8">
@@ -3311,8 +3147,7 @@ export default function Edit() {
                           ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
                         }
                       }
-                      setShowBrushCursor(false);
-                    }}
+                                          }}
                     disabled={isFilling}
                     className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
                       isFilling
@@ -3336,50 +3171,12 @@ export default function Edit() {
                     </div>
                   </button>
 
-                  <button
-                    onClick={() => {
-                      if (isFilling) return;
-                      setActiveMode(activeMode === 'remove' || activeMode === 'fill' ? activeMode : 'remove');
-                      if (activeMode === 'crop') {
-                        clearMask();
-                      } else {
-                        if (canvasRef.current) {
-                          const ctx = canvasRef.current.getContext('2d');
-                          if (ctx) {
-                            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-                          }
-                        }
-                      }
-                      setShowBrushCursor(false);
-                    }}
-                    disabled={isFilling}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
-                      isFilling
-                        ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
-                        : activeMode === 'remove' || activeMode === 'fill'
-                        ? 'border-purple-500 bg-purple-50 shadow-md'
-                        : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
-                    }`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      activeMode === 'remove' || activeMode === 'fill' ? 'bg-purple-500' : 'bg-gray-400'
-                    }`}>
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </div>
-                    <div className={`font-medium text-xs text-center ${
-                      activeMode === 'remove' || activeMode === 'fill' ? 'text-purple-700' : 'text-gray-700'
-                    }`}>
-                      Erase / Edit
-                    </div>
-                  </button>
 
                   <button
                     onClick={() => {
                       if (isFilling) return;
                       setActiveMode('crop');
-                      setShowBrushCursor(false);
-                      
+                                            
                       // Reset zoom to 100% for crop tool
                       if (zoomLevel !== 100) {
                         setZoomLevel(100);
@@ -3446,9 +3243,38 @@ export default function Edit() {
 
                   <button
                     onClick={() => {
+                      if (isFilling) return;
+                      setActiveMode('edit');
+                      if (activeMode === 'crop') {
+                        clearMask();
+                      }
+                    }}
+                    disabled={isFilling}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
+                      isFilling
+                        ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                        : activeMode === 'edit'
+                        ? 'border-purple-500 bg-purple-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
+                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      activeMode === 'edit' ? 'bg-purple-500' : 'bg-gray-400'
+                    }`}>
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </div>
+                    <div className={`font-medium text-xs text-center ${
+                      activeMode === 'edit' ? 'text-purple-700' : 'text-gray-700'
+                    }`}>
+                      AI Edit
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
                       setActiveMode('zoom');
-                      setShowBrushCursor(false);
-                      // Clear canvas but preserve crop area state for later use
+                                            // Clear canvas but preserve crop area state for later use
                       if (canvasRef.current) {
                         const ctx = canvasRef.current.getContext('2d');
                         if (ctx) {
@@ -3479,88 +3305,10 @@ export default function Edit() {
                 
                 {/* Tool Options - Mobile Only (Above Image) */}
                 <div className="lg:hidden w-full max-w-xl">
-                  {/* Erase/Edit Sub-mode Toggle */}
-                  {(activeMode === 'remove' || activeMode === 'fill') && (
-                    <div className="mb-4">
-                      <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
-                        <button 
-                          onClick={() => {
-                            setActiveMode('remove');
-                            clearMask();
-                          }}
-                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
-                            activeMode === 'remove'
-                              ? 'bg-white text-red-600 shadow-sm'
-                              : 'text-gray-600 hover:text-red-600'
-                          }`}
-                        >
-                          Erase
-                        </button>
-                        <button
-                          onClick={() => {
-                            setActiveMode('fill');
-                            clearMask();
-                          }}
-                          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
-                            activeMode === 'fill'
-                              ? 'bg-white text-purple-600 shadow-sm'
-                              : 'text-gray-600 hover:text-purple-600'
-                          }`}
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Erase Tool Options */}
-                  {activeMode === 'remove' && (
-                    <div className="mb-4">
-                      <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg mb-4">
-                        <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
-                        <input
-                          type="range"
-                          min="5"
-                          max="50"
-                          value={brushSize}
-                          onChange={(e) => setBrushSize(Number(e.target.value))}
-                          className="flex-1"
-                        />
-                        <span className="text-sm text-gray-600 w-8">{brushSize}</span>
-                      </div>
-                      <div className="flex gap-2 mb-4">
-                        <button 
-                          onClick={clearMask}
-                          className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
-                        >
-                          Clear Selection
-                        </button>
-                      </div>
-                      <button 
-                        onClick={handleGenerativeFill}
-                        disabled={isFilling || !conversionResult || !hasSelection}
-                        className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                          isFilling || !conversionResult || !hasSelection
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                            : 'bg-red-600 text-white hover:bg-red-700 shadow-lg hover:shadow-xl'
-                        }`}
-                      >
-                        {isFilling ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Removing Objects...
-                          </div>
-                        ) : hasSelection ? (
-                          'Remove Selected Areas'
-                        ) : (
-                          'Select Areas to Remove'
-                        )}
-                      </button>
-                    </div>
-                  )}
 
                   {/* Edit Tool Options */}
-                  {activeMode === 'fill' && (
+                  {activeMode === 'edit' && (
                     <div className="mb-4">
                       <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 mb-4">
                         <p className="text-sm text-purple-700 mb-3">Describe how you want to edit your image with AI</p>
@@ -3654,44 +3402,6 @@ export default function Edit() {
                         )}
                       </button>
 
-                      {/* Alternative Options - Only show after first attempt */}
-                      {justRemovedBackground && (
-                        <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                          <div className="flex items-center gap-2 mb-2">
-                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                            </svg>
-                            <p className="text-sm font-medium text-amber-800">Not satisfied with the result?</p>
-                          </div>
-                          <p className="text-sm text-amber-700 mb-3">Try different approaches to get better results:</p>
-                          
-                          <div className="space-y-2">
-                            <button
-                              onClick={() => handleBackgroundRemoval('less')}
-                              disabled={isFilling}
-                              className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
-                                isFilling
-                                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                  : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg'
-                              }`}
-                            >
-                              {isFilling ? 'Processing...' : 'Try Less Aggressive (Preserves Details)'}
-                            </button>
-                            
-                            <button
-                              onClick={() => handleBackgroundRemoval('more')}
-                              disabled={isFilling}
-                              className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
-                                isFilling
-                                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                  : 'bg-red-500 text-white hover:bg-red-600 shadow-md hover:shadow-lg'
-                              }`}
-                            >
-                              {isFilling ? 'Processing...' : 'Try More Aggressive (Removes More)'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -3810,6 +3520,9 @@ export default function Edit() {
                             setEditedImage(zoomedOutImage);
                             localStorage.setItem('pixelme-edited-image', zoomedOutImage);
                             
+                            // Force UI refresh to show the new image immediately
+                            setImageRefreshKey(Date.now());
+                            
                             setZoomLevel(100);
                             localStorage.setItem('pixelme-zoom-level', '100');
                             
@@ -3850,8 +3563,7 @@ export default function Edit() {
                         <button 
                           onClick={() => {
                             setActiveMode('crop');
-                            setShowBrushCursor(false);
-                            
+                                                        
                             // Reset zoom to 100% for crop tool
                             if (zoomLevel !== 100) {
                               setZoomLevel(100);
@@ -3902,8 +3614,7 @@ export default function Edit() {
                         <button
                           onClick={() => {
                             setActiveMode('rotate');
-                            setShowBrushCursor(false);
-                            // Clear canvas but preserve crop area state for later use
+                                                        // Clear canvas but preserve crop area state for later use
                             if (canvasRef.current) {
                               const ctx = canvasRef.current.getContext('2d');
                               if (ctx) {
@@ -4024,6 +3735,14 @@ export default function Edit() {
                 
                 {/* Left Side - Image Display */}
                 <div className="flex-1 flex flex-col items-center">
+                  {!currentImage && (
+                    <div className="w-full max-w-lg h-64 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                      <div className="text-center">
+                        <p className="text-gray-500 mb-2">No image available</p>
+                        <p className="text-xs text-gray-400">Debug: editedImage={editedImage ? 'exists' : 'null'}, conversionResult={conversionResult ? 'exists' : 'null'}</p>
+                      </div>
+                    </div>
+                  )}
                   {currentImage && (
                     <div 
                       className="relative inline-block"
@@ -4043,7 +3762,8 @@ export default function Edit() {
                     >
                       <img 
                         ref={imageRef}
-                        src={currentImage} 
+                        key={imageRefreshKey} // Simple refresh key
+                        src={currentImage} // Direct image source like thumbnails
                         alt={`${selectedStyle} converted image`}
                         className="max-w-full lg:max-w-lg h-auto rounded-lg shadow-lg"
                         onLoad={initializeCanvas}
@@ -4056,29 +3776,27 @@ export default function Edit() {
                         ref={canvasRef}
                         className={`absolute top-0 left-0 rounded-lg ${
                           isFilling ? 'cursor-not-allowed' :
-                          activeMode === 'remove' ? 'cursor-none' : 
-                          activeMode === 'fill' ? 'cursor-default' :
                           activeMode === 'crop' ? 'cursor-crosshair' : 
                           activeMode === 'rotate' ? 'cursor-default' :
                           'cursor-default'
                         }`}
-                        onMouseDown={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : startDrawing}
-                        onMouseMove={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : (e) => {
+                        onMouseDown={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : startDrawing}
+                        onMouseMove={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
                           handleMouseMove(e);
                           draw(e);
                         }}
-                        onMouseUp={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : stopDrawing}
-                        onMouseLeave={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : handleMouseLeave}
-                        onMouseEnter={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : handleMouseEnter}
-                        onTouchStart={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : (e) => {
+                        onMouseUp={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : stopDrawing}
+                        onMouseLeave={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : handleMouseLeave}
+                        onMouseEnter={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : handleMouseEnter}
+                        onTouchStart={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
                           handleTouchStart();
                           startTouchDrawing(e);
                         }}
-                        onTouchMove={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : (e) => {
+                        onTouchMove={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
                           handleTouchMove(e);
                           drawTouch(e);
                         }}
-                        onTouchEnd={activeMode === 'background' || activeMode === 'rotate' || activeMode === 'fill' || isFilling ? undefined : (e) => {
+                        onTouchEnd={activeMode === 'background' || activeMode === 'rotate' || isFilling ? undefined : (e) => {
                           handleTouchEnd();
                           stopTouchDrawing(e);
                         }}
@@ -4096,20 +3814,6 @@ export default function Edit() {
                         }}
                       />
                       
-                      {/* Brush Size Cursor */}
-                      {showBrushCursor && activeMode === 'remove' && !isFilling && (
-                        <div
-                          className="absolute pointer-events-none rounded-full border-2 border-red-500 bg-transparent"
-                          style={{
-                            left: mousePosition.x - brushSize / 2,
-                            top: mousePosition.y - brushSize / 2,
-                            width: brushSize,
-                            height: brushSize,
-                            transform: 'translate(0, 0)',
-                            zIndex: 1001 // Higher than canvas to appear above crop square when in brush mode
-                          }}
-                        />
-                      )}
 
                       {/* Loading Overlay */}
                       {isFilling && (
@@ -4176,8 +3880,7 @@ export default function Edit() {
                               ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
                             }
                           }
-                          setShowBrushCursor(false);
-                        }}
+                                                  }}
                         disabled={isFilling}
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
                           isFilling
@@ -4201,53 +3904,12 @@ export default function Edit() {
                         </div>
                       </button>
 
-                      <button
-                        onClick={() => {
-                          if (isFilling) return;
-                          setActiveMode(activeMode === 'remove' || activeMode === 'fill' ? activeMode : 'remove');
-                          // Only clear crop area if switching from crop mode
-                          if (activeMode === 'crop') {
-                            clearMask();
-                          } else {
-                            // Clear canvas but preserve crop area
-                            if (canvasRef.current) {
-                              const ctx = canvasRef.current.getContext('2d');
-                              if (ctx) {
-                                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-                              }
-                            }
-                          }
-                          setShowBrushCursor(false);
-                        }}
-                        disabled={isFilling}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
-                          isFilling
-                            ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
-                            : activeMode === 'remove' || activeMode === 'fill'
-                            ? 'border-purple-500 bg-purple-50 shadow-md'
-                            : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          activeMode === 'remove' || activeMode === 'fill' ? 'bg-purple-500' : 'bg-gray-400'
-                        }`}>
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </div>
-                        <div className={`font-medium text-xs text-center ${
-                          activeMode === 'remove' || activeMode === 'fill' ? 'text-purple-700' : 'text-gray-700'
-                        }`}>
-                          Erase / Edit
-                        </div>
-                      </button>
 
                       <button
                         onClick={() => {
                           if (isFilling) return;
                           setActiveMode('crop');
-                          setShowBrushCursor(false);
-                          
+                                                    
                           // Reset zoom to 100% for crop tool
                           if (zoomLevel !== 100) {
                             setZoomLevel(100);
@@ -4314,9 +3976,38 @@ export default function Edit() {
 
                       <button
                         onClick={() => {
+                          if (isFilling) return;
+                          setActiveMode('edit');
+                          if (activeMode === 'crop') {
+                            clearMask();
+                          }
+                        }}
+                        disabled={isFilling}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
+                          isFilling
+                            ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
+                            : activeMode === 'edit'
+                            ? 'border-purple-500 bg-purple-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
+                        }`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          activeMode === 'edit' ? 'bg-purple-500' : 'bg-gray-400'
+                        }`}>
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </div>
+                        <div className={`font-medium text-xs text-center ${
+                          activeMode === 'edit' ? 'text-purple-700' : 'text-gray-700'
+                        }`}>
+                          AI Edit
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
                           setActiveMode('zoom');
-                          setShowBrushCursor(false);
-                          // Clear canvas but preserve crop area state for later use
+                                                    // Clear canvas but preserve crop area state for later use
                           if (canvasRef.current) {
                             const ctx = canvasRef.current.getContext('2d');
                             if (ctx) {
@@ -4345,39 +4036,6 @@ export default function Edit() {
                       </button>
                     </div>
 
-                    {/* Erase/Edit Sub-mode Toggle */}
-                    {(activeMode === 'remove' || activeMode === 'fill') && (
-                      <div className="mb-4">
-                        <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
-                          <button 
-                            onClick={() => {
-                              setActiveMode('remove');
-                              clearMask();
-                            }}
-                            className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
-                              activeMode === 'remove'
-                                ? 'bg-white text-red-600 shadow-sm'
-                                : 'text-gray-600 hover:text-red-600'
-                            }`}
-                          >
-                            Erase
-                          </button>
-                          <button
-                            onClick={() => {
-                              setActiveMode('fill');
-                              clearMask();
-                            }}
-                            className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex-1 ${
-                              activeMode === 'fill'
-                                ? 'bg-white text-purple-600 shadow-sm'
-                                : 'text-gray-600 hover:text-purple-600'
-                            }`}
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* Tool-specific Controls */}
@@ -4408,98 +4066,12 @@ export default function Edit() {
                           )}
                         </button>
 
-                        {/* Aggressiveness Options */}
-                        {justRemovedBackground && (
-                          <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.314 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                              </svg>
-                              <h6 className="font-semibold text-amber-800">Need different results?</h6>
-                            </div>
-                            <p className="text-sm text-amber-700 mb-3">Try different approaches to get better results:</p>
-                            
-                            <div className="space-y-2">
-                              <button
-                                onClick={() => handleBackgroundRemoval('less')}
-                                disabled={isFilling}
-                                className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
-                                  isFilling
-                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                    : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg'
-                                }`}
-                              >
-                                {isFilling ? 'Processing...' : 'Try Less Aggressive (Preserves Details)'}
-                              </button>
-                              
-                              <button
-                                onClick={() => handleBackgroundRemoval('more')}
-                                disabled={isFilling}
-                                className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
-                                  isFilling
-                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                    : 'bg-red-500 text-white hover:bg-red-600 shadow-md hover:shadow-lg'
-                                }`}
-                              >
-                                {isFilling ? 'Processing...' : 'Try More Aggressive (Removes More)'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
 
-                    {/* Erase Tool - Desktop Only */}
-                    {activeMode === 'remove' && (
-                      <div className="hidden lg:block">
-                        <h5 className="font-semibold text-gray-800 mb-3">Erase Tool</h5>
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                            <label className="text-sm font-semibold text-gray-700">Brush Size:</label>
-                            <input
-                              type="range"
-                              min="5"
-                              max="50"
-                              value={brushSize}
-                              onChange={(e) => setBrushSize(Number(e.target.value))}
-                              className="flex-1"
-                            />
-                            <span className="text-sm text-gray-600 w-8">{brushSize}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={clearMask}
-                              className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex-1"
-                            >
-                              Clear Selection
-                            </button>
-                          </div>
-                          <button 
-                            onClick={handleGenerativeFill}
-                            disabled={isFilling || !conversionResult || !hasSelection}
-                            className={`w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                              isFilling || !conversionResult || !hasSelection
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                : 'bg-red-600 text-white hover:bg-red-700 shadow-lg hover:shadow-xl'
-                            }`}
-                          >
-                            {isFilling ? (
-                              <div className="flex items-center justify-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Removing Objects...
-                              </div>
-                            ) : hasSelection ? (
-                              'Remove Selected Areas'
-                            ) : (
-                              'Select Areas to Remove'
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
 
                     {/* Edit Tool - Desktop Only */}
-                    {activeMode === 'fill' && (
+                    {activeMode === 'edit' && (
                       <div className="hidden lg:block">
                         <h5 className="font-semibold text-gray-800 mb-3">AI Image Edit Tool</h5>
                         <div className="space-y-4">
@@ -4689,6 +4261,9 @@ export default function Edit() {
                                 setEditedImage(zoomedOutImage);
                                 localStorage.setItem('pixelme-edited-image', zoomedOutImage);
                                 
+                                // Force UI refresh to show the new image immediately
+                                setImageRefreshKey(Date.now());
+                                
                                 setZoomLevel(100);
                                 localStorage.setItem('pixelme-zoom-level', '100');
                                 
@@ -4731,8 +4306,7 @@ export default function Edit() {
                         <button 
                           onClick={() => {
                             setActiveMode('crop');
-                            setShowBrushCursor(false);
-                            
+                                                        
                             // Reset zoom to 100% for crop tool
                             if (zoomLevel !== 100) {
                               setZoomLevel(100);
@@ -4784,8 +4358,7 @@ export default function Edit() {
                         <button
                           onClick={() => {
                             setActiveMode('rotate');
-                            setShowBrushCursor(false);
-                            // Clear canvas but preserve crop area state for later use
+                                                        // Clear canvas but preserve crop area state for later use
                             if (canvasRef.current) {
                               const ctx = canvasRef.current.getContext('2d');
                               if (ctx) {

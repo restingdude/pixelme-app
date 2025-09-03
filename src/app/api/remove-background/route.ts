@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { imageData, aggressiveness = 'normal' } = await request.json();
+    const { imageData } = await request.json();
 
     if (!imageData) {
       return NextResponse.json(
@@ -20,39 +20,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Using 851-labs/background-remover model (${aggressiveness} aggressive)`);
+    console.log('Using nano-banana model for background removal');
     
-    // Adjust threshold based on aggressiveness level
-    // Lower threshold = less sensitive, more soft edges (0.0-1.0)
-    // Higher threshold = more aggressive, sharper edges
-    // Use more conservative thresholds to better preserve white clothing
-    let threshold;
-    switch (aggressiveness) {
-      case 'less':
-        threshold = 0.01; // Extremely low threshold for less aggressive to preserve white clothing
-        break;
-      case 'more':
-        threshold = 0.4; // Higher threshold for more aggressive background removal
-        break;
-      default: // 'normal'
-        threshold = 0.15;
-        break;
-    }
+    // Single optimized prompt for background removal
+    const prompt = "Remove the background completely and make it transparent. Keep all people, objects, animals, and clothing intact with clean edges. Preserve all details including hair, accessories, and clothing textures.";
     
-    // Call the background remover model directly with base64 image
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
+    // Call the nano-banana model with the background removal prompt
+    const response = await fetch('https://api.replicate.com/v1/models/google/nano-banana/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${replicateApiKey}`,
         'Content-Type': 'application/json',
-        'Prefer': 'wait',
       },
       body: JSON.stringify({
-        version: "a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc",
         input: {
-          image: imageData, // Send base64 data directly
-          threshold: threshold,
-          background_type: 'rgba' // Ensures transparent background with soft alpha blending
+          prompt: prompt,
+          image_input: [imageData],
+          output_format: "png"
         }
       }),
     });
@@ -67,25 +51,53 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-    console.log('Background removal result:', result);
+    console.log('Background removal initial result:', result);
 
-    // Handle the result - with Prefer: wait, we should get the final result immediately
-    if (result.status === 'failed') {
-      console.error('Background removal prediction failed:', result.error);
+    // Wait for completion with timeout
+    let finalResult = result;
+    const maxAttempts = 60; // 5 minutes max
+    let attempts = 0;
+
+    while (finalResult.status !== 'succeeded' && finalResult.status !== 'failed' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      
+      const statusResponse = await fetch(finalResult.urls.get, {
+        headers: {
+          'Authorization': `Bearer ${replicateApiKey}`,
+        }
+      });
+      
+      if (statusResponse.ok) {
+        finalResult = await statusResponse.json();
+        console.log(`Background removal status check ${attempts + 1}:`, finalResult.status);
+      }
+      
+      attempts++;
+    }
+
+    if (finalResult.status === 'failed') {
+      console.error('Background removal prediction failed:', finalResult.error);
       return NextResponse.json(
-        { error: 'Background removal failed: ' + result.error },
+        { error: 'Background removal failed: ' + finalResult.error },
+        { status: 500 }
+      );
+    }
+
+    if (finalResult.status !== 'succeeded') {
+      return NextResponse.json(
+        { error: 'Background removal timed out' },
         { status: 500 }
       );
     }
 
     // Get the generated image URL
     let generatedImageUrl;
-    if (Array.isArray(result.output)) {
-      generatedImageUrl = result.output[0];
-    } else if (typeof result.output === 'string') {
-      generatedImageUrl = result.output;
+    if (Array.isArray(finalResult.output)) {
+      generatedImageUrl = finalResult.output[0];
+    } else if (typeof finalResult.output === 'string') {
+      generatedImageUrl = finalResult.output;
     } else {
-      generatedImageUrl = result.output;
+      generatedImageUrl = finalResult.output;
     }
 
     console.log('Generated image URL:', generatedImageUrl);
@@ -101,7 +113,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       imageUrl: generatedImageUrl, // Keep as temporary Replicate URL for intermediate edits
-      method: `851-labs-background-remover-${aggressiveness}-aggressive`
+      method: 'nano-banana-background-removal'
     });
 
   } catch (error) {

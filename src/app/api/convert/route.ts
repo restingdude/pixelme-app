@@ -199,19 +199,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle different output formats from different models
-    let generatedImageUrl;
+    let generatedImages;
     if (Array.isArray(result.output)) {
-      generatedImageUrl = result.output[0];
+      // Multiple images generated
+      generatedImages = result.output.filter(url => url && typeof url === 'string');
     } else if (typeof result.output === 'string') {
-      generatedImageUrl = result.output;
+      // Single image generated
+      generatedImages = [result.output];
     } else {
-      generatedImageUrl = result.output;
+      // Fallback for other formats
+      generatedImages = result.output ? [result.output] : [];
     }
 
     console.log('Full result:', result);
-    console.log('Generated URL:', generatedImageUrl);
+    console.log('Generated Images:', generatedImages);
 
-    if (!generatedImageUrl) {
+    if (!generatedImages || generatedImages.length === 0) {
       // Don't consume credit if no image was generated
       return NextResponse.json(
         { error: 'No image generated' },
@@ -241,7 +244,8 @@ export async function POST(request: NextRequest) {
     // 🔄 TEMPORARY URL - Only save to permanent storage when order is paid
     return NextResponse.json({
       success: true,
-      imageUrl: generatedImageUrl, // Keep as temporary Replicate URL
+      imageUrl: generatedImages[0], // Primary image (backward compatibility)
+      generatedImages: generatedImages, // All generated images
       style,
       clothing
     });

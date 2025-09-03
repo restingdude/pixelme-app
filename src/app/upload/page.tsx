@@ -807,6 +807,7 @@ function UploadContent() {
 
       if (response.ok && data.success) {
         const result = data.imageUrl || data.description; // Handle both image URL and demo descriptions
+        const generatedImages = data.generatedImages || []; // Get all generated images
         setConversionResult(result);
         
         // Add to generation history
@@ -825,6 +826,7 @@ function UploadContent() {
           // Try to cache but don't fail if Safari blocks it
           try {
             localStorage.setItem('pixelme-conversion-result', result);
+            localStorage.setItem('pixelme-generated-images', JSON.stringify(generatedImages));
             localStorage.setItem('pixelme-generation-history', JSON.stringify(updatedHistory));
           } catch (e) {
             console.warn('📱 Could not cache conversion result (Safari?)');
@@ -1766,7 +1768,10 @@ function UploadContent() {
                             </button>
                             <button 
                               onClick={() => {
-                                // Don't clear edited data when continuing to edit - preserve user's work
+                                // Use the currently selected conversion result as the image to edit
+                                if (conversionResult) {
+                                  localStorage.setItem('pixelme-edited-image', conversionResult);
+                                }
                                 localStorage.setItem('pixelme-current-step', 'edit');
                                 router.push('/edit');
                               }}

@@ -1352,7 +1352,6 @@ export default function Edit() {
     setCropResizeHandle(null);
     setCropDragStart(null);
     setCropStartPos(null);
-    setHasSelection(false);
     setImageRotation(0); // Reset rotation when resetting crop
     
     // Set new crop area

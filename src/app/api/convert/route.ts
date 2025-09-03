@@ -199,10 +199,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle different output formats from different models
-    let generatedImages;
+    let generatedImages: string[];
     if (Array.isArray(result.output)) {
       // Multiple images generated
-      generatedImages = result.output.filter(url => url && typeof url === 'string');
+      generatedImages = result.output.filter((url: unknown): url is string => {
+        return typeof url === 'string' && url.length > 0;
+      });
     } else if (typeof result.output === 'string') {
       // Single image generated
       generatedImages = [result.output];

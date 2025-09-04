@@ -1653,11 +1653,13 @@ function UploadContent() {
                       <div className="mt-4 flex justify-center px-4">
                         <div className="flex flex-col items-center w-full max-w-sm">
                           <p className="text-sm text-gray-500 mb-2">Your photo:</p>
-                          <img 
-                            src={uploadedImage} 
-                            alt="Photo to convert"
-                            className="w-full h-auto max-h-64 sm:max-h-80 object-contain rounded-lg shadow-md"
-                          />
+                          <div className="w-full h-[300px] sm:h-[350px] md:h-[400px] bg-gray-50 rounded-lg shadow-md overflow-hidden">
+                            <img 
+                              src={uploadedImage} 
+                              alt="Photo to convert"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1793,9 +1795,9 @@ function UploadContent() {
                               </p>
                             </div>
                             
-                            {/* Clickable Image */}
+                            {/* Clickable Image Container with Fixed Dimensions */}
                             <div 
-                              className="relative cursor-pointer group touch-manipulation select-none"
+                              className="relative cursor-pointer group touch-manipulation select-none w-full max-w-md h-[400px] sm:h-[450px] md:h-[500px] bg-gray-50 rounded-lg shadow-lg overflow-hidden"
                               onClick={() => setShowingOriginal(!showingOriginal)}
                               role="button"
                               tabIndex={0}
@@ -1809,7 +1811,7 @@ function UploadContent() {
                               <img 
                                 src={showingOriginal ? (uploadedImage || '') : (conversionResult || '')} 
                                 alt={showingOriginal ? "Original uploaded photo" : `${selectedStyle} conversion`}
-                                className="w-full max-w-md h-[400px] object-cover rounded-lg shadow-lg transition-opacity duration-300 hover:opacity-90"
+                                className="w-full h-full object-contain transition-opacity duration-300 hover:opacity-90"
                               />
                               
                               {/* Overlay indicator */}
@@ -1914,7 +1916,7 @@ function UploadContent() {
                           <img 
                             src={item.imageUrl} 
                             alt={`${item.style} generation`}
-                            className="w-full h-32 object-cover rounded-lg shadow-sm"
+                            className="w-full h-32 object-contain rounded-lg shadow-sm bg-gray-50"
                           />
                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1 rounded-b-lg">
                             <p className="text-xs text-white truncate">{timeText}</p>

@@ -38,7 +38,8 @@
       "Read(/C:\\Apps\\PixelMe\\PixelMe\\pixelme\\src\\app\\api\\reduce-colors/**)",
       "Read(/C:\\Apps\\PixelMe\\PixelMe\\pixelme\\backup\\PixelMe\\pixelme\\src\\app\\api\\reduce-colors/**)",
       "Read(/C:\\Apps\\PixelMe\\PixelMe\\pixelme\\src\\app\\api\\remove-background/**)",
-      "Read(/C:\\Apps\\PixelMe\\PixelMe\\pixelme/**)"
+      "Read(/C:\\Apps\\PixelMe\\PixelMe\\pixelme/**)",
+      "Read(/C:\\Apps\\PixelMe\\PixelMe\\pixelme\\src\\components/**)"
     ],
     "deny": [],
     "ask": []
